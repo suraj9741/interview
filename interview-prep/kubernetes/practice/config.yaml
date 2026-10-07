@@ -1,0 +1,43 @@
+# Used in 10 (ConfigMaps and Secrets).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+data:
+  LOG_LEVEL: info
+  FEATURE_X: "true"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: db-credentials
+type: Opaque
+stringData:
+  DB_PASSWORD: change-me
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: config-demo
+spec:
+  containers:
+  - name: app
+    image: busybox:1.36
+    command: ["sh", "-c", "env | sort; ls /etc/app; sleep 3600"]
+    envFrom:
+    - configMapRef:
+        name: app-config
+    env:
+    - name: DB_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: db-credentials
+          key: DB_PASSWORD
+    volumeMounts:
+    - name: config
+      mountPath: /etc/app
+      readOnly: true
+  volumes:
+  - name: config
+    configMap:
+      name: app-config

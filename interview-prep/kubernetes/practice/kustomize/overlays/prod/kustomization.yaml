@@ -1,0 +1,12 @@
+resources:
+- ../../base
+namespace: shop-prod
+images:
+- name: myapi
+  newTag: "4f2a9c1"
+patches:
+- path: replicas.yaml
+configMapGenerator:
+- name: app-config
+  literals:
+  - LOG_LEVEL=warn

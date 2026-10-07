@@ -1,0 +1,8 @@
+# A custom resource of the type defined in backup-crd.yaml.
+apiVersion: example.com/v1
+kind: Backup
+metadata:
+  name: nightly
+spec:
+  schedule: "0 2 * * *"
+  database: orders
