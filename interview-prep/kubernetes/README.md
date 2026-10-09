@@ -59,6 +59,11 @@ kubectl config use-context kind-kind
 
 All diagrams are in [diagrams/](diagrams/) as editable **`.drawio.svg`** files. They appear inside the notes. To edit one, open it in VS Code (Draw.io Integration) or [app.diagrams.net](https://app.diagrams.net).
 
+## Related notes
+
+- [Networking notes](../networking/README.md): NAT, DNS and network debugging underneath Services, CoreDNS and the VPC CNI. Start with [06 Debugging](../networking/06-debugging.md) for Service and DNS scenarios.
+- [Helm notes](../helm-chart/README.md): how `helm upgrade` really changes objects (3-way merge vs server-side apply), flags, hooks and troubleshooting, all tested with Helm 4.
+
 ## Mistakes in the Instagram handbook (fixed here)
 
 - It says Secrets are "encrypted". They're only **base64-encoded**, unless encryption at rest is turned on. See [10](10-configmaps-and-secrets.md).

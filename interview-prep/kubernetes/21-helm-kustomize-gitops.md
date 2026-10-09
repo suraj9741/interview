@@ -4,6 +4,8 @@ How YAML gets **packaged**, **customised per environment** and **delivered** to 
 
 ## Helm: the package manager
 
+> **Go deeper:** the [Helm notes](../helm-chart/README.md) cover how upgrades really work (3-way merge, server-side apply), every flag and annotation, and troubleshooting, all tested with Helm 4.2.3.
+
 - A **chart** is a package of templated YAML. A **release** is one installed copy of a chart in a cluster. Every upgrade creates a **revision** you can roll back to.
 
 ```text

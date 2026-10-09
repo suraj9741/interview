@@ -38,6 +38,8 @@ When something "keeps changing back" or "can't be reached," ask: **who else owns
 
 ## A1 · Helm drift: someone edited the cluster, then we run `helm upgrade` again ⭐🔥
 
+> Everything about Helm, in study order, is also in the [Helm notes](helm-chart/README.md). The short practise-out-loud version of this scenario is [Helm 04](helm-chart/04-drift-scenario.md).
+
 ![Helm 3-way merge](diagrams/s1-helm-three-way-merge.drawio.svg)
 
 **The scenario:**
@@ -66,6 +68,7 @@ When something "keeps changing back" or "can't be reached," ask: **who else owns
 | A field the **chart sets** (replicas, image, env value, limits) | **Reverted** to the chart's value | NEW ≠ LIVE, so the patch sets it |
 | Something the chart **never set** (an extra annotation or label, an injected sidecar, an extra env var) | **Kept** | It's only in LIVE, and the patch leaves LIVE-only fields alone |
 | **Deleted** a field the chart sets | **Added back** | It's in NEW but missing from LIVE |
+| The **chart removed** a field it used to set | **Deleted** from the cluster | It's in OLD but not in NEW. ⚠️ If a whole block disappears from the chart (e.g. all pod annotations), the whole block is deleted, **including entries others added** (tested, see below) |
 | **Deleted the whole object** (`kubectl delete deploy web`) | **Recreated** (Helm logs "Created a new Deployment") | Helm finds it missing and creates it. Until then it's gone, and so are its pods. |
 | Edited a **custom resource** (a Karpenter NodePool, ServiceMonitor, Argo CD Application…) | ⚠️ **The edit survives**, unless the chart changed that same field | Strategic merge doesn't work on custom resources, so Helm falls back to a **2-way JSON merge (OLD vs NEW only)** and never looks at LIVE |
 | **HPA** changed replicas (not a person), and the chart sets `replicas:` | **Every deploy resets replicas** to the chart value, then the HPA scales back up | Two owners for one field. Don't template `replicas` when autoscaling is on; `helm create` already wraps it in `{{- if not .Values.autoscaling.enabled }}`. |
@@ -79,26 +82,147 @@ When something "keeps changing back" or "can't be reached," ask: **who else owns
 - The **sidecar case** goes the other way. A service mesh injects a container into the live pod spec. Helm 3 keeps it, because the chart never owned it.
 - (Both examples are from Helm's own ["Changes since Helm 2"](https://helm.sh/docs/faq/changes_since_helm2/) page.)
 
-### Helm 4 (current: 4.3; your laptop has **v4.2.3**) ⭐
+### Helm 2 vs 3 vs 4, and what CSA and SSA mean ⭐
 
-- **New installs use server-side apply (SSA).**
-  - The **API server** tracks a **field manager** for every field (`metadata.managedFields`).
-  - Helm owns the fields it applied. `kubectl edit` or `kubectl scale` **takes ownership** of the fields it changes.
-- **Next `helm upgrade`:** if Helm wants a different value for a field kubectl now owns, the API returns a **conflict**, and Helm **reports the error instead of silently overwriting**. You then choose one of:
-  - `--force-conflicts`: Helm takes the field back (the edit is lost);
-  - put the hand-made change into Git and the chart;
-  - stop setting that field in the chart (give up ownership).
-- **Old releases keep their method.** For upgrades, `--server-side` defaults to `auto`, which means "use whatever this release used before." A release created by Helm 3 keeps the 3-way merge until you pass `--server-side=true`.
-- **Renamed flags:**
-  - `--force` → `--force-replace`;
-  - `--atomic` → `--rollback-on-failure`;
-  - `--take-ownership` adopts objects that exist but aren't managed by Helm.
+| Version | How it updates objects | Inputs |
+|---|---|---|
+| **Helm 2** | 2-way merge | OLD vs NEW. It ignores the cluster, so live drift is never fixed |
+| **Helm 3** | 3-way strategic merge patch, computed by Helm (**CSA**) | OLD + LIVE + NEW. Custom resources get a 2-way JSON merge (OLD vs NEW) |
+| **Helm 4** | **Server-side apply (SSA)** for new installs | The API server merges, using an owner per field (`managedFields`) |
+
+**CSA = Client-Side Apply.** The merge happens in the **client**: the `helm` program on your laptop or CI runner.
+1. Helm reads OLD (the manifest in the release Secret), LIVE (fetched from the cluster) and NEW (the rendered chart).
+2. Helm computes the 3-way strategic merge patch **itself**.
+3. Helm sends it to the API server as a normal **Update**.
+4. The API server applies it **without checking who owns each field**. So hand edits on fields the chart sets are **silently overwritten**.
+
+**SSA = Server-Side Apply.** Helm sends the whole desired object as an **Apply**. The **API server** does the merge and checks `managedFields`. A different value on a field another owner holds gives a **conflict**.
+
+**How to tell them apart (tested):**
+- The release Secret stores `apply_method: csa` or `ssa`.
+- In `managedFields`, CSA Helm shows `helm / Update`, and SSA Helm shows `helm / Apply`.
+
+**Not the same as `kubectl apply`:**
+- Client-side `kubectl apply` keeps its OLD in the `kubectl.kubernetes.io/last-applied-configuration` annotation.
+- Helm CSA doesn't use that annotation (the lab object had none). Helm keeps OLD in its release Secret.
+
+**When Helm 4 still uses CSA:**
+- `--server-side=false`;
+- `--server-side=auto` (the upgrade default) on a release that was created with CSA, e.g. by Helm 3.
+- It stays CSA until one upgrade with `--server-side=true`.
+
+> **Say it:** "Helm 2 compared the old and new manifests. Helm 3 added the live state: a 3-way merge that Helm computes itself and sends as a plain update. That's client-side apply, so the server never checks field ownership. Helm 4 uses server-side apply: the API server merges and enforces per-field owners. Existing releases keep their old method until you switch them."
+
+### What "3-way merge" actually means ⭐ (tested)
+
+**The job:** turn the live object into what the chart wants, **without destroying changes made by other people and controllers**. To do that, Helm must answer **two questions**, and each one needs a different pair of inputs:
+
+| Question | Compare | Why this pair |
+|---|---|---|
+| What should I **set**? | **NEW vs LIVE** | Whatever the chart wants that the cluster doesn't have right now |
+| What should I **delete**? | **OLD vs NEW** | Only what **Helm itself** set last time and has now removed. LIVE alone can't tell "mine, removed on purpose" from "someone else's" |
+
+**Three inputs, because there are two questions.** OLD is Helm's memory of what it set, kept in the release Secret.
+
+- **The patch** = the "set" part (NEW vs LIVE) + the "delete" part (OLD vs NEW), sent as **one** patch.
+- **The 3 rules:**
+  1. NEW ≠ LIVE → set it to NEW. (NEW = LIVE → **nothing**: the field is left out of the patch.)
+  2. In OLD but not in NEW → delete it.
+  3. Only in LIVE → leave it alone.
+- **If NEW and LIVE match for the whole object:** no change is sent and no pods restart, but Helm still records a new revision.
+- **Why "strategic":** for built-in types, Kubernetes knows how to merge **lists by a key**: containers by `name`, env vars by `name`, ports by `containerPort`. So an env var added with `kubectl set env` is **merged into** the list, not wiped by replacing the whole list. Custom resources have no such information, so Helm falls back to a plain JSON merge (the custom-resource row in the table above).
+
+**Why not a 2-way comparison?**
+- **OLD vs NEW only** (Helm 2): live drift is never fixed. A Deployment scaled to 0 by hand stays at 0.
+- **NEW vs LIVE only** ("make the cluster exactly match the chart"): everything others added is destroyed. That's what `--force-replace` does. Tested: it wiped the hand-added annotation, the env var and `kubectl rollout restart`'s annotation in one go.
+
+**Tested: one upgrade, five kinds of field** (Helm 4.2.3, Kubernetes 1.34, k3s in Docker, 8 Oct 2026):
+
+1. The chart set `replicas: 3` and a pod annotation `owner: helm-team`.
+2. Then, by hand: `kubectl edit` (replicas → 5), `kubectl annotate deploy … team=x`, `kubectl rollout restart` (it adds a `restartedAt` pod annotation), and `kubectl set env … DEBUG=true`.
+3. Then `helm upgrade` with the same replicas and the `owner` annotation **removed** from the chart.
+
+![Tested: what happens to each field on helm upgrade](diagrams/s5-helm-merge-cases.drawio.svg)
+
+**The surprise ⚠️:** `restartedAt` was **lost** with the 3-way merge, even though Helm never set it.
+- The chart's **only** pod annotation was `owner`. Removing it made the whole `annotations:` block vanish from NEW.
+- The 3-way merge deletes **at the level where OLD and NEW differ**, so it deleted the **whole block**, `restartedAt` included. That also triggers a new rollout.
+- I ran it again with the chart keeping one other pod annotation (`tier: web`). Then only `owner` was deleted, and `restartedAt` survived.
+- Server-side apply kept it either way, because it tracks each field's owner (`kubectl-rollout`) instead of comparing blocks.
+
+> **Say it in one line:** "A 3-way merge sets whatever NEW wants that LIVE lacks, deletes only what OLD had and NEW dropped, and leaves fields that exist only in LIVE alone. That's how it fixes drift without destroying sidecars or other people's annotations."
+
+### Helm 4: server-side apply, tested ⭐ (current: 4.3; your laptop has **v4.2.3**)
+
+![Helm 4 server-side apply: every field has an owner](diagrams/s6-ssa-field-owners.drawio.svg)
+
+**The idea: every field carries a name tag.** The API server records **who owns each field** in `metadata.managedFields`.
+- **Helm 3** never looks at the tags: it builds the patch itself and sends a normal **Update**, which the server doesn't check.
+- **Helm 4** sends an **Apply**, and the server **checks the tags**. If another owner holds a field Helm wants to change, the server refuses.
+
+**The tags, for real**, after `helm install`, then `kubectl edit` (replicas 3 → 5) and `kubectl annotate team=x`. `kubectl` hides them unless you add `--show-managed-fields`.
+
+| manager | operation | subresource | owns `replicas` | owns `team` |
+|---|---|---|---|---|
+| `helm` | **Apply** | – | **no** (lost it) | no |
+| `kubectl-edit` | Update | – | **yes** | no |
+| `kubectl-annotate` | Update | – | no | yes |
+| `k3s` (the controllers) | Update | status | no | no |
+
+**The rules, each one seen in the lab:**
+
+| # | Rule | Seen |
+|---|---|---|
+| 1 | You own **only the fields you send**. Others' fields are never touched. | `team=x` survived every upgrade, even `--force-conflicts` |
+| 2 | A normal write that **changes** a value **takes the tag** silently | After `kubectl edit`, Helm no longer owned `replicas` |
+| 3 | Applying a **different value** to someone else's field = **conflict** | `conflict with "kubectl-edit"`, `conflict with "kubectl" with subresource "scale"`, and, from an HPA, `conflict with "k3s" with subresource "scale"` |
+| 4 | If the **only owner stops sending** a field, it is **deleted** | `replicas` 3 → 1 (below) |
+| 5 | The **same value** = no conflict; the tag becomes shared | (Kubernetes docs) |
+
+**Helm 3 way vs Helm 4 way, same story** (install replicas 3 → `kubectl edit` to 5 → `helm upgrade` with the same values):
+
+| | `--server-side=false` (the Helm 3 way) | Default for new installs (server-side) |
+|---|---|---|
+| Helm's tag | `helm` / Update | `helm` / **Apply** |
+| `helm upgrade` | ✅ `deployed`; replicas **silently 5 → 3** | ❌ `Error: UPGRADE FAILED: conflict occurred while applying object shop/web apps/v1, Kind=Deployment: Apply failed with 1 conflict: conflict with "kubectl-edit" using apps/v1: .spec.replicas`; replicas **stay 5** |
+| `helm history` | A normal new revision | The revision is marked **`failed`**, with that message |
+
+**How `--server-side=auto` decides:** each release Secret stores **`apply_method`**. I decoded them: `ssa` for the server-side release and `csa` for the client-side one. `auto` (the default for upgrades) reuses the previous revision's method. That's why releases created by Helm 3 keep the 3-way merge until one upgrade with `--server-side=true`.
+
+**When it conflicts, choose; don't just force:**
+
+| Choice | Do | When |
+|---|---|---|
+| Take it back | `--force-conflicts` | The edit was a mistake, or an emergency that's over. Tested: replicas → 3, and the `kubectl-edit` entry disappeared. |
+| Keep it | Put the value in the values file | The edit was right. Same value = no conflict. |
+| Give it away | Stop setting the field in the chart | Something else owns it (an HPA). ⚠️ Hand it over first (rule 4). |
+
+🎯 If CI **always** passes `--force-conflicts`, the protection is switched off and you're back to Helm 3's silent overwrite. Better: let CI fail, and have a person decide.
+
+**The HPA case, end to end (tested):**
+
+1. An HPA (`minReplicas: 4`) scaled the Deployment from 3 to 4 and took the tag (`k3s / Update / scale`; on EKS it's the controller manager). The next `helm upgrade` failed with a conflict on `.spec.replicas`.
+2. **Fix:** set `autoscaling.enabled=true` in the chart. `helm create` charts then **stop templating `replicas`** and create the HPA themselves. But an HPA made with `kubectl autoscale` already existed:
+   - with no flags: `HorizontalPodAutoscaler "web" … exists and cannot be imported into the current release: invalid ownership metadata`;
+   - with `--take-ownership`: that check passed, then `conflict with "kubectl-autoscale" … .spec.maxReplicas`;
+   - with **`--take-ownership --force-conflicts`**: ✅ adopted. Later upgrades worked with no flags, and replicas stayed 4.
+   - 👉 **`--take-ownership` skips only Helm's label check. The server's field tags still apply.**
+3. **⚠️ The trap.** On a release where **Helm alone** owned `replicas`, switching to autoscaling deleted the field (rule 4). Events: `Scaled down replica set … from 3 to 1`, then about 15 seconds later `New size: 4; reason: Current number of replicas below Spec.MinReplicas`. In step 2 the HPA **already** owned the field, so nothing dropped. **Let the HPA own `replicas` first, then remove it from the chart.** The Kubernetes docs call this "transferring ownership".
+
+**Renamed flags** (checked in `helm upgrade --help`, v4.2.3):
+- `--force` → `--force-replace` (overwrites the object with NEW; every hand-made change is lost, as in the s5 diagram);
+- `--atomic` → `--rollback-on-failure`;
+- new: `--server-side true|false|auto`, `--force-conflicts`, and `--take-ownership` (adopts objects that lack Helm's labels).
 
 ### How to *see* the drift
 
 ```bash
-# Diff what Helm thinks it deployed against what is live (exit code 1 = there is drift)
-helm get manifest web -n shop | kubectl diff -f -
+# Diff what Helm thinks it deployed against what is live (exit code 1 = there is drift).
+# -n is required: the manifest has no namespace, so without it the diff is made against "default".
+helm get manifest web -n shop | kubectl diff -n shop -f -
+
+# Helm 4 (server-side apply) preview: shows the exact conflict the next upgrade will hit
+helm get manifest web -n shop | kubectl diff -n shop --server-side --field-manager=helm -f -
 
 # Who changed it, and when? Look for manager "kubectl-edit" with operation "Update"
 kubectl get deploy web -n shop -o yaml --show-managed-fields
@@ -159,7 +283,7 @@ kubectl get deploy demo -o jsonpath='{.spec.replicas} {.metadata.annotations.tea
 - **Step 1** must print `kind-…` or `docker-desktop`.
 - **What you should see in step 3:**
   - With Helm 3 behaviour you get `2 x`: replicas reverted, annotation kept.
-  - Your Helm is v4, so this new install uses server-side apply, and the upgrade may stop with a **conflict** instead. Re-run it with `--force-conflicts` and you'll see replicas go back to 2.
+  - Your Helm is v4, so this new install uses server-side apply, and the upgrade **stops with a conflict** instead (tested on 8 Oct with Helm 4.2.3: `conflict with "kubectl" with subresource "scale" … .spec.replicas`). Re-run it with `--force-conflicts` and you'll see replicas go back to 2.
   - Seeing both behaviours yourself is the best preparation for this question.
 
 ---
@@ -186,6 +310,46 @@ kubectl get deploy demo -o jsonpath='{.spec.replicas} {.metadata.annotations.tea
   - And even if it could: inside VPC A, the route table says **`10.0.0.0/16 → local`**, and the local route always wins. A packet to `10.0.5.10` **never leaves VPC A**, because that address *means* "here."
 - **The rule:** only **unique** addresses can cross between networks. Every working option either **translates** addresses or **avoids routing IPs** altogether.
 
+### What a Transit Gateway is (and why it can't route an overlap) ⭐
+
+![AWS Transit Gateway](diagrams/s14-transit-gateway.drawio.svg)
+
+**A Transit Gateway (TGW) is a regional network hub.** Every VPC, VPN and Direct Connect connects **once** to the hub, instead of every VPC peering with every other one.
+
+| Word | Meaning |
+|---|---|
+| **Attachment** | One connection to the hub: a VPC, a Site-to-Site VPN, a Direct Connect gateway, or another TGW (peering, e.g. another region). A **VPC attachment** puts an ENI in **one subnet per AZ** you choose (best: a small dedicated subnet in each AZ) |
+| **TGW route table** | The hub's own routing: "destination prefix → which attachment" |
+| **Association** | Each attachment uses **exactly one** TGW route table for traffic **coming from** it |
+| **Propagation** | An attachment can **add its CIDRs automatically** to one or more route tables. VPNs and Direct Connect bring routes learned by BGP. You can also add **static** routes, and **blackhole** routes to drop traffic |
+| **Segmentation** | Several route tables, e.g. prod attachments can't reach dev, while both reach a shared-services VPC |
+
+**One packet from VPC A to VPC B checks three route tables:**
+1. VPC A's subnet route table: `10.2.0.0/16 → tgw-…`
+2. The TGW route table associated with A: `10.2.0.0/16 → VPC B attachment`
+3. VPC B's subnet route table, **for the reply**: `10.1.0.0/16 → tgw-…`
+
+Forgetting step 3 is the classic "traffic goes out but never comes back" mistake.
+
+**TGW vs VPC peering:**
+
+| | VPC peering | Transit Gateway |
+|---|---|---|
+| Shape | 1-to-1 links; 10 VPCs need 45 peerings | **Hub**: 10 VPCs need 10 attachments |
+| Transitive? | **No**: A–B and B–C doesn't give A–C | **Yes**: everything attached can reach everything its route tables allow |
+| VPN, Direct Connect, on-prem | No | Yes |
+| Cost | No hourly charge; data charges only across AZs and regions | Per attachment per hour + **per GB processed** |
+| Overlapping CIDRs | **Refused** | Can attach, but **can't route** them |
+| Across accounts | Accept a request | Share the TGW with **AWS RAM** |
+
+**Why it can't route an overlap:**
+- A route table holds **one** route per prefix, so `10.0.0.0/16` can't point to two VPCs.
+- And even if it could, VPC A's own `10.0.0.0/16 → local` route wins first, so the packet never reaches the TGW.
+
+That's why option 3 sends **only unique ranges** (`10.100.x.x`) through the TGW, with **static** routes and no propagation of the overlapping CIDRs.
+
+> **Say it:** "A Transit Gateway is a regional hub: VPCs, VPNs and Direct Connect attach once, and TGW route tables decide who reaches whom, with association, propagation and separate tables for segmentation. Unlike peering it's transitive and scales, but it charges per GB. It still routes by IP, so two VPCs with the same CIDR can't both be reached through it."
+
 ### Your options
 
 | Option | How it works | Best when | Trade-offs |
@@ -203,6 +367,50 @@ kubectl get deploy demo -o jsonpath='{.spec.replicas} {.metadata.annotations.tea
 - Cilium Cluster Mesh: needs **unique** pod CIDRs.
 - Outside AWS, Submariner's "Globalnet" solves overlap with NAT; mention only if he asks about non-AWS clusters.
 
+### Each option as a picture
+
+All five pictures use the same setup: VPC A (blue) and VPC B (green), **both `10.0.0.0/16`**, and a pod in A that must call `orders` in B.
+
+#### Option 1 · Amazon VPC Lattice
+
+![Option 1: Amazon VPC Lattice](diagrams/s7-option1-vpc-lattice.drawio.svg)
+
+- The client calls a **name**. It resolves to the link-local range `169.254.171.x`, not to anything in either VPC.
+- The **service network** (in the middle, run by AWS) decides where the request goes, by service, never by VPC IP. So the overlap simply doesn't matter.
+- On EKS, the **AWS Gateway API Controller** turns an `HTTPRoute` into the Lattice service and its targets. An **IAM auth policy** controls who may call it.
+
+#### Option 2 · AWS PrivateLink
+
+![Option 2: AWS PrivateLink](diagrams/s8-option2-privatelink.drawio.svg)
+
+- B **publishes** one service: pods → internal NLB → **endpoint service**.
+- A **consumes** it through an **interface endpoint**, an ENI with an IP from **A's own subnet** (`10.0.5.20`). A only ever talks to its own address.
+- One service, one direction. B sees the NLB's IP as the source.
+
+#### Option 3 · Unique CIDR + private NAT + Transit Gateway
+
+![Option 3: private NAT gateway and Transit Gateway](diagrams/s2-overlapping-cidr-private-nat.drawio.svg)
+
+- Only **unique** addresses (`10.100.x.x`) ever cross the TGW.
+- The private NAT hides pod A behind `10.100.0.5`, and B's internal NLB (`10.100.1.10`) is the only address A can reach in B.
+- The packet walk is in [Walk the packet](#walk-the-packet-option-3-as-in-the-diagram) below.
+
+#### Option 4 · Remove the overlap (re-IP)
+
+![Option 4: re-IP with a new VPC and blue/green](diagrams/s9-option4-re-ip.drawio.svg)
+
+- Build **VPC B2** with a unique CIDR from **IPAM**, deploy the same code there, and shift traffic with **Route 53 weights**.
+- Once the old VPC B is retired, normal **peering or TGW** works, because nothing overlaps any more.
+- It's the only option that **removes** the problem; the others work around it.
+
+#### Option 5 · IPv6 clusters
+
+![Option 5: IPv6 clusters](diagrams/s10-option5-ipv6.drawio.svg)
+
+- Pods get **IPv6** addresses from each VPC's own unique `/56`, so pod-to-pod traffic routes over TGW or peering with **no NAT**.
+- IPv4 still overlaps, so anything IPv4-only still needs options 1–3.
+- The IP family is fixed when the cluster is created, so this is a **new-cluster** option (usually together with option 4).
+
 ### What I'd pick (say a choice, then the reason)
 
 - **A few HTTP APIs, A → B:** VPC Lattice, or **PrivateLink** for one or two TCP services. No network redesign, it works despite the overlap, and access is controlled by IAM or security groups.
@@ -217,6 +425,122 @@ kubectl get deploy demo -o jsonpath='{.spec.replicas} {.metadata.annotations.tea
 4. The TGW has **static routes only for the unique ranges**: `10.100.1.0/24 → VPC B`.
 5. The NLB (`10.100.1.10`) forwards to the target pods. Their `10.0.x.x` IPs are **local inside VPC B**, so that's fine.
 6. The reply goes to `10.100.0.5` (B's routable subnet route: `10.100.0.0/24 → TGW`). The NAT **remembers the connection** and translates the reply back to `10.0.1.25`.
+
+### Option 3: which load balancer receives the traffic? ⭐
+
+![Option 3, the way in to VPC B: four load balancer set-ups](diagrams/s15-option3-inbound-load-balancers.drawio.svg)
+
+The way IN to B must be a load balancer with an IP in B's **unique** routable subnet. Many services can **share** one.
+
+**Does every service need its own NLB?** No. One NLB per service (Service `type: LoadBalancer`) is only the simplest set-up. Fewer load balancers means:
+- lower cost: each one has an hourly charge plus usage;
+- fewer IPs used: each one takes an IP in every AZ subnet it uses, and the routable CIDR is small on purpose;
+- fewer IPs to open in security groups and to point DNS at.
+
+**ALB vs NLB: what each can route on**
+
+| Rule | ALB (layer 7) | NLB (layer 4) |
+|---|---|---|
+| Host (`orders.b.internal`), path (`/orders`), headers | ✅ | ❌ |
+| Listener port | ✅ | ✅, **its only rule** |
+| TLS with several certificates (SNI) | ✅ | Only **picks the certificate**; can't send different names to different target groups |
+
+**An NLB can't route like an ALB Ingress.** Host and path routing always happens in a **layer-7 hop**: an ALB, or an ingress / gateway controller.
+
+**The four set-ups (A–D in the diagram):**
+
+| | Set-up | Who does the host / path routing | Use it for |
+|---|---|---|---|
+| **A** | Internal **ALB** | The ALB itself | HTTP / gRPC only; simplest. Ingresses share one ALB through `alb.ingress.kubernetes.io/group.name` |
+| **B** | **NLB → controller pods** (e.g. Envoy Gateway) | The **controller**: the NLB only passes TCP on port 443 | HTTP **plus** fixed IPs or TLS passthrough; one NLB for many services |
+| **C** | **NLB, one listener per port** | Nobody: routing is by port (`5432` → DB, `9092` → Kafka) | Non-HTTP services. Bind each target group to its Service with `TargetGroupBinding` |
+| **D** | **NLB → ALB** (the ALB is the NLB's target) | The ALB | Firewall rules that need **fixed IPs**, plus ALB routing |
+
+**Set-up B in one request:**
+1. A pod in A calls `https://orders.b.internal`. DNS returns the NLB's IP, `10.100.1.10`.
+2. Private NAT A → TGW → **NLB, port 443**. The NLB forwards the TCP connection to one controller pod, **without reading any name**.
+3. The controller reads `orders.b.internal` (the HTTP `Host` header, or the TLS SNI) and sends the request to the **orders** Service.
+4. `payments.b.internal` reaches the **same** NLB and controller, then goes to **payments**.
+
+The NLB is the front door; the controller is the receptionist who reads the name on each envelope. The routes live in the controller, as `HTTPRoute`s or Ingresses.
+
+**Why an NLB in option 3 at all:**
+1. **Fixed IPs:** you can choose an internal NLB's private IP in each subnet, and it never changes. That's good for firewall rules; ALB IPs change as it scales.
+2. **Any protocol:** TCP, UDP, TLS, not just HTTP.
+3. **One subnet is enough:** an NLB can live in one AZ subnet; an **ALB needs subnets in two AZs**, so the unique CIDR must then be split, e.g. `10.100.1.0/24` into two `/25`s.
+4. **TLS passthrough:** the NLB doesn't decrypt, so the controller or the app handles TLS.
+
+**Using an ALB in option 3 (set-up A):**
+- Clients use its **DNS name**, never its IPs.
+- Its security group allows the **NAT range** (`10.100.0.0/24`), not pod IPs.
+- Targets are the pods in the non-routable `10.0.x.x` subnets (target type `ip`), reached through the VPC's local route.
+- B sees the **NAT's IP** (`10.100.0.5`) as the client, in `X-Forwarded-For` too. The pod's real IP is lost at the private NAT.
+
+> **Say it:** "Not one NLB per service. An NLB is layer 4 and routes only by listener port, so host or path routing needs a layer-7 hop: an internal ALB for plain HTTP, or an NLB in front of an ingress or gateway controller when I need fixed IPs or TLS passthrough. Non-HTTP services share an NLB with a listener per port. That keeps cost down and saves IPs in the small routable CIDR."
+
+### Two-way traffic ⭐
+
+![Two-way traffic with option 3](diagrams/s11-two-way-private-nat.drawio.svg)
+
+**"Two-way" means both sides can START a connection.** Replies on an existing connection always come back by themselves (step 6 above). What needs extra work is B **starting** a call to A.
+
+**Why one NAT can't carry both directions:**
+- A NAT only translates connections that **start inside it**. It remembers each one (like conntrack on a Linux host), and that memory is how replies find their way back.
+- A packet that arrives at `10.100.0.5` from B with **no matching connection** has no pod to go to, so it's dropped.
+- It's your home Wi-Fi: you can open any website, but nobody on the internet can start a connection to your laptop.
+- AWS NAT gateways never forward ports inward. **The way in is always a load balancer.**
+
+**So with option 3, each VPC needs both:**
+
+| | Way OUT (it starts calls) | Way IN (it receives calls) |
+|---|---|---|
+| VPC A | Private NAT A · `10.100.0.5` | Internal NLB A · `10.100.0.10` |
+| VPC B | Private NAT B · `10.100.1.5` | Internal NLB B · `10.100.1.10` |
+
+The TGW routes (`10.100.0.0/24 → A`, `10.100.1.0/24 → B`) already work in both directions; only the NATs and NLBs are per direction.
+
+#### Can the other options do two-way? Yes, all of them
+
+![Two-way traffic: what each option needs](diagrams/s13-two-way-per-option.drawio.svg)
+
+| Option | Two-way? | What B → A needs |
+|---|---|---|
+| **1 · Lattice** | Yes, **built in**, per service | Nothing new on the network. A also publishes its services in the **same** service network |
+| **2 · PrivateLink** | Yes, but as **two separate one-way setups**, per service | A builds its own NLB + endpoint service; B creates an interface endpoint in B |
+| **3 · Private NAT + TGW** | Yes, at **network level**, with NAT | A NAT and an NLB on **each** side (the 4 desks above) |
+| **4 · Re-IP** | Yes, **full**: any port, any protocol, no NAT | Normal TGW or peering routes both ways; security groups decide |
+| **5 · IPv6** | Yes, for **IPv6** traffic | Same as re-IP; IPv4-only traffic still overlaps |
+
+- **Lattice:**
+  - Both VPCs are associated with one service network.
+  - Each cluster runs the AWS Gateway API Controller, which turns its `HTTPRoute`s into Lattice services, so either side calls the other by Lattice name.
+  - Each service has its own **auth policy**, so each direction is controlled separately.
+  - Limit: it's **service-to-service only**, not any IP on any port.
+- **PrivateLink:**
+  - Everything is per service **and** per direction: A → B needs NLB B + an endpoint service in B + an interface endpoint in A, and B → A is the mirror image.
+  - With **5 services both ways**, that's 10 endpoint services and 10 endpoints. At that size the cost and the work point to Lattice.
+- **Re-IP and IPv6:** the only options with full **network-level** two-way traffic and **no NAT**.
+
+> **Say it:** "Lattice gives two-way per service with almost no extra setup. PrivateLink needs a mirrored setup for each direction and each service. Only re-IP or IPv6 give full network-level two-way without NAT."
+
+### Why not a bastion host or a VPN? ⭐
+
+![Why a bastion or a VPN doesn't fix overlapping CIDRs](diagrams/s12-why-not-bastion-or-vpn.drawio.svg)
+
+**The overlap is an addressing problem, and neither of these changes addresses.**
+
+**Why not a bastion host:**
+- A bastion is a **door for people**: an admin logs in with SSH (or better, SSM Session Manager) to reach private machines. It's not a path for application traffic.
+- It sits in **one** VPC, so it has the **same routing problem**: its route table also says `10.0.0.0/16 → local`. Even a box with a network card in **both** VPCs sees `10.0.0.0/16` on both cards, and can't tell which side `10.0.1.25` means.
+- Making it carry app traffic means hand-made SSH tunnels or a proxy you run yourself. That's one box with no high availability, a throughput limit, manual work when pods change, and an extra way in for attackers.
+
+**Why not a VPN:**
+- A VPN is a **pipe between networks**. It doesn't change any address.
+- Pod A sends to `10.0.1.25`, and VPC A's route table picks **`10.0.0.0/16 → local`**. A VPN route for that range can never win, so **nothing ever enters the tunnel**. It fails for the same reason peering and a plain TGW fail.
+- It only works if you add **NAT on both ends**, mapping the other side to a fake unique range (e.g. B appears as `10.200.0.0/16`). AWS's managed Site-to-Site VPN doesn't do that, so you'd run VPN appliances yourself. That is **option 3, self-managed**, with about **1.25 Gbps per AWS VPN tunnel**.
+- VPNs are the right tool for connecting **on-premises or another cloud**, not two overlapping VPCs.
+
+> **Say it:** "A bastion is a door for people and a VPN is a pipe. Neither changes addresses, and with an overlap the problem *is* the addresses: VPC A's local route always wins, so the traffic never reaches the bastion or the tunnel. Only three things work: translate the addresses (private NAT), avoid IP routing (Lattice, PrivateLink), or change the addresses (re-IP, IPv6)."
 
 ### Follow-ups he's likely to ask
 
@@ -259,11 +583,19 @@ kubectl get deploy demo -o jsonpath='{.spec.replicas} {.metadata.annotations.tea
 
 ### Why teams do this
 
+![VPC CNI custom networking, before and after](diagrams/s16-custom-networking-before-after.drawio.svg)
+
+**Before:** every pod takes an IP from the node's own small subnet, through the node's ENIs (Elastic Network Interfaces). **After:** the primary ENI keeps only the node IP, and the secondary ENIs sit in a pod subnet from the secondary CIDR (Classless Inter-Domain Routing range) `100.64.0.0/16`.
+
 1. **IP exhaustion** (the most common reason). Node subnets are often a small `/24`, and every node reserves extra IPs for future pods. The `100.64.0.0/10` range (RFC 6598, "carrier-grade NAT" space) gives lots of room.
 2. **Different security groups** for pod traffic and node traffic.
 3. **Pods stay non-routable** while nodes keep routable, corporate (RFC 1918) IPs. On-prem and the TGW only ever see node IPs, which saves scarce corporate address space.
 
 ### How VPC CNI custom networking works, step by step
+
+![Set up VPC CNI custom networking in 5 steps](diagrams/s17-custom-networking-steps.drawio.svg)
+
+The VPC CNI (Virtual Private Cloud Container Network Interface) runs as the `aws-node` pods. The right side of the diagram shows how a new node finds **its** ENIConfig: its AZ (Availability Zone) label `topology.kubernetes.io/zone=us-west-1a` picks the ENIConfig named `us-west-1a`.
 
 ```bash
 # 1. Add a secondary CIDR to the VPC, then create a pod subnet in EACH AZ your nodes use
