@@ -270,7 +270,7 @@ About 21% used, with room to grow. The full VPC drawing (internet gateway, NAT g
 ## Practice
 
 - 🔥 **First**: the [12-question worksheet](../../interview-transcript-review-oct-9.md#worksheet-do-it-on-paper-then-check) from the interview review. Target: all 12 right, on paper, in under 15 minutes.
-- Then: [Level 2 subnetting drills](../14-practice-exercises/02-level-2-subnetting-drills.md), sets B–E (40+ problems with worked solutions).
+- Then: [Level 2 subnetting drills](../14-practice-exercises/02-level-2-subnetting-drills.md), sets B–E (36 problems, many with several parts, all with worked solutions).
 
 ## Interview angle
 
