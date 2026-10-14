@@ -61,7 +61,7 @@ All diagrams are in [diagrams/](diagrams/) as editable **`.drawio.svg`** files. 
 
 ## Related notes
 
-- [Networking notes](../networking/README.md): NAT, DNS and network debugging underneath Services, CoreDNS and the VPC CNI. Start with [06 Debugging](../networking/06-debugging.md) for Service and DNS scenarios.
+- [Networking notes](../networking/README.md): NAT, DNS and network debugging underneath Services, CoreDNS and the VPC CNI. Start with the [Docker, Kubernetes and AWS troubleshooting scenarios](../networking/15-interview-preparation/troubleshooting-scenarios-docker-kubernetes-aws.md) for Service and DNS problems.
 - [Helm notes](../helm-chart/README.md): how `helm upgrade` really changes objects (3-way merge vs server-side apply), flags, hooks and troubleshooting, all tested with Helm 4.
 
 ## Mistakes in the Instagram handbook (fixed here)

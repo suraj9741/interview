@@ -71,7 +71,7 @@ ip netns exec h1 ping -c 2 -W 1 10.0.2.10
 
 ```bash
 ip netns exec h2 timeout 4 tcpdump -i eth0 -nn icmp &
-sleep 1; ip netns exec h1 ping -c 1 -W 1 10.0.2.10; wait
+sleep 1; ip netns exec h1 ping -c 1 -W 1 10.0.2.10; wait $!
 ip netns exec h2 ip route get 10.0.1.10
 ```
 
@@ -104,6 +104,7 @@ ip netns exec h1 ip neigh
  2  10.0.12.2  0.183 ms  0.006 ms  0.003 ms
  3  10.0.2.10  0.011 ms  0.005 ms  0.004 ms
 10.0.2.10 via 10.0.1.1 dev eth0 src 10.0.1.10 uid 0
+    cache
 10.0.1.1 dev eth0 lladdr e2:42:f7:66:fc:1c REACHABLE
 ```
 

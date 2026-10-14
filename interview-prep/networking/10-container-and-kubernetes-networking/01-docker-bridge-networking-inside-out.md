@@ -1,10 +1,12 @@
-# 03 · Docker Bridge Networking, Inside Out ⭐
+# 10.1 · Docker Bridge Networking, Inside Out ⭐
+
+> **Level 10 · Container and Kubernetes networking** · written before the curriculum was reorganised, so it keeps its original layout; the content is unchanged apart from links. Builds on [Lab 1.2](../13-hands-on-labs/lab-01.2-build-a-tiny-network-with-namespaces.md) (namespaces, veth pairs, a bridge) and [3.8 · NAT](../03-core-networking-protocols/08-nat-pat-and-port-forwarding.md). Module overview: [Level 10](README.md).
 
 What really happens when you run `docker run -p 8080:80 nginx`. Every output here is **real (tested)**, from a container called `flat-a` on your Docker Desktop.
 
-For network types, the default-bridge DNS trap and port publishing options, see [Docker 08 Networking](../docker/08-networking.md).
+For network types, the default-bridge DNS trap and port publishing options, see [Docker 08 Networking](../../docker/08-networking.md).
 
-![How the default bridge network works](../docker/diagrams/08-bridge-network.drawio.svg)
+![How the default bridge network works](../../docker/diagrams/08-bridge-network.drawio.svg)
 
 ## The 4 pieces
 
@@ -71,7 +73,7 @@ default via 172.17.0.1 dev eth0          ← anything not local goes to docker0
 
 ## 4. The packet's journey ⭐ (draw this on the whiteboard)
 
-![A packet's journey: going out (MASQUERADE) and coming in (DNAT)](../docker/diagrams/08-packet-flow.drawio.svg)
+![A packet's journey: going out (MASQUERADE) and coming in (DNAT)](../../docker/diagrams/08-packet-flow.drawio.svg)
 
 ```text
 OUTBOUND: container eth0 → veth → docker0 → host routing → MASQUERADE (src = host IP) → host eth0 → internet
@@ -79,7 +81,7 @@ INBOUND:  internet → host eth0:8080 → DNAT in PREROUTING (dst = 172.17.0.2:8
 ```
 
 - The same pieces, in opposite order.
-- The address changes in **one place only**: the NAT step ([02](02-nat.md)).
+- The address changes in **one place only**: the NAT step ([8.6](../08-linux-networking/06-netfilter-nat-and-conntrack.md)).
 - The host must allow forwarding: `net.ipv4.ip_forward = 1`. Docker turns it on **(tested)**.
 
 ## 5. `docker-proxy`: the helper
@@ -100,7 +102,7 @@ Docker Desktop runs everything inside a **hidden Linux VM**. That changes what y
 
 | Thing | On a Linux server | On your Mac |
 |---|---|---|
-| `docker0`, veths, iptables | On the host, visible with `ip` and `sudo iptables` | Inside the VM. To see them, use the "building shell" from the [lab](05-hands-on-lab.md) |
+| `docker0`, veths, iptables | On the host, visible with `ip` and `sudo iptables` | Inside the VM. To see them, use the "building shell" from [Lab 10.1](../13-hands-on-labs/lab-10.1-docker-bridge-nat-and-dns.md) |
 | `--network=host` | The **server's** network | The **VM's** network, not your Mac's |
 | Traffic from your browser to `localhost:8080` | Goes through the DNAT rule | Docker Desktop forwards it by a **shortcut**: the DNAT counter stayed at **0** for Mac traffic, but went up for traffic sent inside the VM **(tested)** |
 | `docker-proxy` | Present | Turned off |
@@ -116,7 +118,7 @@ So the textbook path is what you'll see on **EC2, CI runners and Kubernetes node
 
 ## Interview angle
 
-- ⭐ **"Walk me through what happens when you run `docker run -p 8080:80 nginx`."** → A new network namespace; a veth pair with `eth0` inside and the other end on docker0; an IP from `172.17.0.0/16` with gateway `172.17.0.1`; a DNAT rule for 8080; MASQUERADE already exists for outbound traffic. (The full `docker run` flow is in [Docker 02](../docker/02-architecture-internals.md).)
+- ⭐ **"Walk me through what happens when you run `docker run -p 8080:80 nginx`."** → A new network namespace; a veth pair with `eth0` inside and the other end on docker0; an IP from `172.17.0.0/16` with gateway `172.17.0.1`; a DNAT rule for 8080; MASQUERADE already exists for outbound traffic. (The full `docker run` flow is in [Docker 02](../../docker/02-architecture-internals.md).)
   - **He'll push: "How do you find which veth belongs to which container?"** → `cat /sys/class/net/eth0/iflink` inside the container gives the peer's interface number; find it with `ip link` on the host.
 - **"Two containers on the same bridge talk. Does NAT happen?"** → No. They talk directly through the bridge (layer 2).
 - **"What is docker-proxy for?"** → It handles traffic DNAT can't, mainly the host's own `localhost` connections. It can be turned off with `"userland-proxy": false`.
@@ -124,4 +126,4 @@ So the textbook path is what you'll see on **EC2, CI runners and Kubernetes node
 
 ## Practice 🖥️
 
-The [hands-on lab](05-hands-on-lab.md) shows every output on this page on your own Mac.
+[Lab 10.1](../13-hands-on-labs/lab-10.1-docker-bridge-nat-and-dns.md) shows every output on this page on your own Mac.

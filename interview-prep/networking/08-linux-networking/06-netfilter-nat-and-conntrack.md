@@ -1,4 +1,6 @@
-# 02 · NAT: MASQUERADE, SNAT, DNAT ⭐
+# 8.6 · Netfilter, NAT and conntrack: MASQUERADE, SNAT, DNAT ⭐
+
+> **Level 8 · Linux networking** · written before the curriculum was reorganised, so it keeps its original layout; the content is unchanged apart from links. Start with the basics in [3.8 · NAT, PAT and port forwarding](../03-core-networking-protocols/08-nat-pat-and-port-forwarding.md) and [Lab 3.4](../13-hands-on-labs/lab-03.4-nat-and-port-forwarding.md); this note goes deeper into how Linux and Docker implement it. Module overview: [Level 8](README.md).
 
 **NAT changes an address on a letter.** It's the "reception" of the building story, and the only place where an address changes on the way.
 
@@ -15,7 +17,7 @@
 
 ## Why NAT exists
 
-A container's address (`172.17.0.2`) and a VPC address (`10.0.1.25`) are **private**: they only mean something inside their own network ([01](01-basics.md#private-vs-public-ip-addresses-)). So:
+A container's address (`172.17.0.2`) and a VPC address (`10.0.1.25`) are **private**: they only mean something inside their own network ([2.2](../02-ip-addressing-and-subnetting/02-ipv4-addresses-and-ranges.md)). So:
 
 - **Going out:** if a letter reaches Google with `FROM 172.17.0.2`, Google's reply has no way back. → **MASQUERADE / SNAT**
 - **Coming in:** your browser only knows the **host's** address, never the container's. → **DNAT**
@@ -91,7 +93,7 @@ tcp 6 431999 ESTABLISHED src=49.36.x.x dst=10.0.1.25 sport=51000 dport=8080 src=
 
 ## The 5 checkpoints a packet passes (netfilter hooks)
 
-![The 5 checkpoints a packet passes on a Linux host](diagrams/02-netfilter-chains.drawio.svg)
+![The 5 checkpoints a packet passes on a Linux host](../diagrams/02-netfilter-chains.drawio.svg)
 
 | Checkpoint (chain) | When | What lives there |
 |---|---|---|
@@ -139,7 +141,7 @@ On your Docker Desktop, the `iptables` command is really `iptables-nft` **(teste
 |---|---|
 | **NAT gateway** | **MASQUERADE for a private subnet.** The private subnet's route `0.0.0.0/0 → nat-xxxx`. The NAT gateway sits in a **public** subnet with an Elastic IP. Use one per AZ, for availability and to avoid cross-AZ charges. |
 | **Internet gateway** | **1:1 NAT** between an instance's private IP and its public IP. The instance never sees its public IP on its own card: `ip addr` shows only the private one. |
-| **Private NAT gateway** | SNAT to a routable **private** IP, with no internet. Used for **overlapping CIDRs** ([scenario deep dives](../hemant-scenario-deep-dives.md), A2). |
+| **Private NAT gateway** | SNAT to a routable **private** IP, with no internet. Used for **overlapping CIDRs** ([scenario deep dives](../../hemant-scenario-deep-dives.md), A2). |
 
 ## Interview angle
 
@@ -153,4 +155,4 @@ On your Docker Desktop, the `iptables` command is really `iptables-nft` **(teste
 
 ## Practice 🖥️
 
-Do the [lab](05-hands-on-lab.md): Test 3 (MASQUERADE) and Test 4 (DNAT) show these rules and their counters on your own Mac.
+Do [Lab 10.1](../13-hands-on-labs/lab-10.1-docker-bridge-nat-and-dns.md): Test 3 (MASQUERADE) and Test 4 (DNAT) show these rules and their counters on your own Mac.

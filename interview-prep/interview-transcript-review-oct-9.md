@@ -352,8 +352,8 @@ About **1 hour on weekdays** and **2–3 hours at weekends**. Videos first, then
 
 | Week | Focus | Do | Done when |
 |---|---|---|---|
-| **1** | IP and subnetting | The 3 videos in section 3; the worksheet by hand **every day**; [Networking 01](networking/01-basics.md) | All 12 worksheet answers right in under 15 minutes, with no calculator |
-| **2** | VPC design and traffic flow | The [Server Gyan VPC video](https://www.youtube.com/watch?v=TuBA5maXFgc) (7 min); drawing exercises 1–4 in section 4; [Networking 02 NAT](networking/02-nat.md) | You draw r1 + r5 from memory in 10 minutes and explain flows ①②③ |
+| **1** | IP and subnetting | The 3 videos in section 3; the worksheet by hand **every day**; [Networking Level 2: IP addressing and subnetting](networking/02-ip-addressing-and-subnetting/README.md) | All 12 worksheet answers right in under 15 minutes, with no calculator |
+| **2** | VPC design and traffic flow | The [Server Gyan VPC video](https://www.youtube.com/watch?v=TuBA5maXFgc) (7 min); drawing exercises 1–4 in section 4; [Networking 3.8: NAT](networking/03-core-networking-protocols/08-nat-pat-and-port-forwarding.md) | You draw r1 + r5 from memory in 10 minutes and explain flows ①②③ |
 | **3** | Kubernetes 3-tier, hands-on | The Nana Services video; the 5-step lab in section 6 on the practice cluster | The `curl` through the Ingress returns data from Postgres |
 | **4** | Docker depth, EKS exposure, scaling, observability | The React multi-stage Dockerfile; AWS Load Balancer Controller and Ingress; Karpenter vs Cluster Autoscaler; diagram r4 | A **mock interview** replaying Q1–Q16 above (ask me to "act as Hemant") |
 

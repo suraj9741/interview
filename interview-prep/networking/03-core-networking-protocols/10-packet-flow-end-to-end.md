@@ -53,7 +53,7 @@ sequenceDiagram
     LB->>App: New connection: GET /cart + X-Forwarded-For
     App-->>LB: 200 OK + HTML
     LB-->>B: 200 OK (encrypted)
-    Note over B: Render; fetch CSS/JS/images (reusing the connection)
+    Note over B: Render, then fetch CSS/JS/images (reusing the connection)
 ```
 
 ### 1. The browser parses the URL and checks its caches

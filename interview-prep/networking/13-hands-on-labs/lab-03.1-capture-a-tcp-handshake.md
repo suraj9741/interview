@@ -212,7 +212,7 @@ tshark -r /tmp/lab31/full.pcap -Y 'http.request' -T fields -e frame.len -e ip.hd
 head -c 10000000 /dev/urandom > /tmp/lab31/www/big.bin
 ip netns exec server tc qdisc add dev eth0 root tbf rate 20mbit burst 32kbit latency 400ms
 ip netns exec client curl -s -o /dev/null -w 'downloaded %{size_download} bytes in %{time_total} s\n' http://10.10.0.2:8080/big.bin &
-sleep 2; ip netns exec server ss -tin state established; wait
+sleep 2; ip netns exec server ss -tin state established; wait $!   # wait for the download only
 ip netns exec server tc qdisc del dev eth0 root
 ```
 

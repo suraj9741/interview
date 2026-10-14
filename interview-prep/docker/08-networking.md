@@ -45,7 +45,7 @@ INBOUND:  internet → host eth0:8080 → DNAT in PREROUTING (dst = 172.17.0.2:8
 - **Inbound (DNAT)** changes the **TO** address (the destination) from host port 8080 to the container's `172.17.0.2:80`. It happens in **PREROUTING**, before the routing decision, so the kernel sends the packet to docker0 instead of looking for a host process on port 8080.
 - **Replies** take the same path backwards. **conntrack** (the kernel's connection table) remembers each change and reverses it automatically, so only the **first packet** of a connection hits the NAT rule.
 
-> **Go deeper:** the [networking notes](../networking/README.md) explain each piece with real outputs: [NAT](../networking/02-nat.md), [the bridge inside out](../networking/03-docker-bridge.md), a [hands-on lab](../networking/05-hands-on-lab.md) and [debugging](../networking/06-debugging.md).
+> **Go deeper:** the [networking notes](../networking/README.md) explain each piece with real outputs: [NAT](../networking/08-linux-networking/06-netfilter-nat-and-conntrack.md), [the bridge inside out](../networking/10-container-and-kubernetes-networking/01-docker-bridge-networking-inside-out.md), a [hands-on lab](../networking/13-hands-on-labs/lab-10.1-docker-bridge-nat-and-dns.md) and [debugging](../networking/03-core-networking-protocols/11-troubleshooting-connectivity.md).
 
 ## Port publishing
 

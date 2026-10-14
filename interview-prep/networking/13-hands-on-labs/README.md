@@ -20,7 +20,9 @@ Objective · prerequisites · tools · topology · steps (with expected output) 
 | **(tested on the Mac, Oct 2026)** | Run on macOS with Docker Desktop |
 | **(illustrative)** | Shows the shape of the output; it was **not** captured from a real run |
 
-Labs 1.2 to 3.5 were re-run end to end from the commands as written (namespaces, captures and cleanup included). The lab container's [Dockerfile](files/netlab/Dockerfile) installs the same packages, but **the image itself was not built** during testing: the commands ran in an equivalent Ubuntu 24.04 environment. If a package is missing in yours, `apt-get install` it and please fix the Dockerfile.
+**How the labs were checked (14 Oct 2026).** Labs 1.2 to 3.4 were re-run end to end by running every `bash` block in order as one script, cleanup included (Lab 2.2's step table was run step by step the same way). Lab 3.5's baseline, all eight faults and all eight fixes were run. The re-run found and fixed two problems: a `wait` in Lab 3.1 that hung on the background web server, and a capture window in Lab 2.3 too short when the client needs a second Discover. Labs 1.1 and 10.1 run on macOS with Docker Desktop and were **not** re-run; their outputs come from the original runs on the Mac (7–8 Oct 2026).
+
+The lab container's [Dockerfile](files/netlab/Dockerfile) installs the same packages, but **the image itself was not built** during testing: the commands ran in an equivalent Ubuntu 24.04 environment. If a package is missing in yours, `apt-get install` it and please fix the Dockerfile.
 
 ## Cost
 

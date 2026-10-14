@@ -84,12 +84,12 @@ flowchart LR
 6. **Capture, then ask for an address.**
 
    ```bash
-   ip netns exec laptop timeout 10 tcpdump -i eth0 -nn -l -v 'udp port 67 or udp port 68' > /tmp/dora.txt 2>/dev/null &
+   ip netns exec laptop timeout 20 tcpdump -i eth0 -nn -l -v 'udp port 67 or udp port 68' > /tmp/dora.txt 2>/dev/null &
    sleep 1
    ip netns exec laptop dhclient -v -1 -pf /tmp/dhcp.pid -lf /tmp/dhcp.leases eth0 2>&1 | grep -E 'DHCP|bound'
    ```
 
-   **Expected (tested; the address and IDs may differ, and in the tested run a second Discover appeared because the server was still starting):**
+   **Expected (tested; the address and IDs may differ):** you'll see one or two Discovers before the Offer. Clients retry by design, so both are normal. In testing, the first Discover went unanswered in 4 of 10 runs, and never in 5 runs with dnsmasq's `--no-ping` option, so the likely cause is dnsmasq **pinging** the address before offering it, to check that nobody is already using it. This run needed two:
 
    ```text
    DHCPDISCOVER on eth0 to 255.255.255.255 port 67 interval 3 (xid=0xbaf0a29)
@@ -121,7 +121,7 @@ flowchart LR
 
    Address, default route **and** DNS server all came from one exchange.
 
-8. **Read the capture** (wait for the `timeout 10` to finish first):
+8. **Read the capture** (wait for the `timeout 20` to finish first):
 
    ```bash
    grep -E 'BOOTP|DHCP-Message|Your-IP|Server-ID|Requested-IP|Lease-Time|RN|RB|Subnet-Mask|Default-Gateway|Domain-Name-Server' /tmp/dora.txt

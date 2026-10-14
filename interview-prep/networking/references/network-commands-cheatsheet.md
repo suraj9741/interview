@@ -1,4 +1,6 @@
-# 07 · Network Command List
+# Network Command Cheatsheet
+
+> **Reference** · Every command by task, for Mac, Linux, Docker, Kubernetes and AWS. Written before the curriculum was reorganised; the content is unchanged. The lessons explain each command; [Lab 1.1](../13-hands-on-labs/lab-01.1-inspect-your-own-network.md) and the Linux labs use most of them. See also: [common ports](common-ports.md), [glossary](glossary.md).
 
 Every command by task. **All of them were tested:**
 - Linux commands in `nicolaka/netshoot` inside Docker Desktop's VM;

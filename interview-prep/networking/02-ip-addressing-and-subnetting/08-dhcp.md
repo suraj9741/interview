@@ -83,7 +83,7 @@ DHCPACK of 192.168.50.108 from 192.168.50.1 (xid=0xbaf0a29)
 bound to 192.168.50.108 -- renewal in 1503 seconds.
 ```
 
-(The first Discover went unanswered because the server was still starting.) Afterwards, the address, the route and the DNS setting all came from DHCP **(tested in the lab container)**:
+(Here the first Discover went unanswered and the client simply retried. In testing this happened in some runs only; the likely cause is dnsmasq pinging the address before offering it, to make sure nobody is using it.) Afterwards, the address, the route and the DNS setting all came from DHCP **(tested in the lab container)**:
 
 ```console
 $ ip -br addr show eth0

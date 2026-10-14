@@ -153,7 +153,7 @@ pc1's only route is its own subnet. With no default gateway, it doesn't even try
    ip netns exec pc1 ping -c 5 -i 0.2 192.168.10.2 | tail -1
    ip netns exec pc2 iperf3 -s -D -1
    ip netns exec pc1 iperf3 -c 192.168.10.2 -t 6 > /dev/null &
-   sleep 1; ip netns exec pc1 ping -c 10 -i 0.2 192.168.10.2 | tail -1; wait
+   sleep 1; ip netns exec pc1 ping -c 10 -i 0.2 192.168.10.2 | tail -1; wait $!
    ```
 
    **Expected (tested; numbers vary a lot between runs):**
