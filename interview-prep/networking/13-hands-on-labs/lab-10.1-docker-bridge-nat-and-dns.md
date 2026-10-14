@@ -1,6 +1,9 @@
-# 05 · Hands-On Lab: See It With Your Own Eyes 🖥️
+# Lab 10.1 · Docker Bridge, NAT and DNS: See It With Your Own Eyes 🖥️
 
-**About 20 minutes.** Every command and output here was tested on this Mac (Docker Desktop 29.6.2). Your interface numbers and IPs may differ: use yours.
+> **Level 10** · ⏱️ about 20 minutes (estimate) · 💻 your Mac with Docker Desktop (or 🐧 any Linux host with Docker) · 💰 free
+> Related notes: [10.1 · Docker bridge networking inside out](../10-container-and-kubernetes-networking/01-docker-bridge-networking-inside-out.md) · [8.6 · Netfilter, NAT and conntrack](../08-linux-networking/06-netfilter-nat-and-conntrack.md) · the namespace labs [1.2](lab-01.2-build-a-tiny-network-with-namespaces.md) and [3.4](lab-03.4-nat-and-port-forwarding.md) build the same pieces by hand
+
+Every command and output here was **tested on the Mac (Docker Desktop 29.6.2, Oct 2026)**. Your interface numbers and IPs may differ: use yours. This lab was written before the curriculum was reorganised, so it doesn't yet follow the standard lab layout (objective, topology, verification, challenges); the content is unchanged.
 
 ## Setup: 2 terminal windows
 
