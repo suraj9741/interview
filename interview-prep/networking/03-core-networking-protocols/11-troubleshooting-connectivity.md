@@ -1,10 +1,38 @@
-# 06 · Debugging Network Problems ⭐🔥
+# 3.11 · Troubleshooting Connectivity: A Repeatable Method ⭐🔥
 
-How to find **any** "it can't connect" problem, in Docker, Kubernetes or AWS. All the error messages below were **tested** on this Mac.
+> **Level 3 · Core networking protocols** · Lesson 11 of 11 · ⏱️ about 90 minutes, plus the challenge lab (estimate)
+> ⬅️ [3.10 Packet flow end to end](10-packet-flow-end-to-end.md) · ➡️ [Level 3 README and milestone](README.md)
+
+## What you'll learn
+
+- A **six-step method** for any "it can't connect" problem, in Docker, Kubernetes or AWS.
+- How to **read the error message first**, because it usually names the broken step.
+- How to **test from where the client really runs**.
+- How to settle any argument with a **packet capture**, and what the three possible capture results mean.
+
+The Docker, Kubernetes and AWS scenarios that used to be in this file (N1–N13) are now in [15 · Troubleshooting scenarios](../15-interview-preparation/troubleshooting-scenarios-docker-kubernetes-aws.md), where you practise them out loud.
+
+## Before you start
+
+- [3.10](10-packet-flow-end-to-end.md): the steps a connection goes through.
+- [3.2](02-tcp-and-udp.md) and [3.3](03-tcp-in-depth.md): refused vs timeout vs reset.
+
+---
+
+## The idea in plain words
+
+A connection is a chain: **name → route → port → listener → rules → app**. When it fails, one link is broken. Guessing which link wastes hours; **testing each link in order** takes minutes. And the error message usually tells you where to start.
+
+## Why it matters
+
+- It's the most common real-world networking task, and the most common interview question in this area.
+- The interviewer feedback (🔥) asked for exactly this: a calm, ordered method instead of jumping to conclusions.
+
+---
 
 ## The method (say this in the interview)
 
-![Debug a connection step by step](diagrams/06-debug-ladder.drawio.svg)
+![Debug a connection step by step](../diagrams/06-debug-ladder.drawio.svg)
 
 > "I go step by step from the bottom, and I **test, not guess**: first DNS, then the route, then whether the port is reachable, then whether the app is listening on the right address, then the firewall and NAT rules, and only then the app itself. And I test **from where the client really runs**: a curl from my laptop proves nothing about a pod."
 
@@ -17,21 +45,27 @@ How to find **any** "it can't connect" problem, in Docker, Kubernetes or AWS. Al
 | 5 · Rules | Do NAT and firewall rules allow it? | `iptables -t nat -L -n -v` · security group · NACL · NetworkPolicy |
 | 6 · App | Does the app answer correctly? | `curl -v http://10.0.2.15:8080/health` |
 
-⚠️ **Don't trust `ping` alone.** It uses ICMP, which security groups block by default. A failed ping proves little; a TCP test (`nc`, `curl`) proves a lot.
+⚠️ **Don't trust `ping` alone.** It uses ICMP, which security groups block by default. A failed ping proves little; a TCP test (`nc`, `curl`) proves a lot ([3.7](07-icmp-ping-and-traceroute.md)).
 
 ## Read the error first ⭐: it tells you the step
 
-| You see (tested) | Which step | What it means |
+| You see | Which step | What it means |
 |---|---|---|
 | `curl: (6) Could not resolve host: X` · `wget: bad address 'X'` · `NXDOMAIN` | **1 · DNS** | The name didn't turn into an IP |
-| `curl: (28) … Timeout was reached` · `nc: … Operation timed out` | **3 · Port** (or 2) | Packets are **dropped silently**: a security group, NACL, firewall, NetworkPolicy, wrong route, or the host is down |
-| `curl: (7) Failed to connect … Couldn't connect to server` · `nc: … Connection refused` | **4 · Listener** | You **reached the machine**, but **nothing listens** on that port (it answered with a TCP reset) |
+| `connect: Network is unreachable` (instant) | **2 · Route** | **Your own** host has no route to that network |
+| `From <router> … Destination Net Unreachable` | **2 · Route** | A **router** on the way has no route |
+| `From <your IP> … Destination Host Unreachable` · `No route to host` | **2 · Route** | ARP for the next hop failed: the gateway or local host isn't answering on the link (or an ICMP host-unreachable came back) |
+| `curl: (28) … Timeout was reached` · `nc: … Operation timed out` | **3 · Port** (or 2) | Packets are **dropped silently**: a security group, NACL, firewall, NetworkPolicy, wrong route, missing return route, or the host is down |
+| `curl: (7) Failed to connect … Couldn't connect to server` · `nc: … Connection refused` | **4 · Listener** | You **reached the machine**, but **nothing listens** on that port (it answered with a TCP reset), or a firewall REJECTs |
 | `curl: (56) Recv failure: Connection reset by peer` | **4 · Listener** | The connection was accepted, then reset. Tested cause: the app listens on `127.0.0.1` behind a port forward. Also: the app crashed, or a TLS / HTTP mismatch |
-| `No route to host` | **2 · Route** | No route, or the host doesn't answer on the local network |
+| `curl: (60) SSL certificate problem …` | **6 · App (TLS)** | The network is fine; the certificate isn't trusted, doesn't match, or expired ([3.6](06-tls-and-certificates.md)) |
 | `Bind for 0.0.0.0:8081 failed: port is already allocated` | Docker | Another container already uses that **host** port |
 | HTTP `502` / `503` / `504` | **6 · App** | **The network is fine.** The proxy or load balancer got a bad reply / has no healthy backend / waited too long |
+| Small requests work, big ones hang | **2 · Route (MTU)** | Path MTU black hole ([3.7](07-icmp-ping-and-traceroute.md)) |
 
-⚠️ **curl 8.x no longer prints "Connection refused".** It prints `Couldn't connect to server` (error 7) **(tested, curl 8.7 and 8.22)**. `nc` still says "Connection refused".
+Where these were seen: the `curl (6)/(7)/(28)/(56)`, `bad address`, `port is already allocated` and `nc` messages were **tested on the Mac, Oct 2026**; the unreachable messages, `curl (60)` and the MTU hang were reproduced in this module's labs **(tested in the lab container)**. The `502/503/504` row is from load-balancer documentation and experience, not reproduced here.
+
+⚠️ **curl 8.x no longer prints "Connection refused".** It prints `Couldn't connect to server` (error 7) **(tested on the Mac with curl 8.7 and 8.22, and with curl 8.5 in the lab container)**. `nc` still says "Connection refused".
 
 **In the building story:**
 - **Refused** = the letter reached the flat, and someone at the door said "nobody works at that counter".
@@ -56,201 +90,47 @@ How to find **any** "it can't connect" problem, in Docker, Kubernetes or AWS. Al
 sudo tcpdump -i any -nn port 5432
 ```
 
-- **You see the SYN going out but nothing comes back:** something on the way drops it (SG, NACL, firewall).
+- **You see the SYN going out but nothing comes back:** something on the way drops it (SG, NACL, firewall), or the far end has **no route back**.
 - **You see a SYN and then a RST:** nothing listens there (refused).
 - **You see nothing at all:** the traffic isn't even taking this path (DNS gave a different IP, or a wrong route).
 
+Capture on **both ends** when you can. If the server sees the SYN arrive and sends a SYN-ACK that the client never receives, the problem is on the **return path**.
+
 ---
 
-# Scenarios, in Hemant's style
+## Worked example: "h1 can't reach h2"
 
-Each one: **Say** (the core answer, in method order), **Check** (the commands), and **He'll push** (the follow-up). ⭐ = most likely. More network scenarios are in the [scenario deep dives](../hemant-scenario-deep-dives.md): A2 (overlapping CIDRs), A3 (node vs pod CIDR), B1 (distroless), B10 (ECR timeout), B11 (NAT bill), B12 (502s during deploys) and B13 (private EKS endpoint).
+From [Lab 2.2](../13-hands-on-labs/lab-02.2-routing-between-two-subnets.md), with one route deliberately missing **(tested in the lab container)**.
 
-## 🐳 Docker
+1. **Read the error.** `ping 10.0.2.10` from h1: `100% packet loss`, **no error message**. Silence means a drop, not a refusal or a missing local route.
+2. **DNS:** not involved (we used an IP).
+3. **Route, local:** `ip route get 10.0.2.10` on h1 → `via 10.0.1.1 dev eth0`. Fine.
+4. **Route, along the path:** `traceroute -n 10.0.2.10` reaches `10.0.12.2` (r2), then stars. So r1 and r2 forward; the trouble is at or after h2.
+5. **Watch the packets on h2:** `tcpdump -i eth0 -nn icmp` shows `ICMP echo request` arriving, and **no reply** leaving.
+6. **Why doesn't h2 reply?** `ip route get 10.0.1.10` on h2 → `RTNETLINK answers: Network is unreachable`. **h2 has no route back.**
+7. **Fix:** `ip route add default via 10.0.2.1` on h2. Ping now works with `ttl=62`.
 
-**N1 ⭐ "The app works inside the container, but `curl localhost:8080` from the host fails."**
-- **Say:**
-  1. Is the port published? `docker port <c>`.
-  2. **Where does the app listen?** If it's on `127.0.0.1`, DNAT delivers to the container's `eth0` and nobody is listening there. Make the app listen on `0.0.0.0` (Flask: `--host=0.0.0.0`).
-  3. Is the right **container** port used (`-p 8080:80` vs an app on 8000)?
-- **Check:**
-  ```bash
-  docker port myapp
-  ```
-  ```bash
-  docker run --rm --network container:myapp nicolaka/netshoot ss -lntp
-  ```
-- **He'll push: "What error do you get?"** → On Docker Desktop, `Connection reset by peer` **(tested)**. On a Linux server, from outside, it's usually refused, because the container's kernel answers with a reset.
+The lesson: the forward path was fine; the **return path** wasn't, and only a capture on the far end showed it.
 
-**N2 "Two containers can't reach each other by name."**
-- **Say:** they're on the **default bridge**, which has no name lookup (`bad address`). Put both on a **user-defined network** (Compose does this for you); its DNS at `127.0.0.11` knows container names.
-- **Check:**
-  ```bash
-  docker inspect -f '{{json .NetworkSettings.Networks}}' api
-  ```
-- **He'll push: "And containers on two different user-defined networks?"** → They can't talk until you connect one to the other's network: `docker network connect appnet api`.
+## Common mistakes
 
-**N3 "`docker run -p 8080:80` fails: `port is already allocated`."**
-- **Say:** another container, or a host process, already holds host port 8080. Find it, then stop it or choose another host port.
-- **Check:**
-  ```bash
-  docker ps --filter publish=8080
-  ```
-  ```bash
-  lsof -nP -iTCP:8080 -sTCP:LISTEN
-  ```
-  (On Linux: `sudo ss -lntp | grep 8080`.)
+| Mistake | Better |
+|---|---|
+| Starting with the app logs when the error says `Could not resolve host` | Let the error message pick the first step |
+| Testing from your laptop when the client is a pod | Test from the pod (or its network namespace) |
+| "Ping fails, so the server is down" | Test the real port |
+| Changing several things at once | One change, then re-test, so you know what fixed it |
+| Checking only the forward direction | Return routes, NACL return ports, and asymmetric paths |
+| Stopping at "it works now" | Write down the root cause and how you proved it |
 
-**N4 ⭐ "The container can't reach the internet, or a company server."**
-- **Say:** go step by step from inside the container:
-  1. **DNS:** `nslookup google.com` inside it. If DNS fails but the IP works, fix DNS (`--dns`, or `"dns"` in `daemon.json`).
-  2. **Host forwarding:** `sysctl net.ipv4.ip_forward` must be 1, and the MASQUERADE rule must exist.
-  3. **A clash of addresses** (a classic): if the office or VPN network also uses `172.17.x.x`, the host sends that traffic into `docker0` instead of to the office. Change Docker's ranges with `"bip"` and `"default-address-pools"` in `daemon.json`. This is the same problem as [overlapping CIDRs](../hemant-scenario-deep-dives.md) (A2), at a smaller scale.
-  4. **A proxy or VPN** on the laptop that the container doesn't know about.
-- **Check:**
-  ```bash
-  docker exec myapp nslookup google.com
-  ```
-  ```bash
-  sudo iptables -t nat -S POSTROUTING
-  ```
+## Hands-on lab
 
-**N5 🔥 "ufw blocks port 8080, but the container is reachable from the internet."**
-- **Say:** published ports go through **FORWARD**, not INPUT, so ufw never sees them. Use `-p 127.0.0.1:8080:80`, rules in **DOCKER-USER**, or a cloud security group. Details in [02](02-nat.md#-the-ufw-bypass-a-security-question-he-may-ask).
+[Lab 3.5 · Troubleshooting challenge](../13-hands-on-labs/lab-03.5-troubleshooting-challenge.md): a script builds a small network and hides one of eight faults (wrong resolver, wrong gateway, forwarding off, missing return route, firewall drop, no listener, localhost-only listener, PMTUD black hole). Find each one using only this method. Solutions are in a [separate file](../14-practice-exercises/solutions/lab-03.5-troubleshooting-challenge-solutions.md).
 
-**N6 "The container must reach a database running on the host."**
-- **Say:**
-  - Use `host.docker.internal` (built into Docker Desktop; on Linux add `--add-host=host.docker.internal:host-gateway`).
-  - **And** the host's database must listen on an address the container can reach. If it listens only on `127.0.0.1`, a container can't reach it, for the same reason as N1.
+## Practice
 
-## ☸️ Kubernetes
-
-**N7 ⭐ "The Service doesn't answer, but the pods are Running."**
-- **Say:** **split the problem in half.**
-  1. **Does the Service have endpoints?**
-     - If they're **empty**: the Service's **selector doesn't match the pod labels**, or the pods aren't **Ready** (failing readiness probe).
-  2. If there are endpoints, **call one pod IP directly**.
-     - The pod IP works but the Service doesn't → a `port` / `targetPort` mismatch, or kube-proxy.
-     - The pod IP fails too → the app (listening on `127.0.0.1`? a wrong port?) or a **NetworkPolicy**.
-- **Check:**
-  ```bash
-  kubectl get endpointslices -l kubernetes.io/service-name=my-svc
-  ```
-  ```bash
-  kubectl get pods --show-labels
-  ```
-  ```bash
-  kubectl describe svc my-svc
-  ```
-  ```bash
-  kubectl get pods -o wide
-  ```
-  ```bash
-  kubectl port-forward pod/my-pod 8080:8080
-  ```
-- **He'll push: "Why is `port-forward` a good test?"** → It goes **straight to the pod** and skips the Service and kube-proxy, so it tells you which half is broken.
-
-**N8 ⭐ "Pods can't resolve DNS."**
-- **Say:**
-  1. Check the pod's `/etc/resolv.conf`.
-  2. Test a cluster name **and** an external name from a debug pod.
-  3. Check the CoreDNS pods and logs.
-  4. Look for a **NetworkPolicy** that blocks egress to kube-dns on **UDP and TCP 53**.
-  - If only external names fail: CoreDNS can't reach its upstream, or `ndots:5` adds slow extra lookups ([04](04-dns.md#dns-inside-kubernetes-)).
-- **Check:**
-  ```bash
-  kubectl exec my-pod -- cat /etc/resolv.conf
-  ```
-  ```bash
-  kubectl run tmp --rm -it --image=nicolaka/netshoot -- nslookup kubernetes.default
-  ```
-  ```bash
-  kubectl -n kube-system get pods -l k8s-app=kube-dns
-  ```
-  ```bash
-  kubectl -n kube-system logs -l k8s-app=kube-dns
-  ```
-
-**N9 "We added a NetworkPolicy and everything broke."**
-- **Say:**
-  - A **default-deny** policy that includes **egress** also blocks **DNS**. Add an egress rule allowing UDP and TCP 53 to the kube-dns pods.
-  - Policies only **add** permissions, so check every policy that selects the pod.
-  - The CNI must support NetworkPolicy. On EKS, the VPC CNI does when network policy is enabled.
-- **Check:**
-  ```bash
-  kubectl get networkpolicy -A
-  ```
-  ```bash
-  kubectl describe networkpolicy -n my-namespace
-  ```
-- **He'll push:** "Two rules in one `from` entry: AND or OR?" → see [Kubernetes 14](../kubernetes/14-cluster-networking.md).
-
-**N10 "EKS pods are stuck in `ContainerCreating`: failed to assign an IP address."**
-- **Say:** the VPC CNI gives every pod a **real VPC IP**, and either the **subnet has run out of free IPs** or the node has reached its **max pods**. Fixes: **prefix delegation**, bigger subnets, or a **secondary CIDR for pods** ([scenario deep dives](../hemant-scenario-deep-dives.md), A3).
-- **Check:**
-  ```bash
-  kubectl -n kube-system logs -l k8s-app=aws-node -c aws-node --tail=50
-  ```
-  ```bash
-  aws ec2 describe-subnets --subnet-ids subnet-0123456789abcdef0 --query 'Subnets[].AvailableIpAddressCount'
-  ```
-
-**N11 "Calls from pods to an external API time out now and then."**
-- **Say:** intermittent timeouts usually mean a **limit** is being hit:
-  - **conntrack table full** on the node (`nf_conntrack: table full` in `dmesg`);
-  - **NAT gateway port exhaustion**: a NAT gateway supports about **55,000 simultaneous connections to each unique destination**. Watch the **`ErrorPortAllocation`** CloudWatch metric;
-  - **DNS throttling**: the 1024 packets-per-second limit per network interface to the VPC resolver; `ndots:5` makes it worse.
-- **He'll push: "How do you fix NAT port exhaustion?"** → Reuse connections (keep-alive and connection pools), add more IPs to the NAT gateway, spread across several NAT gateways, or use VPC endpoints for AWS services.
-
-## ☁️ AWS
-
-**N12 ⭐ "I can't connect to an EC2 instance or RDS database: it times out."**
-- **Say:** a **timeout means something drops the packets**. Check in this order:
-  1. The **security group** on the target: right port, and the source is the client's **SG or CIDR**.
-  2. The **NACLs** on both subnets: **stateless**, so allow the return traffic on **ephemeral ports**.
-  3. The **route tables**: is there a route between the subnets (or a peering / TGW route)? For internet access, an IGW or NAT.
-  4. RDS: is it in private subnets, and is "publicly accessible" what you expect?
-  - If it's **refused** instead of a timeout, the network is fine: the database is down, or it's the wrong port.
-- **Tools:**
-  - **Reachability Analyzer** checks the configuration path between two resources without sending any traffic.
-  - **VPC Flow Logs** show `ACCEPT` or `REJECT` for each connection. A `REJECT` tells you where it was dropped.
-- **Check:**
-  ```bash
-  aws ec2 describe-security-groups --group-ids sg-0123456789abcdef0
-  ```
-  ```bash
-  aws ec2 describe-network-acls --filters Name=association.subnet-id,Values=subnet-0123456789abcdef0
-  ```
-  ```bash
-  aws ec2 describe-route-tables --filters Name=association.subnet-id,Values=subnet-0123456789abcdef0
-  ```
-- **He'll push: "Security group vs NACL?"**
-
-| | Security group | NACL |
-|---|---|---|
-| Applies to | An ENI / instance | A whole subnet |
-| State | **Stateful**: replies are allowed automatically | **Stateless**: allow both directions yourself |
-| Rules | Allow only | Allow **and** deny, checked in number order |
-
-A flow log line (default format):
-
-```
-2 123456789012 eni-0abc1234 10.0.1.25 10.0.2.15 49152 5432 6 3 180 1696750000 1696750060 REJECT OK
-```
-
-The fields are: version, account, ENI, **source**, **destination**, source port, **destination port**, protocol (6 = TCP), packets, bytes, start, end, **action**, log status.
-
-**N13 "An instance in a private subnet can't reach the internet: `apt update` hangs."**
-- **Say:**
-  1. The private subnet's route table needs `0.0.0.0/0 → nat-xxxx`.
-  2. The NAT gateway must sit in a **public** subnet, whose own route is `0.0.0.0/0 → igw-xxxx`.
-  3. The NAT gateway needs an Elastic IP.
-  4. Check the NACLs.
-  - For AWS services, prefer **VPC endpoints**. The S3 gateway endpoint is free and keeps traffic off the NAT ([scenario deep dives](../hemant-scenario-deep-dives.md), B10 and B11).
-- **Check:**
-  ```bash
-  aws ec2 describe-nat-gateways --filter Name=vpc-id,Values=vpc-0123456789abcdef0
-  ```
+- [15 · Troubleshooting scenarios: Docker, Kubernetes and AWS](../15-interview-preparation/troubleshooting-scenarios-docker-kubernetes-aws.md) (N1–N13), out loud.
+- [Troubleshooting exercises](../14-practice-exercises/04-troubleshooting-scenarios.md), beginner to expert.
 
 ## Interview angle (practise out loud)
 
@@ -258,3 +138,33 @@ The fields are: version, account, ENI, **source**, **destination**, source port,
 - ⭐ "What's the difference between connection refused and a timeout?" → Refused: you reached the host and it said no (TCP reset), so nothing is listening. Timeout: no answer at all, so something dropped the packets.
 - "Ping fails. Is the server down?" → Not necessarily: ICMP is often blocked. Test the real port with `nc` or `curl`.
 - "How do you debug a distroless pod?" → `kubectl debug` with netshoot and `--target`, or the bash `/dev/tcp` trick.
+
+## Check yourself
+
+1. `curl` says `(7) … Couldn't connect to server` after 0 ms. Which step do you check first, and with what command on the server?
+2. `nc -zv db 5432` hangs, then times out. List three possible causes.
+3. A pod can reach a Service by IP but not by name. Which step is broken?
+4. The server's capture shows SYNs arriving and SYN-ACKs leaving, but the client keeps re-sending SYNs. Where's the problem?
+5. Why is "test from where the client runs" so important in Kubernetes?
+
+<details>
+<summary><b>Answers</b> (try first)</summary>
+
+1. **Step 4, listener**: `ss -lntp` on the server. Is anything listening on that port, and on which address? (Then check for a REJECT rule.)
+2. Any three of: a security group or NACL drop; a host firewall drop; a NetworkPolicy; a wrong route or no route back; the server is down or the IP is wrong.
+3. **Step 1, DNS** (CoreDNS, resolv.conf, a NetworkPolicy blocking port 53, the wrong namespace in the name).
+4. On the **return path** between server and client: the SYN-ACKs are dropped (a stateless NACL without ephemeral return ports, an asymmetric route through a firewall that never saw the SYN, or a missing route back).
+5. A pod has its own network namespace, DNS settings (search domains, `ndots`), NetworkPolicies and source IP. A test from a laptop or the node takes a different path and proves nothing about the pod's path.
+
+</details>
+
+## Summary
+
+- **DNS → route → port → listener → rules → app.** Test, don't guess.
+- The **error message** names the step: resolve / unreachable / timeout / refused / reset / certificate / 5xx.
+- **Test from the client's real location.**
+- A **capture on both ends** settles it: SYN with no reply (drop or no return route), SYN then RST (nothing listening), nothing at all (wrong path).
+
+## Next
+
+➡️ Finish Level 3 with the [Level 3 milestone](README.md), the [Level 3 exercises](../14-practice-exercises/03-level-3-protocols.md) and the [troubleshooting challenge](../13-hands-on-labs/lab-03.5-troubleshooting-challenge.md). Then [Level 4 · Switching and routing](../04-switching-and-routing/README.md).
