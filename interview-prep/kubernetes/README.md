@@ -32,7 +32,7 @@ kubectl config use-context kind-kind
 | # | File | What's inside |
 |---|---|---|
 | 01 ⭐ | [Fundamentals](01-fundamentals.md) | Why Kubernetes, desired state, the reconciliation loop |
-| 02 ⭐ | [Architecture](02-architecture.md) | Control plane, node components, add-ons, high availability |
+| 02 ⭐ | [Architecture](02-architecture.md) | Control plane, node components, add-ons, a deep dive on what each component does, how they talk, high availability |
 | 03 ⭐ | [Objects and the API](03-objects-and-api.md) | YAML structure, API groups, labels, selectors, namespaces, garbage collection, finalizers |
 | 04 ⭐ | [What happens on `kubectl apply`](04-kubectl-apply-flow.md) | The full flow, and where it can get stuck |
 | 05 ⭐ | [Pods](05-pods.md) | Phases, init and sidecar containers, graceful shutdown |
