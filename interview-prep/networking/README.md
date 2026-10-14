@@ -39,6 +39,7 @@ Networking is not a separate topic in this round. It sits **underneath** Docker,
 | 05 🖥️ | [Hands-on lab](05-hands-on-lab.md) | See the bridge, the doors, MASQUERADE and DNAT with your own eyes (20 minutes) |
 | 06 ⭐🔥 | [Debugging](06-debugging.md) | The 6-step method, what each error means, scenarios in Hemant's style |
 | 07 | [Network command list](07-network-commands.md) | Every command by task: Mac, Linux, Docker, Kubernetes, AWS (all tested) |
+| 08 ⭐ | [The OSI model, layer by layer](08-osi-model.md) | All 7 layers: how each works, protocols, devices, what breaks; encapsulation, OSI vs TCP/IP, L4 vs L7 |
 
 **Before Friday:** read 02, 03, 04 and 06 (about 1.5 hours), and do the lab (05) if you have 20 minutes.
 
@@ -46,7 +47,7 @@ Networking is not a separate topic in this round. It sits **underneath** Docker,
 
 The diagrams are in [diagrams/](diagrams/) as editable **`.drawio.svg`** files. They appear inside the notes; to edit one, open it in VS Code (Draw.io Integration) or [app.diagrams.net](https://app.diagrams.net). Two more live in the Docker notes and are used here too: [the bridge network](../docker/diagrams/08-bridge-network.drawio.svg) and [the packet's journey](../docker/diagrams/08-packet-flow.drawio.svg).
 
-**To redraw on a whiteboard in the interview:** the packet's journey (03) and the debugging ladder (06).
+**To redraw on a whiteboard in the interview:** the packet's journey (03), the debugging ladder (06) and the OSI layer stack (08).
 
 ## Related files
 
