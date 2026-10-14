@@ -1,10 +1,28 @@
-# 08 · The OSI Model, Layer by Layer ⭐
+# 1.5 · The OSI and TCP/IP Models, Layer by Layer ⭐
+
+> **Level 1 · Networking fundamentals** · Lesson 5 of 5 · ⏱️ about 90 minutes (estimate)
+> ⬅️ [1.4 Network performance](04-network-performance.md) · ➡️ [Level 2: IP addressing and subnetting](../02-ip-addressing-and-subnetting/README.md)
+
+## What you'll learn
+
+- The **7 OSI layers**: what each one does, which protocols and devices live there, and what breaks there.
+- **Encapsulation** and **decapsulation**: how each layer wraps the data on the way out and unwraps it on the way in, shown on a real captured packet.
+- How the OSI model maps to the **TCP/IP model** that the internet actually runs.
+- How to use the layers to **debug bottom up**, and to answer "L4 vs L7" questions.
+
+## Before you start
+
+- [1.2](02-network-devices.md): what a switch, router, firewall and load balancer read.
+- [1.3](03-addresses-ports-and-protocols.md): MAC addresses, IP addresses, ports, frames and packets.
+- Some terms below are explained fully later (ARP, TCP, TLS, NAT, DNS). Each one links forward. On a first read, aim to understand **which layer** each one belongs to, not every detail.
+
+---
 
 The OSI model splits "sending data over a network" into **7 layers**. Each layer does one job and only talks to the layer just above and just below it. Real networks run **TCP/IP**, not OSI, but everyone (interviewers, AWS docs, load balancer names) still uses the OSI numbers: "an L4 load balancer", "an L7 rule", "it's an L2 problem".
 
 Keep the story in mind: **a packet is a letter**. The OSI model is the list of envelopes the letter goes into before it leaves the building, and which person in the building reads which envelope.
 
-![The 7 OSI layers](diagrams/08-osi-layers.drawio.svg)
+![The 7 OSI layers](../diagrams/08-osi-layers.drawio.svg)
 
 ## The 7 layers on one page ⭐
 
@@ -28,7 +46,7 @@ When you **send**, data starts at layer 7 and goes **down**. Each layer puts the
 
 When you **receive**, it goes **up**. Each layer opens its own envelope, reads its header, and hands what's inside to the layer above. This is **decapsulation**.
 
-![Encapsulation of an HTTP request](diagrams/08-osi-encapsulation.drawio.svg)
+![Encapsulation of an HTTP request](../diagrams/08-osi-encapsulation.drawio.svg)
 
 Example: `curl http://10.0.2.15/health` from `10.0.1.25`.
 
@@ -41,7 +59,41 @@ Example: `curl http://10.0.2.15/health` from `10.0.1.25`.
 | 5 | L2 | Ethernet header: source MAC (my card), destination MAC (**the next hop**: the gateway if `10.0.2.15` is in another subnet), plus a checksum at the end (FCS) |
 | 6 | L1 | The NIC turns the frame into signals on the wire or radio |
 
-**The key idea:** IP addresses (L3) say **where the letter finally goes**. MAC addresses (L2) say **who carries it on this one hop**. At every router, the old L2 envelope is thrown away and a new one is written. The IPs stay the same end to end, unless NAT changes them ([02](02-nat.md)).
+**The key idea:** IP addresses (L3) say **where the letter finally goes**. MAC addresses (L2) say **who carries it on this one hop**. At every router, the old L2 envelope is thrown away and a new one is written. The IPs stay the same end to end, unless NAT changes them ([3.8](../03-core-networking-protocols/08-nat-pat-and-port-forwarding.md)).
+
+### A real packet, layer by layer (tested in the lab container)
+
+This is one real frame from [Lab 3.1](../13-hands-on-labs/lab-03.1-capture-a-tcp-handshake.md): `curl` asking a small web server for `/index.html`, decoded by `tshark` (the command-line Wireshark). Each block is one envelope, outermost first:
+
+```
+Frame 4: 153 bytes on wire (1224 bits), 153 bytes captured (1224 bits)
+Ethernet II, Src: 1e:ad:fb:02:dc:58, Dst: 36:81:b2:dd:53:a4
+    Type: IPv4 (0x0800)
+Internet Protocol Version 4, Src: 10.10.0.1, Dst: 10.10.0.2
+    .... 0101 = Header Length: 20 bytes (5)
+    Time to Live: 64
+    Protocol: TCP (6)
+Transmission Control Protocol, Src Port: 48766, Dst Port: 8080, Seq: 1, Ack: 1, Len: 87
+    1000 .... = Header Length: 32 bytes (8)
+    Flags: 0x018 (PSH, ACK)
+Hypertext Transfer Protocol
+    GET /index.html HTTP/1.1\r\n
+    Host: 10.10.0.2:8080\r\n
+    User-Agent: curl/8.5.0\r\n
+    Accept: */*\r\n
+```
+
+Add up the envelopes:
+
+| Layer | Header | Size | What it says |
+|---|---|---|---|
+| L2 Ethernet | MACs + type | **14 bytes** | "Next hop is `36:81:…`; inside is IPv4 (`0x0800`)" |
+| L3 IPv4 | IPs, TTL, protocol | **20 bytes** | "From `10.10.0.1` to `10.10.0.2`; inside is TCP (protocol 6)" |
+| L4 TCP | Ports, sequence numbers, flags | **32 bytes** (20 + 12 bytes of options) | "From port 48766 to port 8080, bytes 1–87 of this connection" |
+| L7 HTTP | The request itself | **87 bytes** | `GET /index.html` |
+| **Total** | | **14 + 20 + 32 + 87 = 153 bytes** | Exactly the "153 bytes on wire" on the first line ✅ |
+
+(The 4-byte Ethernet checksum, the FCS, isn't counted: network cards normally strip it before a capture tool sees the frame, and a virtual link like this one never adds one.) Notice that each header has a field naming **what's inside it**: Ethernet's `Type` says IPv4, IPv4's `Protocol` says TCP, and TCP's **port** tells the receiver which program gets the rest. That's how decapsulation knows which layer to hand the data to next.
 
 **Same layer talks to same layer.** The TCP on my machine "talks" to the TCP on the server (sequence numbers, ACKs), even though the bytes really travel down my stack and up theirs. This is called **peer-to-peer communication between layers**.
 
@@ -82,7 +134,7 @@ ethtool eth0               # speed, duplex, "Link detected: yes"
 
 **Devices:** **switch**, **bridge**, the NIC, Wi-Fi access point. Virtual ones: **`docker0`** and `br-xxxx` (Linux bridges = virtual switches), **veth pairs**, **VXLAN** (L2 frames carried inside UDP, used by Flannel and Docker overlay networks).
 
-**Docker link:** containers on the **same bridge** talk at **layer 2**: container A ARPs for container B's MAC, and the bridge forwards the frame. No router, no NAT ([03](03-docker-bridge.md)).
+**Docker link:** containers on the **same bridge** talk at **layer 2**: container A ARPs for container B's MAC, and the bridge forwards the frame. No router, no NAT ([10.1](../10-container-and-kubernetes-networking/01-docker-bridge-networking-inside-out.md)).
 
 **What breaks here:** a wrong VLAN, a duplicate MAC, a stale ARP entry, an MTU mismatch (big packets disappear, small ones work: common with VXLAN overlays, which add 50 bytes of headers).
 
@@ -101,7 +153,7 @@ bridge link                        # which veths are plugged into which bridge
 **Job:** get a **packet** from the source **machine** to the destination **machine**, even across many networks.
 
 **How it works:**
-- Every machine has an **IP address** and a **subnet** (CIDR, see [01](01-basics.md)). The subnet says what's "local".
+- Every machine has an **IP address** and a **subnet** (CIDR, see [2.3](../02-ip-addressing-and-subnetting/03-subnet-masks-and-cidr.md)). The subnet says what's "local".
 - **Routing decision:** for every packet, the kernel asks: "Is the destination in my subnet?"
   - **Yes:** send it directly (ARP for the destination's MAC).
   - **No:** send it to the **gateway** (ARP for the **gateway's** MAC), and let the router decide the next hop.
@@ -109,7 +161,7 @@ bridge link                        # which veths are plugged into which bridge
 - **TTL** (Time To Live): every router subtracts 1. At 0, the packet is dropped and an ICMP "time exceeded" goes back. This stops loops, and it's how `traceroute` works.
 - **Fragmentation:** if a packet is bigger than the next link's **MTU** (usually 1500 bytes), it's split, or dropped if "Don't Fragment" is set (ICMP "fragmentation needed" goes back).
 - **ICMP** is L3's helper for errors and tests: `ping` (echo request / reply), "destination unreachable", "time exceeded".
-- **NAT** changes IP addresses (and usually ports) at this layer ([02](02-nat.md)).
+- **NAT** changes IP addresses (and usually ports) at this layer ([3.8](../03-core-networking-protocols/08-nat-pat-and-port-forwarding.md)).
 
 **Devices:** **router**, **L3 switch**, the Linux kernel itself (`net.ipv4.ip_forward=1` makes Linux a router: Docker turns it on). In AWS: the **VPC router**, **route tables**, **internet gateway**, **NAT gateway**, **Transit Gateway**, **VPC peering**. **NACLs** filter by IP (and port), so they sit at L3–L4.
 
@@ -132,7 +184,7 @@ traceroute 10.0.2.15       # every router on the way (uses TTL)
 **Job:** get data from a **program** on one machine to a **program** on the other. L3 finds the machine; **L4 finds the program**, using **ports**.
 
 **How it works:**
-- A connection is identified by the **5-tuple**: protocol, source IP, source port, destination IP, destination port. conntrack ([02](02-nat.md)) tracks exactly this.
+- A connection is identified by the **5-tuple**: protocol, source IP, source port, destination IP, destination port. conntrack ([8.6](../08-linux-networking/06-netfilter-nat-and-conntrack.md)) tracks exactly this.
 - **TCP** (reliable, like a phone call):
   - **3-way handshake:** `SYN` → `SYN-ACK` → `ACK`. Only then does data flow.
   - **Sequence numbers + ACKs:** every byte is numbered. Lost data is **resent**; data arriving out of order is **put back in order**.
@@ -198,7 +250,7 @@ curl -v https://example.com                                          # shows the
 
 **How it works:**
 - **HTTP/HTTPS:** method, path, host, headers, status codes (`200`, `404`, `502`). An L7 device can read all of these.
-- **DNS:** turns names into IPs ([04](04-dns.md)). DNS is an L7 protocol, even though it's usually carried in UDP.
+- **DNS:** turns names into IPs ([3.4](../03-core-networking-protocols/04-dns.md)). DNS is an L7 protocol, even though it's usually carried in UDP.
 - Others: SSH, FTP, SMTP/IMAP (email), DHCP (gets your IP address, carried in UDP), gRPC (HTTP/2), MQTT, SNMP.
 
 **Devices and tools:** **L7 load balancer** (AWS **ALB**: routes by host, path or header, terminates TLS), **reverse proxy** (nginx, Envoy, HAProxy in HTTP mode), Kubernetes **Ingress** and **Gateway API**, **API gateway**, **WAF**, a service mesh sidecar (Istio / Linkerd).
@@ -243,7 +295,7 @@ The OSI model is the **teaching model** (from ISO, 1984). The internet actually 
 
 ## Debugging bottom up ⭐🔥
 
-When "it doesn't work", walk the layers from the bottom. The [6-step debugging method](06-debugging.md) is this idea in practice.
+When "it doesn't work", walk the layers from the bottom. The [6-step debugging method](../03-core-networking-protocols/11-troubleshooting-connectivity.md) is this idea in practice.
 
 | Layer | Question | Command |
 |---|---|---|
@@ -266,14 +318,14 @@ When "it doesn't work", walk the layers from the bottom. The [6-step debugging m
 - **"What is encapsulation?"** → Each layer wraps the data from above in its own header on the way down; the receiver unwraps it on the way up. Segment → packet → frame → bits.
 - **"At which layer does ping work? Does it use a port?"** → L3, ICMP. No ports, so `ping` working doesn't prove a TCP port is open, and a blocked ICMP doesn't mean the host is down.
 - **"Where does TLS sit?"** → Usually L6 (presentation, encryption). Say that it really runs on top of TCP, inside the app, so it doesn't fit OSI exactly.
-- **"Security group vs NACL in OSI terms?"** → Both filter at L3/L4 (IP + port). The SG is **stateful** (returns are allowed automatically), the NACL is **stateless** (allow the ephemeral return ports, see [01](01-basics.md)).
+- **"Security group vs NACL in OSI terms?"** → Both filter at L3/L4 (IP + port). The SG is **stateful** (returns are allowed automatically), the NACL is **stateless** (allow the ephemeral return ports, see [1.3](03-addresses-ports-and-protocols.md#ephemeral-ports-the-clients-side)).
 - **"Where do Docker containers on the same bridge talk?"** → L2: ARP and frames through the bridge, no NAT. Going to the internet, they cross L3 (routing + MASQUERADE).
 - **"Big requests hang, small ones work. Which layer?"** → An **MTU** problem (L2/L3): often an overlay (VXLAN adds 50 bytes) or a VPN, with ICMP "fragmentation needed" blocked.
 - **"Is ARP L2 or L3?"** → It works between them: it's carried in L2 frames and its job is to find the MAC for an L3 address. Most people call it L2.
 
 ## Practice 🖥️
 
-See each layer on your own machine.
+The full walk-through is [Lab 1.2](../13-hands-on-labs/lab-01.2-build-a-tiny-network-with-namespaces.md) (layers 1–3 in a network you build) and [Lab 3.1](../13-hands-on-labs/lab-03.1-capture-a-tcp-handshake.md) (layers 4 and 7 on the wire). Quick version on your own machine:
 
 L1 / L2: the interfaces, their state and their MAC addresses (on the Mac: `ifconfig en0`):
 
@@ -319,3 +371,36 @@ All layers at once: watch the handshake, the request and the close in one captur
 docker run --rm --cap-add NET_ADMIN nicolaka/netshoot \
   sh -c "tcpdump -ni eth0 -c 12 'tcp port 80' & sleep 1; curl -s http://example.com -o /dev/null; sleep 2"
 ```
+
+## Check yourself
+
+1. Which layer's address changes at every router hop, and which layer's stays the same?
+2. A firewall rule says "allow TCP port 443 from `10.0.0.0/16`". Up to which layer does the firewall read?
+3. Put these in order from the outside of a frame inwards: TCP header, Ethernet header, HTTP request, IP header.
+4. Name the 4 layers of the TCP/IP model and the OSI layers each one covers.
+5. `curl` prints `Could not resolve host`. At which layer did the problem happen, and what's the protocol?
+6. In the captured packet above, how many bytes were headers and how many were the HTTP request?
+
+<details>
+<summary><b>Answers</b> (try first)</summary>
+
+1. Layer 2 (MAC addresses) changes at every hop. Layer 3 (IP addresses) stays the same end to end, unless NAT changes it.
+2. Layer 4 (it reads IP addresses at L3 and the protocol and port at L4).
+3. Ethernet header → IP header → TCP header → HTTP request.
+4. Application (OSI 5, 6, 7) · Transport (4) · Internet (3) · Link / network access (2 and 1).
+5. Layer 7: DNS, the name-to-address lookup, failed. The network path may be fine.
+6. Headers: 14 + 20 + 32 = **66 bytes**. HTTP request: **87 bytes**. Small requests are almost half headers.
+
+</details>
+
+## Summary
+
+- OSI = **7 layers**, each with one job: physical (bits), data link (frames, MACs), network (packets, IPs), transport (segments, ports), session, presentation, application.
+- **Encapsulation:** on the way out, each layer adds its header around the data from above. On the way in, each layer reads its header and passes the rest up, using a "what's inside" field (EtherType, IP protocol number, port).
+- **MACs change at every hop; IPs stay** (unless NAT).
+- The internet runs **TCP/IP** (4 layers). We still use OSI **numbers** in conversation: L2 switch, L3 router, L4 vs L7 load balancer.
+- **Debug bottom up**, and read the error message: it often names the layer.
+
+## Next
+
+➡️ **Level 1 is done.** Go on to [Level 2 · IP addressing and subnetting](../02-ip-addressing-and-subnetting/README.md), starting with [2.1 · Binary, decimal and hexadecimal](../02-ip-addressing-and-subnetting/01-binary-decimal-and-hex.md): the number skills you need to read IP addresses and subnet masks properly. Before you move on, try the [Level 1 exercises](../14-practice-exercises/01-level-1-fundamentals.md).
