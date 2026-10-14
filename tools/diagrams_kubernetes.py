@@ -64,6 +64,35 @@ def architecture():
     return d
 
 
+def node_internals():
+    d = Diagram("02-node-internals", 900, 520, "Inside a worker node: who calls whom")
+    d.box("api", 300, 46, 300, 46, "kube-apiserver (control plane)", "purple")
+    d.group("node", 20, 120, 860, 350, "Worker node", "gray")
+    d.box("kubelet", 50, 165, 230, 56, "kubelet\nnode agent, port 10250", "orange")
+    d.box("proxy", 620, 165, 230, 56, "kube-proxy\nwatches Services, EndpointSlices", "orange")
+    d.box("containerd", 50, 265, 230, 56, "containerd\nCRI server: images, sandboxes", "white")
+    d.box("cni", 335, 265, 230, 56, "CNI plugin\npod IP + routes", "white")
+    d.box("rules", 620, 265, 230, 56, "iptables / nftables rules\nService IP → pod IPs", "white")
+    d.box("shim", 50, 360, 230, 46, "containerd-shim (one per pod)", "white")
+    d.box("runc", 50, 420, 230, 36, "runc: namespaces + cgroups", "gray")
+    d.group("pod", 335, 355, 230, 100, "Pod", "green")
+    d.box("pause", 350, 390, 95, 50, "pause\nholds netns", "green", size=11)
+    d.box("app", 455, 390, 95, 50, "app\ncontainer", "green", size=11)
+    d.edge("api", "kubelet", "watch my pods /\nreport status", both=True)
+    d.edge("api", "proxy", "watch")
+    d.edge("kubelet", "containerd", "CRI (gRPC)")
+    d.edge("containerd", "cni", "CNI")
+    d.edge("containerd", "shim")
+    d.edge("shim", "runc")
+    d.edge("runc", "pause", points=[(320, 438), (320, 415)])
+    d.edge("cni", "pause", "assign IP")
+    d.edge("proxy", "rules", "program")
+    d.text("caption", 0, 480, 900, 30,
+           "kubelet never runs containers itself: it asks containerd over CRI. kube-proxy never forwards packets: the kernel rules do.",
+           size=11)
+    return d
+
+
 def labels_selectors():
     d = Diagram("03-labels-selectors", 860, 340, "Labels and selectors connect objects")
     d.box("deploy", 30, 70, 230, 60, "Deployment web\nselector: app=web", "blue")
@@ -372,7 +401,7 @@ def gitops():
     return d
 
 
-ALL = [reconciliation_loop, architecture, labels_selectors, apply_flow, pod_anatomy, deployment_rollout,
+ALL = [reconciliation_loop, architecture, node_internals, labels_selectors, apply_flow, pod_anatomy, deployment_rollout,
        service_traffic, ingress_paths, secrets_flow, storage_flow, autoscaling, networkpolicy, rbac,
        troubleshooting, operator_pattern, eks, gitops]
 
