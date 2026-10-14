@@ -6,6 +6,7 @@
 #         sudo ./dns-lab.sh flush       # restart the resolver = empty its cache
 #         sudo ./dns-lab.sh stop-auth   # stop the authoritative server (to see failures)
 #         sudo ./dns-lab.sh start-auth  # start it again
+#         sudo ./dns-lab.sh stop-resolver / start-resolver
 #         sudo ./dns-lab.sh down        # stop everything and delete it
 set -euo pipefail
 LAB=/tmp/dnslab
@@ -129,5 +130,7 @@ case "${1:-}" in
   flush) stop resolver; start resolver; echo "Resolver restarted: its cache is empty." ;;
   stop-auth) stop auth; echo "Authoritative server for example.lab stopped." ;;
   start-auth) start auth; echo "Authoritative server for example.lab started." ;;
-  *) echo "usage: $0 up|flush|stop-auth|start-auth|down"; exit 1 ;;
+  stop-resolver) stop resolver; echo "Recursive resolver stopped." ;;
+  start-resolver) start resolver; echo "Recursive resolver started (empty cache)." ;;
+  *) echo "usage: $0 up|flush|stop-auth|start-auth|stop-resolver|start-resolver|down"; exit 1 ;;
 esac
