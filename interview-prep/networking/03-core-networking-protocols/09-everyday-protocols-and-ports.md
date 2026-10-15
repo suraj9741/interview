@@ -3,129 +3,59 @@
 > **Level 3 · Core networking protocols** · Lesson 9 of 11 · ⏱️ about 60 minutes (estimate)
 > ⬅️ [3.8 NAT, PAT and port forwarding](08-nat-pat-and-port-forwarding.md) · ➡️ [3.10 Packet flow end to end](10-packet-flow-end-to-end.md)
 
-## What you'll learn
+![Common ports grouped: remote access, email, web, and infrastructure services, with encrypted protocols in green and clear-text ones in red](../diagrams/3.9-ports-map.drawio.svg)
 
-- What the protocols you'll meet on the job **do**, which **port and transport** they use, and whether they're **encrypted**.
-- **SSH** in enough depth for daily DevOps work: keys, host keys, tunnels and jump hosts.
-- Why **NTP** (time) quietly breaks TLS, Kerberos and logs when it fails.
-- Which ports a **Kubernetes** cluster, a **monitoring** stack and a **VPN** need open.
+- A port is a **convention** (registered with IANA, listed in `/etc/services`), not a law: SSH can run on 2222, and a firewall that allows "443" allows **anything** on 443. Check what actually answers.
+- Security groups, NACLs and NetworkPolicies are lists of **protocol + port**: know what each means and what breaks if it's closed.
+- Clear-text legacy protocols (Telnet, FTP, SNMPv2c, plain LDAP) send **passwords in clear text**; use SSH, SFTP, SNMPv3, LDAPS.
+- The classic port numbers were checked against the lab container's `/etc/services` (`getent services <port>/<proto>`) **(tested in the lab container)**. Application ports not in that file (e.g. 6443, 9090, 10250) are the projects' own defaults.
 
-## Before you start
+## Port list
 
-- [3.2](02-tcp-and-udp.md): TCP vs UDP and port ranges.
-- [3.6](06-tls-and-certificates.md): what "encrypted with TLS" means.
+Both maps as searchable text. Longer list: [references/common-ports.md](../references/common-ports.md).
 
----
+- **Remote access, files:** SSH 22/tcp (also SFTP, scp) · Telnet 23/tcp · FTP 21/tcp control + 20/tcp or a random high port for data · TFTP 69/udp · RDP 3389/tcp (and udp) · rsync 873/tcp
+- **Infrastructure:** DNS 53/udp + 53/tcp (DoT 853/tcp, DoH 443/tcp) · DHCP 67/udp server, 68/udp client (DHCPv6 547/udp server, 546/udp client) · NTP 123/udp · Syslog 514/udp, 6514/tcp over TLS · SNMP 161/udp queries, 162/udp traps · LDAP 389/tcp, LDAPS 636/tcp, AD Global Catalog 3268 · Kerberos 88/tcp+udp · SMB 445/tcp · NFS 2049/tcp · BGP 179/tcp
+- **Email (tcp):** SMTP 25 · submission 587 (STARTTLS), 465 (implicit TLS) · IMAP 143, IMAPS 993 · POP3 110, POP3S 995
+- **Web:** HTTP 80/tcp · HTTPS 443/tcp · HTTP/3 443/udp · alternate HTTP 8080, 8443, 8000, 3000, 5000
+- **Databases, caches, queues (tcp):** MySQL / MariaDB 3306 · PostgreSQL 5432 · SQL Server 1433 · Oracle 1521 (convention) · MongoDB 27017 · Redis 6379 · Memcached 11211 · RabbitMQ (AMQP) 5672, management UI 15672 · Kafka 9092 · Elasticsearch / OpenSearch 9200
+- **VPNs, overlays:** IPsec 500/udp (IKE), 4500/udp (NAT traversal), IP protocol 50 (ESP) · WireGuard 51820/udp · OpenVPN 1194/udp · VXLAN 4789/udp (IANA), 8472/udp (Linux/flannel default) · Geneve 6081/udp
+- **Kubernetes (tcp):** kube-apiserver 6443 · etcd 2379 clients, 2380 peers · kubelet API 10250 · kube-controller-manager 10257 · kube-scheduler 10259 · NodePort Services 30000–32767 (tcp/udp)
+- **Observability (tcp):** Prometheus 9090 · Alertmanager 9093 · node exporter 9100 · Grafana 3000 · OpenTelemetry OTLP 4317 gRPC, 4318 HTTP · StatsD 8125/udp · HashiCorp Vault 8200
 
-## The idea in plain words
+## Details the map can't show
 
-Ports are **doors with signs on them**. Port 22 says "SSH", port 443 says "HTTPS". The sign is a **convention** (registered with IANA, listed in `/etc/services`), not a law: you can run SSH on port 2222, and a firewall that allows "443" allows **anything** that uses port 443. Knowing the common doors lets you read firewall rules, security groups and `ss` output at a glance.
-
-## Why it matters
-
-- Security groups, NACLs and NetworkPolicies are lists of **protocol + port**. You need to know what each one means and what breaks if it's closed.
-- Many old protocols send **passwords in clear text** (Telnet, FTP, SNMPv2c, plain LDAP). Spotting them is an easy security win.
-
----
-
-## How it works
-
-The port numbers below for the classic protocols were checked against the lab container's `/etc/services` (`getent services <port>/<proto>`) **(tested in the lab container)**. Application ports that aren't in that file (e.g. 6443, 9090, 10250) are the projects' own defaults. A longer list is in [references/common-ports.md](../references/common-ports.md).
-
-### Remote access and file transfer
-
-| Protocol | Port | Encrypted? | Notes |
-|---|---|---|---|
-| **SSH** | 22/tcp | ✅ | Shell, file copy (`scp`, **SFTP**), tunnels. See below |
-| Telnet | 23/tcp | ❌ | Clear-text remote shell. Only for lab devices; useful as a crude TCP port tester |
-| **FTP** | 21/tcp (control) + 20/tcp or a random high port (data) | ❌ | Two connections: painful through NAT and firewalls (**active** mode: server connects back to the client; **passive**: client connects to a random server port). Prefer SFTP. FTPS = FTP over TLS |
-| TFTP | 69/udp | ❌ | Trivial file transfer, no authentication. Network boot (PXE), device firmware |
-| **RDP** | 3389/tcp (and udp) | ✅ | Windows remote desktop. Never expose to the internet; use a VPN, bastion or AWS Systems Manager |
-| rsync | 873/tcp (daemon mode) | ❌ | Usually run **over SSH** instead |
-
-### Infrastructure services
-
-| Protocol | Port | Notes |
-|---|---|---|
-| **DNS** | 53/udp + 53/tcp | [3.4](04-dns.md). DoT 853/tcp, DoH 443/tcp |
-| **DHCP** | 67/udp (server), 68/udp (client) | [2.8](../02-ip-addressing-and-subnetting/08-dhcp.md). DHCPv6: 547/udp server, 546/udp client |
-| **NTP** | 123/udp | Time synchronisation. See below |
-| **Syslog** | 514/udp (traditional), 6514/tcp (over TLS) | Log shipping from network devices and servers |
-| **SNMP** | 161/udp (queries), 162/udp (traps) | Monitoring network devices. v1/v2c use a clear-text "community string" as a password; **v3** adds authentication and encryption |
-| **LDAP** / LDAPS | 389/tcp / 636/tcp | Directory lookups (users, groups). Active Directory also uses 3268 (Global Catalog) |
-| **Kerberos** | 88/tcp+udp | Ticket-based authentication (Active Directory). Needs clocks within 5 minutes by default |
-| **SMB** | 445/tcp | Windows file shares. Never expose to the internet |
-| **NFS** | 2049/tcp | Unix file shares; **AWS EFS** uses it |
-| **BGP** | 179/tcp | Routing between networks ([Level 4](../04-switching-and-routing/README.md)) |
-
-### Email
-
-| Protocol | Port | Notes |
-|---|---|---|
-| **SMTP** (server to server) | 25/tcp | Relaying mail between servers. **AWS restricts outbound port 25 from EC2 by default**; you request removal or use a mail service |
-| SMTP **submission** (client to server) | 587/tcp (STARTTLS), 465/tcp (implicit TLS) | What apps should use to send mail (e.g. to Amazon SES) |
-| IMAP / IMAPS | 143 / 993 tcp | Reading mail, kept on the server |
-| POP3 / POP3S | 110 / 995 tcp | Downloading mail |
-
-### Web and APIs
-
-| Protocol | Port | Notes |
-|---|---|---|
-| HTTP / HTTPS | 80 / 443 tcp; HTTP/3 on **443/udp** | [3.5](05-http-and-https.md) |
-| Alternate HTTP | 8080, 8443, 8000, 3000, 5000 | Conventions for dev servers and app containers |
-| gRPC | Usually 443 or the app's own port | HTTP/2 underneath |
-| WebSocket | Same as HTTP/HTTPS | Starts as HTTP, upgrades (`101 Switching Protocols`) |
-
-### Databases, caches and queues
-
-| Service | Port |
+| Protocol | What to remember |
 |---|---|
-| MySQL / MariaDB | 3306/tcp |
-| PostgreSQL | 5432/tcp |
-| Microsoft SQL Server | 1433/tcp |
-| Oracle | 1521/tcp (convention) |
-| MongoDB | 27017/tcp |
-| Redis | 6379/tcp |
-| Memcached | 11211/tcp |
-| RabbitMQ (AMQP) / management UI | 5672/tcp / 15672/tcp |
-| Kafka | 9092/tcp |
-| Elasticsearch / OpenSearch | 9200/tcp |
+| **FTP** 21 + 20/tcp | Two connections: painful through NAT and firewalls (**active**: the server connects back to the client; **passive**: the client connects to a random server port). Prefer **SFTP** (over SSH, one port). FTPS = FTP over TLS, still two connections |
+| Telnet 23/tcp | Clear-text shell. Only for lab devices; useful as a crude TCP port tester |
+| TFTP 69/udp | No authentication. Network boot (PXE), device firmware |
+| **RDP** 3389 / **SMB** 445 | Never expose to the internet; use a VPN, bastion or AWS Systems Manager |
+| rsync 873/tcp | Daemon mode only; usually run **over SSH** instead |
+| DNS 53 | Also DoT 853/tcp, DoH 443/tcp ([3.4](04-dns.md)) · DHCP: [2.8](../02-ip-addressing-and-subnetting/08-dhcp.md) |
+| Syslog | 514/udp traditional, 6514/tcp over TLS: log shipping from network devices and servers |
+| **SNMP** 161 / 162 udp | Queries / traps. v1/v2c use a clear-text "community string" as a password; **v3** adds authentication and encryption |
+| LDAP / Kerberos | Active Directory also uses 3268 (Global Catalog). Kerberos needs clocks within **5 minutes** by default |
+| NFS 2049 · BGP 179 | **AWS EFS** uses NFS. BGP: routing between networks ([Level 4](../04-switching-and-routing/README.md)) |
+| **SMTP** 25/tcp | Server to server. **AWS restricts outbound port 25 from EC2 by default**: request removal or use a mail service. Apps should send on **587** (STARTTLS) or **465** (implicit TLS), e.g. to Amazon SES |
+| IMAP / POP3 | IMAP keeps mail on the server; POP3 downloads it |
+| HTTP | HTTP/3 runs on **443/udp** ([3.5](05-http-and-https.md)). gRPC: HTTP/2, usually 443 or the app's own port. WebSocket: same port as HTTP(S), starts as HTTP and upgrades (`101 Switching Protocols`) |
 
-### VPNs and overlays
+## Data, VPN and Kubernetes ports
 
-| Protocol | Port / protocol | Notes |
-|---|---|---|
-| **IPsec** | 500/udp (IKE), 4500/udp (NAT traversal), plus IP protocol **50 (ESP)** | Site-to-site VPNs, **AWS Site-to-Site VPN**. ESP isn't TCP or UDP, so firewall rules need the protocol number |
-| **WireGuard** | 51820/udp (default) | Simple, fast modern VPN |
-| OpenVPN | 1194/udp (default) | |
-| **VXLAN** | 4789/udp (IANA); Linux/flannel default **8472/udp** | Ethernet frames inside UDP: Kubernetes overlays (flannel, Calico VXLAN mode) |
-| Geneve | 6081/udp | Newer overlay; used by AWS Gateway Load Balancer and some CNIs |
+![Common ports for databases, caches and queues, VPNs and overlays, Kubernetes, and monitoring](../diagrams/3.9-ports-platform.drawio.svg)
 
-### Kubernetes and observability
+- **IPsec** (AWS Site-to-Site VPN): UDP 500 (IKE), UDP 4500 (NAT traversal) and IP protocol **50 (ESP)**, which isn't TCP or UDP, so firewall rules need the protocol number.
+- **VXLAN** = Ethernet frames inside UDP: Kubernetes overlays (flannel, Calico VXLAN mode). **Geneve** is newer; used by AWS Gateway Load Balancer and some CNIs. WireGuard is a simple, fast modern VPN.
+- **EKS / Kubernetes:** the control plane talks to kubelets on **10250**; worker nodes need **443** to the API; pods need **53 tcp/udp** to CoreDNS; overlays need their UDP port open between nodes.
 
-| Component | Port |
-|---|---|
-| kube-apiserver | **6443/tcp** |
-| etcd | **2379/tcp** (clients), **2380/tcp** (peers) |
-| kubelet API | **10250/tcp** |
-| kube-controller-manager / kube-scheduler | 10257/tcp / 10259/tcp |
-| NodePort Services | **30000–32767** (tcp/udp) |
-| Prometheus / Alertmanager / node exporter | 9090 / 9093 / 9100 tcp |
-| Grafana | 3000/tcp |
-| OpenTelemetry (OTLP gRPC / HTTP) | 4317 / 4318 tcp |
-| StatsD | 8125/udp |
-| HashiCorp Vault | 8200/tcp |
+## SSH in practice
 
-### SSH in practice
+![SSH: the host key proves the server (known_hosts), the user key proves you (authorized_keys); -J jumps through a bastion, -L forwards a local port, -R a remote port, -D runs a SOCKS proxy](../diagrams/3.9-ssh-keys-tunnels.drawio.svg)
 
-SSH (RFC 4253 and friends) gives an encrypted channel for a shell, file transfer and tunnels.
-
-**Two kinds of keys, often confused:**
-
-| Key | Proves | Where you see it |
-|---|---|---|
-| **Host key** | The **server** is the one you connected to last time | `~/.ssh/known_hosts`; the "authenticity of host can't be established" prompt; `REMOTE HOST IDENTIFICATION HAS CHANGED!` when it changes (rebuilt server, or a man-in-the-middle) |
-| **User key** (`~/.ssh/id_ed25519`) | **You** are allowed in | Your public key in the server's `~/.ssh/authorized_keys` |
+- SSH (RFC 4253 and friends): an encrypted channel for a shell, file transfer and tunnels.
+- **Host key** proves the **server** (`~/.ssh/known_hosts`); **user key** (`~/.ssh/id_ed25519`) proves **you** (public key in the server's `~/.ssh/authorized_keys`).
+- **In AWS**, prefer **Systems Manager Session Manager** or **EC2 Instance Connect** over opening port 22 to the internet: no inbound rule, no long-lived keys, and sessions are logged.
 
 **Everyday commands** (not run in the lab container, which has no SSH tools installed):
 
@@ -139,19 +69,22 @@ ssh -D 1080 user@server                        # dynamic SOCKS proxy
 ssh -v user@server                             # verbose: see which keys and algorithms are tried
 ```
 
-**In AWS**, prefer **Systems Manager Session Manager** or **EC2 Instance Connect** over opening port 22 to the internet: no inbound rule, no long-lived keys, and sessions are logged.
-
-### NTP: why time is a network dependency
+## NTP: time is a network dependency
 
 NTP (123/udp) keeps clocks in sync, usually to within milliseconds. When clocks drift:
 
 - **TLS** fails: certificates look "not yet valid" or "expired" ([3.6](06-tls-and-certificates.md)).
 - **Kerberos / Active Directory** logins fail beyond 5 minutes of skew.
 - **Logs and traces** from different machines can't be put in order; distributed databases and token expiry misbehave.
+- AWS: the **Amazon Time Sync Service** at `169.254.169.123` (link-local, reachable from every instance). Linux: `chronyc tracking` or `timedatectl` shows the sync state.
 
-AWS provides the **Amazon Time Sync Service** at `169.254.169.123` (link-local, reachable from every instance). On Linux, `chronyc tracking` or `timedatectl` shows the sync state.
+## Where you meet it
 
----
+| Where | What to know |
+|---|---|
+| Security groups | Open the **service port** only to the **source that needs it** (e.g. 5432 only from the app's security group), never `0.0.0.0/0` for databases, SSH or RDP |
+| Corporate networks | Often allow only 80/443 out, so Git over SSH (22) and database clients fail. GitHub offers SSH over port 443 (`ssh.github.com`) for that reason |
+| Your own machine | No dedicated lab: run `ss -tulpn` (Linux) or `lsof -nP -i` (Mac) and identify every listening port, then do the [Level 3 exercises](../14-practice-exercises/03-level-3-protocols.md), section B (ports) |
 
 ## Try it
 
@@ -164,35 +97,17 @@ nc -zv -w 3 smtp.gmail.com 587                   # does a TCP port answer?
 openssl s_client -connect smtp.gmail.com:587 -starttls smtp </dev/null | head   # STARTTLS
 ```
 
-## In the real world
-
-- **Security group design:** open the **service port** only to the **source that needs it** (e.g. 5432 only from the app's security group), never `0.0.0.0/0` for databases, SSH or RDP.
-- **EKS / Kubernetes:** the control plane talks to kubelets on **10250**; worker nodes need **443** to the API; pods need **53 tcp/udp** to CoreDNS; overlays need their UDP port open between nodes.
-- **Corporate networks** often allow only 80/443 out; tools that need other ports (Git over SSH on 22, database clients) fail there. GitHub offers SSH over port 443 (`ssh.github.com`) for that reason.
-
-## Common mistakes
-
-| Mistake | Fix |
-|---|---|
-| "Port 443 is open, so it's HTTPS" | A port is a convention; check what actually answers (`openssl s_client`, `curl -v`) |
-| Opening SSH/RDP/DB ports to the world | Restrict by source, use a bastion/VPN/Session Manager |
-| Allowing only TCP for VPN or overlay traffic | IPsec needs UDP 500/4500 **and** ESP (protocol 50); VXLAN is UDP |
-| Ignoring time sync | Monitor NTP/chrony; many "TLS" and "auth" bugs are clock bugs |
-| Using SNMPv2c or Telnet on production devices | SNMPv3 and SSH |
-
 ## Troubleshooting
 
-| Symptom | Likely cause | Check |
+| You see | It means | Next step |
 |---|---|---|
 | `ssh: connect to host … port 22: Connection timed out` | Security group / firewall / routing | `nc -zv host 22`; SG inbound rule from **your** IP |
 | `Permission denied (publickey)` | Wrong key, wrong user (`ec2-user` vs `ubuntu`), or key not in `authorized_keys` | `ssh -v`: which key is offered? |
 | `REMOTE HOST IDENTIFICATION HAS CHANGED!` | Server rebuilt with new host keys (or a real attack) | Verify, then `ssh-keygen -R host` |
 | App can't send mail from EC2 | Port 25 restricted | Use 587 to a mail service (e.g. SES) |
-| Kerberos/AD login errors, TLS "not yet valid" | Clock skew | `timedatectl`, `chronyc tracking` |
-
-## Hands-on lab
-
-No dedicated lab: use `ss -tulpn` (Linux) or `lsof -nP -i` (Mac) on your own machine and identify every listening port with this lesson and [references/common-ports.md](../references/common-ports.md). Then do the [Level 3 exercises](../14-practice-exercises/03-level-3-protocols.md), section B (ports).
+| Kerberos/AD login errors, TLS "not yet valid" | Clock skew | `timedatectl`, `chronyc tracking`; monitor NTP/chrony |
+| VPN or overlay traffic blocked though "the port is open" | Only TCP allowed | IPsec needs UDP 500/4500 **and** ESP (protocol 50); VXLAN is UDP |
+| "Port 443 is open, so it's HTTPS" | A port is a convention | Check what answers: `openssl s_client`, `curl -v` |
 
 ## Interview angle
 
@@ -221,14 +136,4 @@ No dedicated lab: use `ss -tulpn` (Linux) or `lsof -nP -i` (Mac) on your own mac
 
 </details>
 
-## Summary
-
-- A port is a **convention**; check what actually answers.
-- Clear-text legacy protocols (Telnet, FTP, SNMPv2c, LDAP) have encrypted replacements (SSH, SFTP, SNMPv3, LDAPS).
-- **SSH**: host keys protect you from impostors; user keys let you in; `-J`, `-L`, `-R`, `-D` cover most access needs.
-- **NTP** failures break TLS and authentication.
-- Know the Kubernetes, monitoring and VPN port sets; open each only to the sources that need it.
-
-## Next
-
-➡️ [3.10 · Packet flow end to end](10-packet-flow-end-to-end.md): everything from Levels 1–3 in one walk, from typing a URL to the page arriving.
+➡️ **Next:** [3.10 · Packet flow end to end](10-packet-flow-end-to-end.md): everything from Levels 1–3 in one walk, from typing a URL to the page arriving.

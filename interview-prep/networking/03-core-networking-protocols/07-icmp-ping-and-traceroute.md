@@ -1,40 +1,16 @@
 # 3.7 · ICMP, Ping and Traceroute
 
-> **Level 3 · Core networking protocols** · Lesson 7 of 11 · ⏱️ about 75 minutes (estimate)
+> **Level 3 · Core networking protocols** · Lesson 7 of 11 · ⏱️ about 75 minutes (estimate) · 🧪 [Lab 2.2](../13-hands-on-labs/lab-02.2-routing-between-two-subnets.md) part C · [Lab 3.5](../13-hands-on-labs/lab-03.5-troubleshooting-challenge.md) fault 8
 > ⬅️ [3.6 TLS and certificates](06-tls-and-certificates.md) · ➡️ [3.8 NAT, PAT and port forwarding](08-nat-pat-and-port-forwarding.md)
 
-## What you'll learn
+![Traceroute from h1 to h2: probe 1 with TTL 1 dies at r1, probe 2 with TTL 2 dies at r2, both answer ICMP Time Exceeded; probe 3 reaches h2, which answers Port Unreachable](../diagrams/3.7-traceroute-ttl.drawio.svg)
 
-- What **ICMP** is, and the message types you'll actually meet.
-- How to read `ping` output, and why **"ping fails" doesn't mean "host down"**.
-- How **traceroute** uses the **TTL** to reveal each router, and how to read `*` and odd latencies.
-- **MTU** and **Path MTU discovery**, and why blocking all ICMP breaks big transfers.
+- **ICMP** is IP's error-report and test channel. It sits **inside IP** (protocol **1**; ICMPv6 is **58**), has **no ports**: each message has a **type** and a **code**.
+- Every router decrements the **TTL**; the one that brings it to **0** drops the packet and sends **ICMP Time Exceeded**. ⭐ **Traceroute is that, automated**: TTL 1, 2, 3 … and list who reports back.
+- `ping` tests **IP reachability and RTT, not services**: ping failing doesn't mean "host down", ping working doesn't mean "the app works".
+- **Path MTU discovery** needs ICMP "fragmentation needed". Block it and connections open but **big transfers hang**.
 
-## Before you start
-
-- [2.7](../02-ip-addressing-and-subnetting/07-default-gateway-routing-table-and-arp.md): routing, TTL, and the "unreachable" messages you've already met.
-- [3.1](01-ethernet-and-switching-basics.md): MTU.
-
----
-
-## The idea in plain words
-
-IP has no way to report problems by itself. **ICMP** (Internet Control Message Protocol) is the network's **error-report and test channel**: "I couldn't deliver this", "this packet ran out of hops", "this is too big for my link", and "are you there?" / "yes, I'm here".
-
-`ping` and `traceroute` are just clever uses of those messages.
-
-## Why it matters
-
-- `ping` and `traceroute` are the first two tools anyone reaches for. Reading them correctly (and knowing their limits) separates good troubleshooting from guessing.
-- Over-zealous firewalls that drop **all** ICMP cause one of the nastiest bugs in networking: connections that open fine but **hang on large transfers**.
-
----
-
-## How it works
-
-### ICMP messages
-
-ICMP sits **inside IP** (IP protocol number **1**; ICMPv6 is **58**). It has **no ports**: each message has a **type** and a **code**.
+## ICMP messages
 
 | Type | Code | Name | You see it as |
 |---|---|---|---|
@@ -47,11 +23,11 @@ ICMP sits **inside IP** (IP protocol number **1**; ICMPv6 is **58**). It has **n
 | 5 | | Redirect | "Use another gateway" (usually ignored or disabled) |
 | 11 | 0 | **Time exceeded** in transit | `Time to live exceeded`: what traceroute relies on |
 
-In **IPv6**, ICMPv6 is even more essential: type **2 "Packet Too Big"** replaces "fragmentation needed", and Neighbor Discovery (types 133–137) replaces ARP ([2.6](../02-ip-addressing-and-subnetting/06-ipv6-fundamentals.md)). Blocking ICMPv6 breaks IPv6.
+**IPv6:** ICMPv6 type **2 "Packet Too Big"** replaces "fragmentation needed", and Neighbor Discovery (types 133–137) replaces ARP ([2.6](../02-ip-addressing-and-subnetting/06-ipv6-fundamentals.md)). Blocking ICMPv6 breaks IPv6.
 
-### Ping
+## Ping
 
-`ping` sends **echo requests** and times the **echo replies**. From [Lab 2.2](../13-hands-on-labs/lab-02.2-routing-between-two-subnets.md) (`h1` → `h2`, two routers apart) **(tested in the lab container)**:
+`h1` → `h2`, two routers apart **(tested in the lab container)**:
 
 ```console
 $ ping -c 2 10.0.2.10
@@ -69,11 +45,10 @@ rtt min/avg/max/mdev = 0.039/0.047/0.056/0.008 ms
 | `56(84) bytes` | 56 bytes of data; 84 with the ICMP (8) and IP (20) headers |
 | `icmp_seq` | Sequence number. **Gaps** = lost packets; **out of order** = reordering |
 | `ttl=62` | The reply's remaining TTL. Linux starts at 64, so the reply crossed **2 routers** (Windows starts at 128, many routers at 255) |
-| `time` | Round-trip time |
-| `mdev` | Variation in RTT: a rough **jitter** figure ([1.4](../01-networking-fundamentals/04-network-performance.md)) |
+| `time` · `mdev` | Round-trip time · its variation, a rough **jitter** figure ([1.4](../01-networking-fundamentals/04-network-performance.md)) |
 | `+2 errors` | ICMP errors came back instead of replies (e.g. unreachable) |
 
-**Ping failing doesn't mean the host is down.** With `h2` dropping echo requests, ping shows 100% loss, while the web server on the same host answers normally **(tested in the lab container)**:
+**Ping failing ≠ host down.** With `h2` dropping echo requests, its web server still answers **(tested in the lab container)**. Windows Firewall blocks ping by default; AWS security groups don't allow ICMP unless you add a rule. Test the real port (`nc -zv`, `curl`):
 
 ```console
 $ ping -c 2 -W 1 10.0.2.10
@@ -82,11 +57,9 @@ $ curl -s -o /dev/null -w 'HTTP %{http_code}\n' http://10.0.2.10:8080/
 HTTP 200
 ```
 
-Windows Firewall blocks ping by default; **AWS security groups** don't allow ICMP unless you add a rule. And **ping working doesn't mean the service works** either: test the real port (`nc -zv`, `curl`).
+## Traceroute and TTL
 
-### TTL and traceroute
-
-Every router decrements the IP **TTL** by one; a router that brings it to **zero** drops the packet and sends back **ICMP time exceeded**. Ping with a deliberately small TTL **(tested in the lab container)**:
+The diagram above by hand: TTL 1 dies at r1, TTL 2 at r2 **(tested in the lab container)**:
 
 ```console
 $ ping -c 1 -t 1 10.0.2.10
@@ -95,30 +68,7 @@ $ ping -c 1 -t 2 10.0.2.10
 From 10.0.12.2 icmp_seq=1 Time to live exceeded
 ```
 
-TTL 1 died at the first router, TTL 2 at the second. **Traceroute is exactly this, automated**: send probes with TTL 1, 2, 3 … and list who reports back.
-
-```console
-$ traceroute -n -q 1 10.0.2.10
-traceroute to 10.0.2.10 (10.0.2.10), 30 hops max, 60 byte packets
- 1  10.0.1.1  0.240 ms
- 2  10.0.12.2  0.197 ms
- 3  10.0.2.10  0.177 ms
-```
-
-What actually travelled (Linux `traceroute` sends **UDP** probes to high ports by default) **(tested in the lab container, trimmed)**:
-
-```text
-IP (ttl 1, proto UDP (17), length 60)                                  ← probe 1
-    10.0.1.1 > 10.0.1.10: ICMP time exceeded in-transit, length 68      ← router 1 answers
-IP (ttl 2, proto UDP (17), length 60)                                  ← probe 2
-    10.0.12.2 > 10.0.1.10: ICMP time exceeded in-transit, length 68     ← router 2 answers
-IP (ttl 3, proto UDP (17), length 60)                                  ← probe 3 reaches the host
-    10.0.2.10 > 10.0.1.10: ICMP 10.0.2.10 udp port 33436 unreachable    ← "port unreachable" = arrived
-```
-
-The destination answers with **port unreachable** (nothing listens on that high UDP port), which tells traceroute it has arrived. (Linux traceroute also sends later probes in parallel, so the capture shows more probes than hops.)
-
-Probe types:
+Linux `traceroute` sends **UDP** probes to high ports; a lab capture matched the diagram, ending in `udp port 33436 unreachable` (Linux also sends later probes in parallel). All three probe types gave the same 3 hops **(tested in the lab container)**:
 
 | Tool / option | Probe | Use when |
 |---|---|---|
@@ -127,29 +77,23 @@ Probe types:
 | `traceroute -T -p 443` (Linux, needs root) | TCP SYN to a real port | Firewalls only allow the service port; the best match for "can my app's traffic get there?" |
 | `mtr` | Repeated traceroute with loss and latency **per hop** | Intermittent loss |
 
-All three gave the same 3 hops in the lab **(tested in the lab container)**.
+![Reading traceroute: a star in the middle is fine, stars to the end mean traffic stops, one slow middle hop is harmless, two addresses on a hop mean ECMP](../diagrams/3.7-reading-traceroute.drawio.svg)
 
-### Reading traceroute correctly
-
-- **`*`** = no reply for that probe. With `r2` configured to drop its own time-exceeded messages **(tested in the lab container)**:
+- `*` = no reply for that probe. Stars only in the **middle** are normal; stars from some hop **to the end** mean traffic stops after the last answering hop. The silent hop, with `r2` dropping its own Time Exceeded messages **(tested in the lab container)**:
 
   ```text
    1  10.0.1.1  0.025 ms
    2  *
    3  10.0.2.10  0.011 ms
   ```
+- One slow middle hop is that router answering ICMP slowly, not a problem; only latency that **continues** to the destination is real. Different addresses on one hop = **ECMP** load balancing.
+- Traceroute shows only the **forward** path (the return can differ). In **AWS**, VPC routers don't decrement the TTL or appear: you see instances and gateways, not the fabric.
 
-  The path **works** (hop 3 answers); router 2 just doesn't talk. Stars only in the **middle** are normal. Stars from some hop **to the end** mean traffic stops somewhere after the last answering hop.
-- **High latency at one middle hop but not after it** is usually that router answering ICMP slowly (low priority on its control plane), **not** a problem. Only latency that **continues** to the destination is real.
-- **The return path can differ** (asymmetric routing): traceroute only shows the forward path.
-- **Different addresses on the same hop** across probes = load balancing (ECMP) between parallel paths.
-- In **AWS**, VPC routers don't decrement the TTL or appear in traceroute; you see the instances and gateways, not the fabric.
+## MTU and Path MTU discovery
 
-### MTU and Path MTU discovery
+![PMTUD: h1 sends 1500 bytes with DF set, r1 can't forward it onto the 1400-MTU link and returns ICMP Frag needed (mtu = 1400); h1 caches 1400 and retries. If a firewall drops the ICMP, big transfers hang](../diagrams/3.7-pmtud.drawio.svg)
 
-Each link has an **MTU** (1500 on Ethernet). When a packet is bigger than the next link's MTU, the router either **fragments** it or, if the **Don't Fragment (DF)** bit is set (TCP sets it on Linux and most systems), **drops** it and sends back **ICMP "fragmentation needed"** with the smaller MTU. The sender then lowers its packet size for that destination: **Path MTU discovery (PMTUD)**.
-
-In the lab, the link between the two routers was set to MTU 1400. A 1500-byte packet with DF set **(tested in the lab container)**:
+Each link has an **MTU** (1500 on Ethernet). Too big for the next link: the router **fragments**, or, if **Don't Fragment (DF)** is set (TCP sets it on Linux and most systems), **drops** it and returns ICMP "fragmentation needed" with the smaller MTU. The sender lowers its size for that destination: **PMTUD**. In the lab, the r1–r2 link was set to MTU 1400 **(tested in the lab container)**:
 
 ```console
 $ ping -c 1 -M do -s 1472 10.0.2.10        # 1472 data + 8 ICMP + 20 IP = 1500
@@ -171,18 +115,24 @@ $ ping -c 1 -M do -s 1372 10.0.2.10        # 1372 + 28 = 1400: fits
      Resume: pmtu 1400 hops 3 back 3
 ```
 
-**The PMTUD black hole.** If a firewall drops that ICMP "fragmentation needed" message, the sender never learns, keeps sending full-size packets, and they vanish. The symptom is distinctive: **the TCP handshake and small requests work, large responses hang**. [Lab 3.5](../13-hands-on-labs/lab-03.5-troubleshooting-challenge.md) fault 8 reproduces it exactly (a 200 KB download returns headers, then 0 bytes, then times out) **(tested in the lab container)**. Two fixes, both verified there:
+**The PMTUD black hole:** a firewall drops the "fragmentation needed", the sender keeps sending full-size packets, and they vanish. **The handshake and small requests work, large responses hang** ([Lab 3.5](../13-hands-on-labs/lab-03.5-troubleshooting-challenge.md) fault 8: a 200 KB download returns headers, then 0 bytes, then times out **(tested in the lab container)**). Two fixes, both verified there:
 
-1. **Allow ICMP type 3 code 4** (and ICMPv6 type 2) through firewalls. Never block all ICMP.
+1. **Allow ICMP type 3 code 4** (and ICMPv6 type 2) through firewalls. Never block all ICMP: allow at least frag-needed / packet-too-big and time-exceeded.
 2. **Clamp the TCP MSS** on the router so TCP never sends segments too big for the path:
 
    ```bash
    iptables -t mangle -A FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
    ```
 
-Where it bites: **VPNs and tunnels** (extra headers), **VXLAN overlays** in Kubernetes (MTU 1450 inside), **AWS** (instances use MTU 9001 inside a VPC, but 1500 across the internet, VPN and some peering paths).
+Where it bites: **VPNs and tunnels** (extra headers), **VXLAN overlays** in Kubernetes (MTU 1450 inside), **AWS** (MTU 9001 inside a VPC, but 1500 across the internet, VPN and some peering paths).
 
----
+## Where you meet it
+
+| Where | What to know |
+|---|---|
+| AWS | Security groups block inbound ICMP by default: allow "ICMP – echo request" (or All ICMP) to ping. AWS also recommends allowing **"Destination Unreachable: fragmentation required"** so PMTUD works between 9001-MTU instances and 1500-MTU paths |
+| Kubernetes | Pinging a **ClusterIP** usually fails (with kube-proxy in iptables mode, the virtual IP only exists as rules for the Service's TCP/UDP ports). Test Services with `curl`/`nc` |
+| Load balancers | They don't answer ping on behalf of backends; an ALB answering doesn't mean targets are healthy |
 
 ## Try it
 
@@ -206,25 +156,9 @@ tracepath -n example.com           # path MTU
 mtr -rwc 20 8.8.8.8                # per-hop loss and latency (install mtr)
 ```
 
-## In the real world
-
-- **AWS security groups** block inbound ICMP by default. To ping an instance, allow "ICMP – echo request" (or All ICMP) from your source. AWS also recommends allowing **"Destination Unreachable: fragmentation required"** so PMTUD works between 9001-MTU instances and 1500-MTU paths.
-- **Kubernetes:** pinging a **ClusterIP** usually fails (with kube-proxy in iptables mode, the virtual IP only exists as rules for the Service's TCP/UDP ports). Test Services with `curl`/`nc`, not `ping`.
-- **Load balancers** don't answer ping on behalf of backends; an ALB answering doesn't mean targets are healthy.
-
-## Common mistakes
-
-| Mistake | Fix |
-|---|---|
-| "Ping fails, so the server is down" | Test the actual service port; ICMP is often filtered |
-| "Ping works, so the app should work" | Ping proves IP reachability only; test the port and the protocol |
-| Blocking all ICMP "for security" | Allow at least fragmentation-needed / packet-too-big, and time-exceeded |
-| Panicking over one slow or `*` hop in the middle | Only loss/latency that persists to the destination matters |
-| Testing MTU with plain `ping` | Set DF (`-M do` on Linux, `-D` on macOS) and the size, or fragmentation hides the problem |
-
 ## Troubleshooting
 
-| What you see | Meaning | Next step |
+| You see | It means | Next step |
 |---|---|---|
 | `Destination Host Unreachable` from your own IP | ARP for the next hop failed | [2.7](../02-ip-addressing-and-subnetting/07-default-gateway-routing-table-and-arp.md): gateway/host on the link? |
 | `Destination Net Unreachable` from a router | That router has no route | Its routing table |
@@ -232,11 +166,7 @@ mtr -rwc 20 8.8.8.8                # per-hop loss and latency (install mtr)
 | 100% loss, no errors | Dropped silently (firewall, ICMP blocked, return path missing) | Test a TCP port; capture on the far end |
 | Small requests work, large downloads hang | **MTU / PMTUD black hole** | `ping -M do -s 1472`, `tracepath`, MSS clamping |
 | traceroute stars from hop N to the end | Traffic stops after hop N (or ICMP filtered there) | `traceroute -T -p <port>`; check that network's firewall |
-
-## Hands-on lab
-
-- [Lab 2.2 · Routing between two subnets](../13-hands-on-labs/lab-02.2-routing-between-two-subnets.md), part C: TTL, traceroute (UDP, ICMP, TCP), a silent hop, and the MTU tests above.
-- [Lab 3.5 · Troubleshooting challenge](../13-hands-on-labs/lab-03.5-troubleshooting-challenge.md), fault 8: find and fix a PMTUD black hole.
+| Testing MTU with plain `ping` shows nothing | Fragmentation hides the problem | Set DF (`-M do` on Linux, `-D` on macOS) and the size |
 
 ## Interview angle
 
@@ -265,13 +195,4 @@ mtr -rwc 20 8.8.8.8                # per-hop loss and latency (install mtr)
 
 </details>
 
-## Summary
-
-- **ICMP** = IP's error and test messages: echo, unreachable (net/host/port/frag-needed), time exceeded.
-- `ping` tests IP reachability and RTT, **not** services; a blocked ping proves nothing.
-- `traceroute` = increasing TTLs + ICMP time exceeded. Mid-path `*` and slow hops are usually harmless.
-- **PMTUD** needs ICMP frag-needed / packet-too-big. Block it and big transfers hang; fix with ICMP rules or **MSS clamping**.
-
-## Next
-
-➡️ [3.8 · NAT, PAT and port forwarding](08-nat-pat-and-port-forwarding.md): how many private addresses share one public address, and how inbound port forwarding works.
+➡️ **Next:** [3.8 · NAT, PAT and port forwarding](08-nat-pat-and-port-forwarding.md): how many private addresses share one public address, and how port forwarding works.

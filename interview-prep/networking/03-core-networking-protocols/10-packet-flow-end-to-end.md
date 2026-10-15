@@ -3,126 +3,36 @@
 > **Level 3 · Core networking protocols** · Lesson 10 of 11 · ⏱️ about 75 minutes (estimate)
 > ⬅️ [3.9 Everyday protocols and ports](09-everyday-protocols-and-ports.md) · ➡️ [3.11 Troubleshooting connectivity](11-troubleshooting-connectivity.md)
 
-## What you'll learn
+![The whole journey of https://shop.example.com/cart as numbered steps across the browser, home router, DNS resolvers, load balancer and app container: parse the URL, DNS, route and ARP, TCP handshake, NAT, across the internet, TLS, HTTP request, response](../diagrams/3.10-url-journey.drawio.svg)
 
-- The full sequence of events from typing `https://shop.example.com/cart` to the page arriving: **every protocol from Levels 1–3, in order**.
-- Which **layer** does what at each step, and which **headers** wrap the data.
-- For each step, **what failure looks like**, so you can map an error message to a step.
-- The same journey from a **Docker container** and from a **Kubernetes pod in AWS**.
+- ⭐ "What happens when you type a URL?" is one of the most common DevOps/SRE interview questions. A good answer is **ordered**, names the protocols, and knows where each step can fail.
+- Order: **DNS → route → ARP → TCP → (NAT) → internet routing → TLS → HTTP → response.** DNS must finish before anything can be sent to the server, which is why DNS problems look like "nothing works".
+- Two round trips before the request: the **TCP handshake** and the **TLS 1.3 handshake** (DNS adds more if not cached).
+- Setup: laptop `192.168.29.42` on home Wi-Fi, gateway `192.168.29.1` (the home router, which also does NAT and forwards DNS), server = an AWS Application Load Balancer in front of containers. Each step links back to its lesson below.
 
-## Before you start
+## The steps, with the details to say out loud
 
-This lesson ties together everything so far. If a step feels unfamiliar, follow its link back.
-
----
-
-## The idea in plain words
-
-Opening a web page is like sending a parcel abroad: look up the address (**DNS**), decide which post office to use (**routing**), find the post office on your street (**ARP**), agree a delivery arrangement with the recipient (**TCP**), check their ID and lock the box (**TLS**), send the actual request (**HTTP**), with the parcel re-labelled at the border (**NAT**) and passed between many sorting offices (**routers**) on the way.
-
-## Why it matters
-
-"What happens when you type a URL into a browser?" is one of the most common interview questions for DevOps and SRE roles. A good answer is ordered, names the protocols, and knows where each step can fail.
-
----
-
-## The journey, step by step
-
-The setup: a laptop `192.168.29.42` on home Wi-Fi, gateway `192.168.29.1` (the home router, which also does NAT and forwards DNS), opening `https://shop.example.com/cart`, served by an AWS Application Load Balancer in front of containers.
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant B as Browser / OS
-    participant R as Home router<br/>(gateway, NAT, DNS forwarder)
-    participant D as DNS resolvers<br/>(root, TLD, authoritative)
-    participant LB as Load balancer (ALB)<br/>shop.example.com
-    participant App as App container
-    B->>B: Parse URL, check HSTS and caches
-    B->>R: DNS query A/AAAA shop.example.com (UDP 53)
-    R->>D: Recursive lookup: root → .com → example.com
-    D-->>R: A 203.0.113.80 (TTL 60)
-    R-->>B: Answer (cached for TTL)
-    Note over B: Route lookup: default via 192.168.29.1<br/>ARP for 192.168.29.1 (if not cached)
-    B->>LB: TCP SYN to 203.0.113.80:443 (router NATs source to its public IP)
-    LB-->>B: SYN-ACK
-    B->>LB: ACK
-    B->>LB: TLS ClientHello (SNI=shop.example.com, ALPN h2)
-    LB-->>B: ServerHello, certificate, Finished
-    B->>LB: Finished + HTTP GET /cart (encrypted)
-    LB->>App: New connection: GET /cart + X-Forwarded-For
-    App-->>LB: 200 OK + HTML
-    LB-->>B: 200 OK (encrypted)
-    Note over B: Render, then fetch CSS/JS/images (reusing the connection)
-```
-
-### 1. The browser parses the URL and checks its caches
-
-- **Scheme** `https` → port **443**, TLS required. If the site sent **HSTS** before, even an `http://` URL is upgraded to `https://` inside the browser.
-- The browser checks its own caches (HTTP cache, DNS cache, open connections it could **reuse**). A warm cache can skip several steps below.
-
-### 2. Name resolution (DNS) · [3.4](04-dns.md)
-
-1. The OS stub resolver checks `/etc/hosts` and its cache, then reads its DNS servers (here, the router `192.168.29.1`, learned from **DHCP**: [2.8](../02-ip-addressing-and-subnetting/08-dhcp.md)).
-2. It sends an **A** (and **AAAA**) query over **UDP 53**.
-3. The router forwards to the provider's **recursive resolver**, which (if not cached) walks **root → `.com` → `example.com`'s authoritative servers**, then caches the answer for its TTL.
-
-**This step must happen before anything can be sent to the server**, which is why DNS problems look like "nothing works". In the lab you watched one client question turn into five resolver queries **(tested in the lab container, [3.4](04-dns.md))**.
-
-### 3. Route lookup and ARP · [2.7](../02-ip-addressing-and-subnetting/07-default-gateway-routing-table-and-arp.md)
-
-- `203.0.113.80` isn't on the laptop's `/24`, so the routing table picks the **default route** → next hop `192.168.29.1`.
-- The laptop needs the gateway's **MAC address**: if it isn't in the ARP cache, it broadcasts **"who-has 192.168.29.1"** and gets a unicast reply.
-- From here on, every frame to the internet is addressed to the **gateway's MAC** but carries the **server's IP**.
-
-### 4. TCP handshake · [3.3](03-tcp-in-depth.md)
-
-- The OS picks an ephemeral source port (e.g. `54370`) and sends a **SYN** to `203.0.113.80:443`; **SYN-ACK** returns; **ACK** completes it. One round trip.
-- Options agreed: MSS, window scale, SACK, timestamps.
-
-### 5. NAT at the home router · [3.8](08-nat-pat-and-port-forwarding.md)
-
-- The router rewrites the source `192.168.29.42:54370` → `<its public IP>:<port>` (**PAT**) and records it in its translation table, so the replies find their way back.
-- If the provider uses **CGNAT**, it happens a second time in the provider's network.
-
-### 6. Across the internet · [Level 4](../04-switching-and-routing/README.md)
-
-- Each router does a **longest-prefix match** and forwards; **TTL** drops by one per hop; **MAC addresses change at every hop**, IPs don't (except at NATs).
-- Between providers, routes were learned with **BGP**. Inside AWS, the packet enters through the **internet gateway**, which maps the ALB's public IP to its private IP in the VPC.
-
-### 7. TLS handshake · [3.6](06-tls-and-certificates.md)
-
-- **ClientHello** carries the **SNI** `shop.example.com` (in clear text) and **ALPN** (`h2`, `http/1.1`).
-- The ALB picks the matching certificate (from ACM), completes the **TLS 1.3** handshake (one round trip), and the browser verifies the **chain**, the **SAN** and the **dates**.
-
-### 8. The HTTP request · [3.5](05-http-and-https.md)
-
-- `GET /cart` with `Host: shop.example.com`, cookies and other headers, **encrypted** inside TLS, usually as **HTTP/2** over this one connection.
-- The ALB (an L7 load balancer) terminates TLS, chooses a **healthy target** by host/path rules, opens (or reuses) a connection to the app container, and adds **`X-Forwarded-For`** with the client's (NATed) IP.
-
-### 9. The response, and everything after
-
-- The app returns **`200 OK`** and HTML; the ALB relays it to the browser.
-- The browser parses the HTML and fetches CSS, JavaScript and images, **reusing** the same connection (HTTP/2 multiplexing) or opening more.
-- Idle connections close later with **FIN**s; whoever closes first holds **TIME_WAIT** ([3.3](03-tcp-in-depth.md)).
+| # | Step | Details |
+|---|---|---|
+| 1 | Parse the URL, check caches | Scheme `https` → port **443**, TLS required. With **HSTS** from an earlier visit, even `http://` is upgraded inside the browser. HTTP cache, DNS cache and reusable open connections can skip steps |
+| 2 | **DNS** · [3.4](04-dns.md) | The stub resolver checks `/etc/hosts` and its cache, then asks its DNS server (the router, learned from **DHCP**: [2.8](../02-ip-addressing-and-subnetting/08-dhcp.md)) for **A** and **AAAA** over **UDP 53**. The provider's **recursive resolver** walks **root → `.com` → `example.com`'s authoritative servers** and caches the answer for its TTL. In the lab, one client question became five resolver queries **(tested in the lab container, [3.4](04-dns.md))** |
+| 3 | **Route and ARP** · [2.7](../02-ip-addressing-and-subnetting/07-default-gateway-routing-table-and-arp.md) | `203.0.113.80` isn't on the laptop's `/24` → **default route**, next hop `192.168.29.1`. ARP broadcast **"who-has 192.168.29.1"**, unicast reply. From now on, frames go to the **gateway's MAC** but carry the **server's IP** |
+| 4 | **TCP handshake** · [3.3](03-tcp-in-depth.md) | Ephemeral source port (e.g. `54370`), **SYN** to `203.0.113.80:443`, **SYN-ACK**, **ACK**: one round trip. Options agreed: MSS, window scale, SACK, timestamps |
+| 5 | **NAT** at the home router · [3.8](08-nat-pat-and-port-forwarding.md) | Source `192.168.29.42:54370` → `<its public IP>:<port>` (**PAT**), recorded so replies find their way back. With **CGNAT**, it happens again in the provider's network |
+| 6 | Across the internet · [Level 4](../04-switching-and-routing/README.md) | Each router: **longest-prefix match**, **TTL** −1, **new MAC addresses**; IPs stay (except at NATs). Providers learn routes with **BGP**. AWS: the **internet gateway** maps the ALB's public IP to its private IP in the VPC |
+| 7 | **TLS** · [3.6](06-tls-and-certificates.md) | **ClientHello** with **SNI** `shop.example.com` (clear text) and **ALPN** (`h2`, `http/1.1`). The ALB picks the matching certificate (from ACM) and completes **TLS 1.3** in one round trip; the browser checks the **chain**, the **SAN** and the **dates** |
+| 8 | **HTTP request** · [3.5](05-http-and-https.md) | `GET /cart` with `Host: shop.example.com`, cookies and headers, **encrypted**, usually **HTTP/2** on this one connection. The ALB (L7) terminates TLS, picks a **healthy target** by host/path rules, opens (or reuses) a connection to the app, adds **`X-Forwarded-For`** with the client's (NATed) IP |
+| 9 | Response and after | `200 OK` + HTML back through the ALB. The browser fetches CSS, JS and images, **reusing** the connection (HTTP/2 multiplexing) or opening more. Idle connections close later with **FIN**s; whoever closes first holds **TIME_WAIT** ([3.3](03-tcp-in-depth.md)) |
 
 ## Layer by layer: what wraps the request
 
-When the encrypted `GET /cart` leaves the laptop's Wi-Fi card, it's nested like this (sizes are the usual minimums):
+![The encrypted GET /cart nested inside a TLS record, a TCP header (54370 to 443), an IPv4 header (192.168.29.42 to 203.0.113.80, TTL 64) and a Wi-Fi frame addressed to the router's MAC](../diagrams/3.10-request-layers.drawio.svg)
 
-| Layer | Header | Key fields at this moment |
-|---|---|---|
-| L7 Application | HTTP/2 frames | `:method GET`, `:path /cart`, `:authority shop.example.com` |
-| (between L7 and L4) | TLS record (5 bytes + auth tag) | Encrypted application data |
-| L4 Transport | TCP (20–60 bytes) | src port `54370`, dst port `443`, seq/ack, flags `PSH, ACK` |
-| L3 Network | IPv4 (20 bytes) | src `192.168.29.42` → dst `203.0.113.80`, TTL 64 |
-| L2 Data link | 802.11 Wi-Fi (on the laptop's link; Ethernet on wired hops) | dst MAC = **router's**, src MAC = laptop's |
-
-The same decomposition was measured for a plain-HTTP request in the lab: **153 bytes = 14 (Ethernet) + 20 (IP) + 32 (TCP) + 87 (HTTP)** **(tested in the lab container, [3.3](03-tcp-in-depth.md))**.
+- Sizes are the usual minimums. The same split was measured for a plain-HTTP request in the lab: **153 bytes = 14 (Ethernet) + 20 (IP) + 32 (TCP) + 87 (HTTP)** **(tested in the lab container, [3.3](03-tcp-in-depth.md))**.
 
 ## Where it can fail: symptom → step
 
-This table is the backbone of [troubleshooting](11-troubleshooting-connectivity.md). Every message below was seen in this module's labs unless marked otherwise.
+The backbone of [troubleshooting](11-troubleshooting-connectivity.md). Every message was seen in this module's labs unless marked otherwise.
 
 | Step | What failure looks like | Seen in |
 |---|---|---|
@@ -136,29 +46,17 @@ This table is the backbone of [troubleshooting](11-troubleshooting-connectivity.
 | 7. TLS | `curl: (60)` unknown issuer / name mismatch / expired | [3.6](06-tls-and-certificates.md) |
 | 8. HTTP / LB | `502` / `503` / `504` from the load balancer; `404`, `401`, `403` from the app | [3.5](05-http-and-https.md) (LB codes: illustrative, not reproduced in a lab) |
 
-## The same journey from a container
-
-From a container on Docker's **default bridge** calling an external API:
-
-1. DNS: the container's `/etc/resolv.conf` (copied from the host, or `127.0.0.11` on a user-defined network).
-2. Route: `default via 172.17.0.1` → the **docker0** bridge on the host.
-3. The host **forwards** the packet and **MASQUERADEs** it to the host's IP.
-4. Then the host's own route, NAT (home router / AWS NAT gateway), and steps 6–9 as above.
-
-Details and tested outputs: [10.1](../10-container-and-kubernetes-networking/01-docker-bridge-networking-inside-out.md) and [Lab 10.1](../13-hands-on-labs/lab-10.1-docker-bridge-nat-and-dns.md).
-
 ## The same journey from a Kubernetes pod in AWS (EKS)
 
-A pod calling `http://orders.shop.svc.cluster.local` and then an external API:
+![Top: a Docker container uses the docker0 bridge as its gateway and the host MASQUERADEs it. Bottom: an EKS pod asks CoreDNS, kube-proxy DNATs the ClusterIP to a pod IP that is a real VPC address, and external traffic is SNATed to the node IP, then goes through the NAT gateway and internet gateway](../diagrams/3.10-container-pod-journey.drawio.svg)
 
-1. **DNS** → CoreDNS (the `kube-dns` Service), with `ndots:5` search-list expansion ([3.4](04-dns.md)).
-2. The Service name resolves to a **ClusterIP**; **kube-proxy** rules **DNAT** it to one healthy **pod IP** ([3.8](08-nat-pat-and-port-forwarding.md)).
-3. With the AWS VPC CNI, pod IPs are real **VPC addresses**, so pod-to-pod traffic is plain VPC routing.
-4. For the external API, traffic leaving the VPC is SNATed to the node IP, then goes through a **NAT gateway** (private subnet) and the **internet gateway**.
-
-Covered in depth in [Level 10](../10-container-and-kubernetes-networking/README.md) and [Level 9](../09-cloud-networking/README.md).
-
----
+- **Docker (default bridge):** DNS comes from the container's `/etc/resolv.conf` (copied from the host, or `127.0.0.11` on a user-defined network); `default via 172.17.0.1` → **docker0**; the host forwards and **MASQUERADEs** to its own IP; then the host's own route, NAT (home router / AWS NAT gateway), and steps 6–9 as above. Details and tested outputs: [10.1](../10-container-and-kubernetes-networking/01-docker-bridge-networking-inside-out.md), [Lab 10.1](../13-hands-on-labs/lab-10.1-docker-bridge-nat-and-dns.md).
+- **EKS pod** calling `http://orders.shop.svc.cluster.local`, then an external API:
+  1. **DNS** → CoreDNS (the `kube-dns` Service), with `ndots:5` search-list expansion ([3.4](04-dns.md)).
+  2. The name resolves to a **ClusterIP**; **kube-proxy** rules **DNAT** it to one healthy **pod IP** ([3.8](08-nat-pat-and-port-forwarding.md)).
+  3. With the AWS VPC CNI, pod IPs are real **VPC addresses**, so pod-to-pod traffic is plain VPC routing.
+  4. Traffic leaving the VPC is SNATed to the node IP, then goes through a **NAT gateway** (the route for a private subnet) and the **internet gateway**.
+- In depth: [Level 10](../10-container-and-kubernetes-networking/README.md) and [Level 9](../09-cloud-networking/README.md).
 
 ## Try it
 
@@ -208,12 +106,4 @@ Then offer depth where they want it: "I can go deeper into DNS resolution, the T
 
 </details>
 
-## Summary
-
-- **DNS → route → ARP → TCP → (NAT) → internet routing → TLS → HTTP → response.**
-- Each step has a distinctive failure message; matching the message to the step is most of troubleshooting.
-- Containers and pods add their own DNS, bridge/CNI routing and NAT/DNAT steps in front of the same journey.
-
-## Next
-
-➡️ [3.11 · Troubleshooting connectivity](11-troubleshooting-connectivity.md): a repeatable method for finding which step is broken.
+➡️ **Next:** [3.11 · Troubleshooting connectivity](11-troubleshooting-connectivity.md): a repeatable method for finding which step is broken.

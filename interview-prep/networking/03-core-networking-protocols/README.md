@@ -1,10 +1,10 @@
 # Level 3 · Core Networking Protocols
 
-**Goal:** understand, and be able to observe with your own captures, every protocol involved in "open a web page": Ethernet, TCP and UDP, DNS, HTTP, TLS, ICMP and NAT, and then use that knowledge to troubleshoot any connection methodically.
+![The Level 3 lessons in reading order: 3.1 leads to 3.2 and 3.7; 3.2 to 3.3, 3.4, 3.8 and 3.9; 3.3 to 3.5 to 3.6; 3.4, 3.6, 3.7 and 3.8 feed 3.10, then 3.11](../diagrams/level-3-map.drawio.svg)
 
-**Start here if:** you've finished [Level 2](../02-ip-addressing-and-subnetting/README.md), or you can already subnet and explain a default gateway and ARP.
-
-⏱️ **Estimated time:** about 20 hours (lessons ~15 h, labs ~5 h). This is an estimate.
+- **Goal:** understand, and observe with your own captures, every protocol involved in "open a web page" (Ethernet, TCP and UDP, DNS, HTTP, TLS, ICMP, NAT), then use it to troubleshoot any connection methodically.
+- **Start here if:** you've finished [Level 2](../02-ip-addressing-and-subnetting/README.md), or you can already subnet and explain a default gateway and ARP.
+- ⏱️ **About 20 hours** (lessons ~15 h, labs ~5 h). This is an estimate.
 
 ## Lessons (read in this order)
 
@@ -21,17 +21,6 @@
 | 3.9 | [Everyday protocols and ports](09-everyday-protocols-and-ports.md) | Recognise common ports; use SSH tunnels and jump hosts; know why NTP matters | 60 min |
 | 3.10 | [Packet flow end to end](10-packet-flow-end-to-end.md) ⭐ | Answer "what happens when you type a URL" step by step, with failure modes | 75 min |
 | 3.11 | [Troubleshooting connectivity](11-troubleshooting-connectivity.md) ⭐🔥 | Apply the 6-step method; map any error message to the broken step | 90 min |
-
-```mermaid
-flowchart LR
-    E["3.1 Ethernet"] --> T["3.2 TCP/UDP"] --> TD["3.3 TCP in depth"]
-    T --> D["3.4 DNS"]
-    TD --> H["3.5 HTTP"] --> S["3.6 TLS"]
-    E --> I["3.7 ICMP"]
-    T --> N["3.8 NAT"]
-    T --> P["3.9 Ports"]
-    D & S & I & N --> F["3.10 End-to-end flow"] --> X["3.11 Troubleshooting"]
-```
 
 ## Practice
 
