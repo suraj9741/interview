@@ -1,38 +1,14 @@
 # Lab 2.1 · Subnetting by Hand, Then Verify 🔥
 
 > **Level 2** · ⏱️ about 60 minutes (estimate) · 📝 paper + 🐍 Python 3 (Mac or Linux) + optional 🐧 lab container · 💰 free
-> Related lessons: [2.2](../02-ip-addressing-and-subnetting/02-ipv4-addresses-and-ranges.md) · [2.3](../02-ip-addressing-and-subnetting/03-subnet-masks-and-cidr.md) · [2.4](../02-ip-addressing-and-subnetting/04-subnetting-step-by-step.md) · [2.5](../02-ip-addressing-and-subnetting/05-vlsm-and-route-summarization.md)
+> Lessons: [2.2](../02-ip-addressing-and-subnetting/02-ipv4-addresses-and-ranges.md) · [2.3](../02-ip-addressing-and-subnetting/03-subnet-masks-and-cidr.md) · [2.4](../02-ip-addressing-and-subnetting/04-subnetting-step-by-step.md) · [2.5](../02-ip-addressing-and-subnetting/05-vlsm-and-route-summarization.md) · Tools: [files/lab-02.1/subnet_check.py](files/lab-02.1/subnet_check.py) (standard `ipaddress` module only), `ipcalc` (optional: `brew install ipcalc` on a Mac; it's in the lab container)
 
-## Objective
+![Three parts, each: answer on paper, check with subnet_check.py (plus ipcalc and ip route get in Part B), then score against the target](../diagrams/lab-2.1-lab-map.drawio.svg)
 
-Do subnetting **on paper first**, then check every answer with a tool, so you learn the method and find your own mistakes.
-
-- **Part A:** classify addresses (private, public, special).
-- **Part B:** find network, broadcast, host range and usable count for 10 addresses; then watch a Linux host make the "local or remote?" decision.
-- **Part C:** build a VLSM plan, check it for overlaps, and test two summaries.
-
-## Prerequisites
-
-- Lessons 2.2–2.5.
-- Python 3 (built into macOS and Linux). `ipcalc` is optional (`brew install ipcalc` on a Mac; it's in the lab container).
-
-## Tools
-
-- [files/lab-02.1/subnet_check.py](files/lab-02.1/subnet_check.py): a small checker using only Python's standard `ipaddress` module.
-- `ipcalc`: prints the binary, which helps you see *why* an answer is right.
-
-## Topology
-
-None for parts A and C. Part B's last step uses one namespace with one interface:
-
-```mermaid
-flowchart LR
-    H["host namespace<br/>10.20.37.140/26<br/>default via 10.20.37.129"] --- L["veth (nothing else attached)"]
-```
+- ✍️ **Rule for this lab:** write every answer on paper **before** running a command. Score yourself honestly.
+- Targets: Part A 9/9 · Part B 10/10 for network, broadcast and usable count · Part C a plan with no overlaps and the correct summary / non-summary.
 
 ## Steps
-
-> ✍️ **Rule for this lab:** write every answer on paper **before** running a command. Score yourself honestly.
 
 ### Part A · Classify these addresses
 
@@ -150,7 +126,7 @@ broadcast 10.20.37.191 dev veth0 src 10.20.37.140 uid 0
 10.20.38.1 via 10.20.37.129 dev veth0 src 10.20.37.140 uid 0
 ```
 
-Inside the `/26` → delivered directly; `.191` → recognised as the **broadcast**; `.200` (looks close, but it's in the next `/26`) → **via the gateway**.
+![Namespace host with veth0 10.20.37.140/26 and veth1; .150 and .190 fall inside 10.20.37.128/26 and are sent directly, .191 is the broadcast, .200 and 10.20.38.1 are outside the /26 and go via 10.20.37.129](../diagrams/lab-2.1-local-or-remote.drawio.svg)
 
 ### Part C · A VLSM plan and two summaries
 
@@ -178,13 +154,9 @@ Inside the `/26` → delivered directly; `.191` → recognised as the **broadcas
    exact summary: ['192.168.5.0/24', '192.168.6.0/23', '192.168.8.0/24']
    ```
 
+   ![The plan as an address bar: /25, /26, /27, two /30 links and free .232/29 and .240/28; then 172.16.8–15 fit one /21, while 192.168.5–8 straddle two /22 blocks](../diagrams/lab-2.1-vlsm-summaries.drawio.svg)
+
    The second set **can't** be one route: 5 isn't a multiple of 4, so it straddles two `/22` blocks ([2.5](../02-ip-addressing-and-subnetting/05-vlsm-and-route-summarization.md)).
-
-## Expected results
-
-- Part A: 9/9 correct.
-- Part B: 10/10 correct for network, broadcast and usable count.
-- Part C: a plan with no overlaps, and the correct summary/non-summary.
 
 ## Verification
 

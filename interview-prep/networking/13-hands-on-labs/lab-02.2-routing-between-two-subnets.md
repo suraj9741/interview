@@ -1,31 +1,13 @@
 # Lab 2.2 · Routing Between Two Subnets
 
 > **Level 2** · ⏱️ about 45 minutes, plus 20 for part C (estimate) · 🐧 Linux lab container ([setup](00-lab-environment-setup.md)) · 💰 free
-> Related lessons: [2.7](../02-ip-addressing-and-subnetting/07-default-gateway-routing-table-and-arp.md) · [3.7](../03-core-networking-protocols/07-icmp-ping-and-traceroute.md) · [3.11](../03-core-networking-protocols/11-troubleshooting-connectivity.md)
+> Lessons: [2.7](../02-ip-addressing-and-subnetting/07-default-gateway-routing-table-and-arp.md) · [3.7](../03-core-networking-protocols/07-icmp-ping-and-traceroute.md) · [3.11](../03-core-networking-protocols/11-troubleshooting-connectivity.md) · Tools: `ip`, `sysctl`, `ping`, `tcpdump`, `traceroute`, `tracepath`, `iptables`, `python3` (as a tiny web server)
 
-## Objective
+![h1 (eth0 10.0.1.10/24), r1 (eth0 10.0.1.1/24, eth1 10.0.12.1/30), r2 (eth1 10.0.12.2/30, eth0 10.0.2.1/24), h2 (eth0 10.0.2.10/24), with the routes Part B adds and the changes Part C makes](../diagrams/lab-2.2-topology.drawio.svg)
 
-- **Part A:** build two subnets joined by two routers.
-- **Part B:** make `h1` reach `h2` by fixing one thing at a time, and read the **different error** each missing piece produces.
-- **Part C:** use TTL, `traceroute` (UDP, ICMP and TCP), a silent hop and an MTU mismatch to see what [3.7](../03-core-networking-protocols/07-icmp-ping-and-traceroute.md) describes.
-
-## Prerequisites
-
-- The [lab environment](00-lab-environment-setup.md) running.
-- Lesson 2.7.
-
-## Tools
-
-`ip`, `sysctl`, `ping`, `tcpdump`, `traceroute`, `tracepath`, `iptables`, `python3` (as a tiny web server).
-
-## Topology
-
-```mermaid
-flowchart LR
-    h1["h1<br/>eth0 10.0.1.10/24"] --- r1["r1<br/>eth0 10.0.1.1/24<br/>eth1 10.0.12.1/30"]
-    r1 --- r2["r2<br/>eth1 10.0.12.2/30<br/>eth0 10.0.2.1/24"]
-    r2 --- h2["h2<br/>eth0 10.0.2.10/24"]
-```
+- **A:** build two subnets joined by two routers. **B:** make `h1` reach `h2` one fix at a time and read the **different error** each missing piece produces.
+- You'll see all three "unreachable" situations: no local route (instant error), a router without a route (`Destination Net Unreachable`), a missing return route (silence).
+- **C:** TTL, `traceroute` (UDP, ICMP, TCP) in a capture, a silent hop, and path MTU discovery working when ICMP is allowed.
 
 ## Part A · Build it
 
@@ -52,22 +34,24 @@ ip -n h1 route
 
 ## Part B · Fix it one step at a time
 
-Run the same test after every step and **write down the exact message** before reading the explanation:
+Run the same test after every step and **write down the exact message** before looking at the ladder below:
 
 ```bash
 ip netns exec h1 ping -c 2 -W 1 10.0.2.10
 ```
 
-| Step | Do this | Expected (tested) | Why |
-|---|---|---|---|
-| 1 | Nothing yet | `ping: connect: Network is unreachable` | h1 has no route to `10.0.2.0/24` and no default route; nothing is sent |
-| 2 | `ip -n h1 route add default via 10.0.1.1` | `2 packets transmitted, 0 received, 100% packet loss` (no error) | r1 receives the packets but **isn't forwarding**: `ip netns exec r1 sysctl net.ipv4.ip_forward` → `0` |
-| 3 | `ip netns exec r1 sysctl -w net.ipv4.ip_forward=1`<br/>`ip netns exec r2 sysctl -w net.ipv4.ip_forward=1` | `From 10.0.1.1 icmp_seq=1 Destination Net Unreachable` | r1 forwards now, but has **no route** to `10.0.2.0/24`, and says so |
-| 4 | `ip -n r1 route add 10.0.2.0/24 via 10.0.12.2` | `100% packet loss` (no error) | The request now reaches h2, but **h2 has no route back** to `10.0.1.0/24` |
-| 5 | `ip -n h2 route add default via 10.0.2.1` | `100% packet loss` (no error) | h2 replies via r2, but **r2 has no route back** to `10.0.1.0/24` |
-| 6 | `ip -n r2 route add 10.0.1.0/24 via 10.0.12.1` | `64 bytes from 10.0.2.10: icmp_seq=1 ttl=62 time=0.039 ms` ✅ | Routes exist in both directions. `ttl=62` = 64 − 2 routers |
+| Step | Do this | Expected (tested) |
+|---|---|---|
+| 1 | Nothing yet | `ping: connect: Network is unreachable` |
+| 2 | `ip -n h1 route add default via 10.0.1.1` | `2 packets transmitted, 0 received, 100% packet loss` (no error). Check: `ip netns exec r1 sysctl net.ipv4.ip_forward` → `0` |
+| 3 | `ip netns exec r1 sysctl -w net.ipv4.ip_forward=1`<br/>`ip netns exec r2 sysctl -w net.ipv4.ip_forward=1` | `From 10.0.1.1 icmp_seq=1 Destination Net Unreachable` |
+| 4 | `ip -n r1 route add 10.0.2.0/24 via 10.0.12.2` | `100% packet loss` (no error) |
+| 5 | `ip -n h2 route add default via 10.0.2.1` | `100% packet loss` (no error) |
+| 6 | `ip -n r2 route add 10.0.1.0/24 via 10.0.12.1` | `64 bytes from 10.0.2.10: icmp_seq=1 ttl=62 time=0.039 ms` ✅ |
 
-**Prove step 4 and 5 yourself** (redo them on a fresh build, or delete the routes again). With h2 having no route back, capture on h2 while h1 pings:
+![The six steps: what you add, what h1's ping shows, and where the packet stops each time](../diagrams/lab-2.2-fix-ladder.drawio.svg)
+
+**Prove steps 4 and 5 yourself** (on a fresh build, or delete the routes again). With no route back on h2, capture on h2 while h1 pings:
 
 ```bash
 ip netns exec h2 timeout 4 tcpdump -i eth0 -nn icmp &
@@ -97,7 +81,7 @@ ip netns exec h1 ip route get 10.0.2.10
 ip netns exec h1 ip neigh
 ```
 
-**Expected (tested; MACs will differ):**
+**Expected (tested; MACs will differ):** h1's neighbour table has the **gateway's** MAC, never h2's.
 
 ```text
  1  10.0.1.1  0.030 ms  0.003 ms  0.003 ms
@@ -108,11 +92,11 @@ ip netns exec h1 ip neigh
 10.0.1.1 dev eth0 lladdr e2:42:f7:66:fc:1c REACHABLE
 ```
 
-h1's neighbour table has the **gateway's** MAC, never h2's.
-
 ## Part C · TTL, traceroute and MTU
 
 Everything below needs the working network from the end of Part B.
+
+![Traceroute's UDP probes with TTL 1, 2, 3 get time exceeded from r1 and r2, then port unreachable from h2; a 1500-byte DF ping gets "Frag needed (mtu = 1400)" from r1](../diagrams/lab-2.2-traceroute-mtu.drawio.svg)
 
 1. **TTL.** Send pings that are allowed only 1, then 2 hops:
 
@@ -184,13 +168,7 @@ Everything below needs the working network from the end of Part B.
         Resume: pmtu 1400 hops 3 back 3
    ```
 
-   The first ping is refused by r1 with the path's MTU; h1 **remembers** it, so the second fails locally; a 1400-byte packet fits.
-
-## Expected results
-
-- You've seen all three "unreachable" situations: no local route (instant error), a router without a route (`Destination Net Unreachable`), and a missing return route (silence).
-- Traceroute's mechanism (TTL + time exceeded + port unreachable) is visible in a capture.
-- Path MTU discovery works when ICMP is allowed.
+   r1 refuses the first ping and reports the path's MTU; h1 **remembers** it, so the second fails locally; a 1400-byte packet fits.
 
 ## Verification
 

@@ -1,27 +1,13 @@
 # Lab 2.3 · DHCP: Capture the DORA Exchange
 
 > **Level 2** · ⏱️ about 30 minutes (estimate) · 🐧 Linux lab container ([setup](00-lab-environment-setup.md)) · 💰 free
-> Related lesson: [2.8 · DHCP](../02-ip-addressing-and-subnetting/08-dhcp.md)
+> Lesson: [2.8 · DHCP](../02-ip-addressing-and-subnetting/08-dhcp.md) · Tools: `dnsmasq` (DHCP server), `dhclient` (ISC DHCP client), `tcpdump`, `ip`
 
-## Objective
+![Namespace dhcp-server (eth0 192.168.50.1/24, dnsmasq with pool .100 to .150 and 1 h leases) joined by a veth to namespace laptop (eth0, no address yet, dhclient); step 2 protects the container's resolv.conf](../diagrams/lab-2.3-topology.drawio.svg)
 
-Run a real DHCP server (`dnsmasq`) and client (`dhclient`) in two namespaces, capture **Discover, Offer, Request, Ack**, read the options and the lease, release the address, and see what a client does when no server answers.
-
-## Prerequisites
-
-- The [lab environment](00-lab-environment-setup.md) running.
-- Lesson 2.8.
-
-## Tools
-
-`dnsmasq` (DHCP server), `dhclient` (ISC DHCP client), `tcpdump`, `ip`.
-
-## Topology
-
-```mermaid
-flowchart LR
-    S["dhcp-server namespace<br/>eth0 192.168.50.1/24<br/>dnsmasq: pool .100–.150, 1 h leases"] ---|veth| C["laptop namespace<br/>eth0: no address yet"]
-```
+- No server: repeated Discovers, no address.
+- With the server: **Discover, Offer, Request, Ack** complete; address, default route and DNS are configured; the lease is recorded on both sides.
+- Release: the address is removed and the server logs it.
 
 ## Steps
 
@@ -36,7 +22,7 @@ flowchart LR
    ip -n laptop link set lo up
    ```
 
-2. ⚠️ **Protect the container's own DNS settings.** `dhclient` writes the DNS server it receives into `/etc/resolv.conf`. Inside a namespace, `ip netns exec` uses `/etc/netns/<name>/resolv.conf` **if that file exists**; otherwise `dhclient` would overwrite the **container's** real `/etc/resolv.conf`. Create it first:
+2. ⚠️ **Protect the container's own DNS settings.** `dhclient` writes the DNS server it receives into `/etc/resolv.conf`. `ip netns exec` uses `/etc/netns/<name>/resolv.conf` **if that file exists**; otherwise `dhclient` would overwrite the **container's** real `/etc/resolv.conf`. Create it first:
 
    ```bash
    mkdir -p /etc/netns/laptop
@@ -57,7 +43,7 @@ flowchart LR
    ip netns exec laptop timeout 25 dhclient -v -1 -pf /tmp/dhcp.pid -lf /tmp/dhcp.leases eth0 2>&1 | grep DHCP
    ```
 
-   **Expected (tested):** Discovers with growing gaps, and no answer:
+   **Expected (tested):** Discovers with growing gaps, and no answer. (A Mac or Windows laptop would now give itself a `169.254.x.x` address.)
 
    ```text
    DHCPDISCOVER on eth0 to 255.255.255.255 port 67 interval 3 (xid=0x21d92f41)
@@ -66,9 +52,7 @@ flowchart LR
    DHCPDISCOVER on eth0 to 255.255.255.255 port 67 interval 15 (xid=0x21d92f41)
    ```
 
-   (A Mac or Windows laptop would now give itself a `169.254.x.x` address.)
-
-5. **Start the DHCP server** (in the background, logging to a file):
+5. **Start the DHCP server** (in the background, logging to a file). `--port=0` turns off dnsmasq's DNS function: only DHCP runs.
 
    ```bash
    ip netns exec dhcp-server dnsmasq --no-daemon --conf-file=/dev/null \
@@ -79,8 +63,6 @@ flowchart LR
      --dhcp-leasefile=/tmp/dnsmasq.leases --log-dhcp > /tmp/dnsmasq.log 2>&1 &
    ```
 
-   `--port=0` turns off dnsmasq's DNS function: only DHCP runs.
-
 6. **Capture, then ask for an address.**
 
    ```bash
@@ -89,7 +71,7 @@ flowchart LR
    ip netns exec laptop dhclient -v -1 -pf /tmp/dhcp.pid -lf /tmp/dhcp.leases eth0 2>&1 | grep -E 'DHCP|bound'
    ```
 
-   **Expected (tested; the address and IDs may differ):** you'll see one or two Discovers before the Offer. Clients retry by design, so both are normal. In testing, the first Discover went unanswered in 4 of 10 runs, and never in 5 runs with dnsmasq's `--no-ping` option, so the likely cause is dnsmasq **pinging** the address before offering it, to check that nobody is already using it. This run needed two:
+   **Expected (tested; the address and IDs may differ):** one or two Discovers before the Offer; both are normal (clients retry by design). This run needed two:
 
    ```text
    DHCPDISCOVER on eth0 to 255.255.255.255 port 67 interval 3 (xid=0xbaf0a29)
@@ -100,6 +82,10 @@ flowchart LR
    bound to 192.168.50.108 -- renewal in 1503 seconds.
    ```
 
+   - Why two? In testing, the first Discover went unanswered in 4 of 10 runs, and never in 5 runs with dnsmasq's `--no-ping` option. The likely cause: dnsmasq **pings** the address before offering it, to check that nobody is already using it.
+
+   ![DORA between laptop (port 68) and dhcp-server (192.168.50.1, port 67): broadcast Discover, Offer with lease, T1, T2, mask, router and DNS, broadcast Request, Ack, later a unicast Release; the client's state on the left](../diagrams/lab-2.3-dora.drawio.svg)
+
 7. **See what DHCP configured.**
 
    ```bash
@@ -109,7 +95,7 @@ flowchart LR
    cat /tmp/dnsmasq.leases
    ```
 
-   **Expected (tested):**
+   **Expected (tested):** address, default route **and** DNS server all came from one exchange.
 
    ```text
    eth0@if2         UP             192.168.50.108/24
@@ -118,8 +104,6 @@ flowchart LR
    nameserver 192.168.50.1
    1792010421 fe:25:0f:37:82:a2 192.168.50.108 vm *
    ```
-
-   Address, default route **and** DNS server all came from one exchange.
 
 8. **Read the capture** (wait for the `timeout 20` to finish first):
 
@@ -150,7 +134,8 @@ flowchart LR
        DHCP-Message (53), length 1: ACK
    ```
 
-   Find: the broadcast destination of Discover and Request; the **xid** tying all four together; **RN** = T1 (50% of 3600) and **RB** = T2 (87.5%).
+   - Find: the broadcast destination of Discover and Request; the **xid** (`0x8ca96847`) on all four packets; **RN** = T1 (50% of 3600) and **RB** = T2 (87.5%).
+   - In step 6's dhclient log, Discover and Ack show `xid=0xbaf0a29` but the Request line shows `0x290aaf0b`: the same four bytes (`0b af 0a 29`) in reverse order. The server log in step 9 shows `196020777` (= `0xbaf0a29`) on all four lines; the Release has a different ID (`4206602068`).
 
 9. **Release the address.**
 
@@ -169,12 +154,6 @@ flowchart LR
    dnsmasq-dhcp: 196020777 DHCPACK(eth0) 192.168.50.108 fe:25:0f:37:82:a2 vm
    dnsmasq-dhcp: 4206602068 DHCPRELEASE(eth0) 192.168.50.108 fe:25:0f:37:82:a2
    ```
-
-## Expected results
-
-- No server: repeated Discovers, no address.
-- With the server: DORA completes; address, route and DNS are configured; the lease is recorded on both sides.
-- Release: the address is removed and the server logs it.
 
 ## Verification
 

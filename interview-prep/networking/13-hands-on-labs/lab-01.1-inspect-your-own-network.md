@@ -1,30 +1,12 @@
 # Lab 1.1 · Inspect Your Own Network
 
 > **Level 1** · ⏱️ about 20 minutes (estimate) · 💻 your Mac (and optionally any Linux machine) · 💰 free
-> Related lessons: [1.1](../01-networking-fundamentals/01-what-is-a-network.md) · [1.2](../01-networking-fundamentals/02-network-devices.md) · [1.3](../01-networking-fundamentals/03-addresses-ports-and-protocols.md)
+> Lessons: [1.1](../01-networking-fundamentals/01-what-is-a-network.md) · [1.2](../01-networking-fundamentals/02-network-devices.md) · [1.3](../01-networking-fundamentals/03-addresses-ports-and-protocols.md) · Tools (built into macOS, nothing to install): `ifconfig`, `ipconfig`, `networksetup`, `route`, `netstat`, `scutil`, `arp`, `lsof`, `ping`, `curl`
 
-## Objective
+![Your Mac on Wi-Fi to the home router 192.168.29.1 (gateway, DHCP, DNS, NAT), then the provider and the internet; under each, the numbered step and command that reveals its values](../diagrams/lab-1.1-home-network.drawio.svg)
 
-Find, on your own machine: your **interfaces**, **MAC** and **IP addresses**, your **default gateway**, your **DNS servers**, your **public IP**, and the **programs listening** for connections. Then draw your home network.
-
-## Prerequisites
-
-- Lessons 1.1–1.3.
-- A terminal on your Mac. Nothing to install.
-
-## Tools
-
-`ifconfig`, `ipconfig`, `networksetup`, `route`, `netstat`, `scutil`, `arp`, `lsof`, `ping`, `curl` (all built into macOS). Linux equivalents are given in each step.
-
-## Topology
-
-```mermaid
-flowchart LR
-    M["Your Mac<br/>en0 (Wi-Fi)<br/>192.168.29.x"] -- "Wi-Fi" --> R["Home router<br/>192.168.29.1<br/>gateway · DHCP · DNS · NAT"]
-    R -- "WAN / fibre" --> ISP["Provider"] --> I(("Internet"))
-```
-
-(The addresses are the ones seen on the author's Mac; yours may differ.)
+- Find your **interfaces**, **MAC** and **IP addresses**, **default gateway**, **DNS servers**, **public IP** and the **programs listening** for connections, then draw your home network.
+- Each step gives the Linux equivalent. ✍️ Write each value in the table at the end.
 
 ## Steps
 
@@ -45,8 +27,6 @@ lo               UNKNOWN        127.0.0.1/8
 eth0             UP             192.0.2.2/24
 ```
 
-✍️ Write down: your interface name, MAC, IPv4 address and prefix length.
-
 ### 2. Your default gateway and routing table
 
 ```bash
@@ -63,8 +43,6 @@ default via 192.0.2.1 dev eth0
 192.0.2.0/24 dev eth0 proto kernel scope link src 192.0.2.2
 ```
 
-✍️ Write down: your gateway's IP.
-
 ### 3. The gateway's MAC address (ARP)
 
 ```bash
@@ -72,9 +50,7 @@ ping -c 2 192.168.29.1               # use YOUR gateway's IP
 arp -a | head                        # the IP → MAC table
 ```
 
-**Linux:** `ip neigh`.
-
-**Expected:** an entry for your gateway with a MAC address. In the lab container **(tested in the lab container)**: `192.0.2.1 dev eth0 lladdr 02:fc:00:00:00:05 REACHABLE`.
+**Linux:** `ip neigh`. **Expected:** an entry for your gateway with a MAC address. In the lab container **(tested in the lab container)**: `192.0.2.1 dev eth0 lladdr 02:fc:00:00:00:05 REACHABLE`.
 
 ### 4. Your DNS servers
 
@@ -100,9 +76,7 @@ curl -s https://ifconfig.me ; echo
 lsof -nP -iTCP -sTCP:LISTEN
 ```
 
-**Linux:** `ss -tlnp`.
-
-**Expected:** a few programs. For each, note whether the local address is `127.0.0.1` (only this machine can connect) or `*` / `0.0.0.0` (anyone who can reach you can connect). See [1.3](../01-networking-fundamentals/03-addresses-ports-and-protocols.md).
+**Linux:** `ss -tlnp`. **Expected:** a few programs. Local address `127.0.0.1` = only this machine can connect; `*` / `0.0.0.0` = anyone who can reach you ([1.3](../01-networking-fundamentals/03-addresses-ports-and-protocols.md)).
 
 ### 7. Reachability
 
@@ -112,11 +86,9 @@ ping -c 3 8.8.8.8                    # the internet, by IP
 ping -c 3 google.com                 # the internet, by name (needs DNS too)
 ```
 
-Compare the `time=` values: the gateway should be a few milliseconds over Wi-Fi; the internet tens of milliseconds.
+Compare `time=`: the gateway should be a few milliseconds over Wi-Fi, the internet tens of milliseconds.
 
-## Expected results
-
-You have filled in this table for your own machine:
+## Your results
 
 | Item | Your value |
 |---|---|

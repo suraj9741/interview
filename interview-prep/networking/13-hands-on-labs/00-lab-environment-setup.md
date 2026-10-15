@@ -2,26 +2,12 @@
 
 > **Do this once** before the Linux labs. ⏱️ about 20 minutes (estimate), most of it waiting for the image to download.
 
-## What you get
+![Option A: namespaces h1, r1, h2 joined by veth pairs inside the netlab container, inside Docker Desktop's Linux VM, on your Mac; Option B: any Ubuntu 24.04 machine](../diagrams/lab-setup-layers.drawio.svg)
 
-Most labs in this folder build small networks **inside one Linux machine** using **network namespaces**: each namespace is a separate "computer" with its own interfaces, IP addresses, routing table and firewall. A **veth pair** is a virtual cable between two of them; a **Linux bridge** is a virtual switch. Nothing touches your real network, and deleting the namespaces removes everything.
-
-```mermaid
-flowchart LR
-    subgraph mac["Your Mac"]
-        subgraph vm["Docker Desktop's Linux VM"]
-            subgraph lab["netlab container (--privileged)"]
-                A["namespace h1"] ---|veth| R["namespace r1"] ---|veth| B["namespace h2"]
-            end
-        end
-    end
-```
-
-## Cost and safety
-
-- **Free.** Everything runs locally. No cloud resources are created by any lab in Levels 1–3.
-- The container runs with `--privileged` so it can create namespaces and firewall rules. That power applies to **Docker Desktop's Linux VM**, not to macOS itself. Don't run these labs with `--privileged` on a shared or production Linux server.
-- Every lab ends with a **cleanup** step. Exiting the container (it was started with `--rm`) also throws everything away.
+- Each **network namespace** is a separate "computer": its own interfaces, IP addresses, routing table and firewall. A **veth pair** is a virtual cable; a **Linux bridge** is a virtual switch. Nothing touches your real network, and deleting the namespaces removes everything.
+- **💰 Free.** Everything runs locally. No lab in Levels 1–3 creates cloud resources.
+- `--privileged` lets the container create namespaces and firewall rules. That power applies to **Docker Desktop's Linux VM**, not to macOS. Don't run these labs with `--privileged` on a shared or production Linux server.
+- Every lab ends with a **🧹 cleanup** step. Exiting the container (started with `--rm`) also throws everything away.
 
 ## Option A (recommended on a Mac): a Docker container
 
@@ -53,7 +39,7 @@ You already have Docker Desktop for the Docker labs.
 
    Expected: it prints `test`, and no errors.
 
-> **Honest note.** The labs were tested in an **Ubuntu 24.04 container with kernel 6.18** that had the same packages installed (versions in the Dockerfile's header). The Dockerfile itself was **not built** during testing, because no Docker daemon was available there. If a package name has changed, `apt-get` will say so; install the closest equivalent.
+> **Honest note.** Tested in an **Ubuntu 24.04 container with kernel 6.18** with the same packages (versions in the Dockerfile's header). The Dockerfile itself was **not built** during testing (no Docker daemon there). If a package name has changed, `apt-get` will say so: install the closest equivalent.
 
 ## Option B: any Ubuntu 24.04 machine
 
@@ -68,7 +54,7 @@ sudo apt-get install -y iproute2 iputils-ping iputils-tracepath traceroute mtr-t
 
 Then run every lab command with `sudo` (or from `sudo -i`).
 
-> ⚠️ **Cloud VMs cost money.** You *can* use an EC2 instance, but it's billed by the hour (plus storage and public IPv4 address charges), and free-tier eligibility depends on your account. If you do, stop or terminate it when you finish, and never open its security group wider than your own IP.
+> ⚠️ **Cloud VMs cost money.** An EC2 instance works, but it's billed by the hour (plus storage and public IPv4 address charges), and free-tier eligibility depends on your account. Stop or terminate it when you finish, and never open its security group wider than your own IP.
 
 ## Conventions used in every lab
 
@@ -91,6 +77,4 @@ Then run every lab command with `sudo` (or from `sudo -i`).
 | `curl` reaches out to a proxy | Your environment has `http_proxy` set: `unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY` |
 | A background server keeps running after a lab | `ip netns pids <ns> \| xargs -r kill` before deleting the namespace |
 
-## Next
-
-Start with [Lab 1.1 · Inspect your own network](lab-01.1-inspect-your-own-network.md) (on your Mac, no container needed) or go back to the [lab index](README.md).
+➡️ **Next:** [Lab 1.1 · Inspect your own network](lab-01.1-inspect-your-own-network.md) (on your Mac, no container needed) or back to the [lab index](README.md).

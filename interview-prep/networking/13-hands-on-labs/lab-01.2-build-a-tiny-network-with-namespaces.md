@@ -1,38 +1,13 @@
 # Lab 1.2 · Build a Tiny Network with Namespaces
 
 > **Level 1** · ⏱️ about 45 minutes (estimate) · 🐧 Linux lab container ([setup](00-lab-environment-setup.md)) · 💰 free
-> Related lessons: [1.2](../01-networking-fundamentals/02-network-devices.md) · [1.3](../01-networking-fundamentals/03-addresses-ports-and-protocols.md) · [1.4](../01-networking-fundamentals/04-network-performance.md) · [3.1](../03-core-networking-protocols/01-ethernet-and-switching-basics.md)
+> Lessons: [1.2](../01-networking-fundamentals/02-network-devices.md) · [1.3](../01-networking-fundamentals/03-addresses-ports-and-protocols.md) · [1.4](../01-networking-fundamentals/04-network-performance.md) (part D) · [3.1](../03-core-networking-protocols/01-ethernet-and-switching-basics.md) · Tools: `ip`, `bridge`, `ping`, `tcpdump`, `tc`, `iperf3`
 
-## Objective
+![Parts A, C, D: pc1 (veth-pc1 192.168.10.1/24) and pc2 (veth-pc2 192.168.10.2/24) joined by a veth pair. Part B: namespace sw with bridge br0 and port1 to port3, each joined by a veth to pc1 to pc3 (eth0 192.168.20.1 to .3/24)](../diagrams/lab-1.2-topology.drawio.svg)
 
-- **Part A:** connect two "PCs" with a virtual cable, give them IP addresses yourself, and watch ARP turn an IP into a MAC.
-- **Part B:** connect three PCs to a software **switch** and prove that it floods broadcasts but sends unicasts only where they belong.
-- **Part C:** see what happens when you try to reach an address outside your subnet with no gateway.
-- **Part D:** limit the link to 10 Mbit/s, measure it with `iperf3`, and watch latency rise when the link is busy.
-
-## Prerequisites
-
-- The [lab environment](00-lab-environment-setup.md) running.
-- Lessons 1.2 and 1.3 (1.4 for part D).
-
-## Tools
-
-`ip` (namespaces, links, addresses, neighbours), `bridge`, `ping`, `tcpdump`, `tc`, `iperf3`.
-
-## Topology
-
-```mermaid
-flowchart LR
-    subgraph A["Part A: a cable"]
-        pc1a["pc1<br/>192.168.10.1/24"] ---|"veth pair"| pc2a["pc2<br/>192.168.10.2/24"]
-    end
-    subgraph B["Part B: a switch"]
-        sw["sw namespace<br/>bridge br0"]
-        p1["pc1<br/>192.168.20.1"] ---|port1| sw
-        p2["pc2<br/>192.168.20.2"] ---|port2| sw
-        p3["pc3<br/>192.168.20.3"] ---|port3| sw
-    end
-```
+- **A:** two PCs and a cable: ping works, and an ARP entry appears only after the first packet.
+- **C:** no gateway → `Network is unreachable`. **D:** a 10 Mbit/s limit measures about 9.4 Mbit/s, and RTT rises from ~0.04 ms to milliseconds under load.
+- **B:** a switch: the third PC sees the broadcast but not the unicast conversation; the FDB has two entries.
 
 ## Part A · Two PCs and a cable
 
@@ -69,15 +44,13 @@ flowchart LR
    ip netns exec pc1 ip addr show veth-pc1
    ```
 
-   **Expected (tested; your MAC will differ):**
+   **Expected (tested; your MAC will differ):** the MAC (`link/ether`), the IP (`inet`) and the MTU (1500):
 
    ```text
    10: veth-pc1@if9: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
        link/ether 6a:f8:20:04:77:d2 brd ff:ff:ff:ff:ff:ff link-netns pc2
        inet 192.168.10.1/24 scope global veth-pc1
    ```
-
-   The MAC (`link/ether`), the IP (`inet`) and the MTU (1500) are all there.
 
 4. Look at pc1's neighbour (ARP) table, ping pc2, and look again:
 
@@ -99,11 +72,12 @@ flowchart LR
    192.168.10.0/24 dev veth-pc1 proto kernel scope link src 192.168.10.1
    ```
 
-   The first ping is slower (0.232 ms): it waited for **ARP**. Afterwards, pc1 knows pc2's MAC. `ttl=64` means no router was crossed.
+   - The first ping is slower (0.232 ms): it waited for **ARP**. Afterwards pc1 knows pc2's MAC.
+   - `ttl=64`: no router was crossed.
 
 ## Part C · Outside the subnet, with no gateway
 
-(Part C uses Part A's PCs, so do it before cleaning up.)
+(Uses Part A's PCs, so do it before cleaning up.)
 
 ```bash
 ip netns exec pc1 ping -c 1 8.8.8.8
@@ -145,7 +119,8 @@ pc1's only route is its own subnet. With no default gateway, it doesn't even try
    [  5]   0.00-4.01   sec  4.50 MBytes  9.41 Mbits/sec                  receiver
    ```
 
-   Trust the **receiver** line: **9.41 Mbit/s**, just under the 10 Mbit/s limit (headers take the rest). The sender figure is higher because it counts data still sitting in buffers. 4.50 **MBytes** in 4 s ≈ 1.1 MB/s: **bits vs bytes** ([1.4](../01-networking-fundamentals/04-network-performance.md)).
+   - Trust the **receiver** line: **9.41 Mbit/s**, just under the limit (headers take the rest). The sender counts data still sitting in buffers.
+   - 4.50 **MBytes** in 4 s ≈ 1.1 MB/s: **bits vs bytes** ([1.4](../01-networking-fundamentals/04-network-performance.md)).
 
 3. Compare latency when idle and when the link is full:
 
@@ -163,7 +138,7 @@ pc1's only route is its own subnet. With no default gateway, it doesn't even try
    rtt min/avg/max/mdev = 5.178/41.610/172.009/65.054 ms      ← while iperf3 fills the link
    ```
 
-   The pings queue behind the bulk data: that's **bufferbloat**. In another run the busy average was about 5 ms; it depends on how full the queue happens to be.
+   The pings queue behind the bulk data: **bufferbloat**. In another run the busy average was about 5 ms; it depends on how full the queue happens to be.
 
 4. Remove the limit:
 
@@ -227,7 +202,7 @@ ip netns del pc1; ip netns del pc2
    76:32:69:66:e4:b9 > ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 42: Request who-has 192.168.20.2 tell 192.168.20.1, length 28
    ```
 
-   The ARP reply and the ping were unicast to MACs the switch had learned, so they never reached pc3.
+   ![Three panels: the ARP request is flooded to pc2 and pc3; the ARP reply goes only to pc1's port; the ping is unicast between pc1 and pc2; the FDB ends with pc1 on port1 and pc2 on port2](../diagrams/lab-1.2-switch-flooding.drawio.svg)
 
 4. Look at what the switch learned:
 
@@ -244,14 +219,7 @@ ip netns del pc1; ip netns del pc2
    30000
    ```
 
-   pc1 and pc2 have been learned on their ports; pc3 hasn't (it never sent anything). Ageing time 30000 = 300 seconds.
-
-## Expected results
-
-- Part A: ping works; an ARP entry appears only after the first packet.
-- Part B: the third PC sees the broadcast but not the unicast conversation; the FDB has two entries.
-- Part C: `Network is unreachable` without a gateway.
-- Part D: about 9.4 Mbit/s with a 10 Mbit/s limit; RTT rises from ~0.04 ms to milliseconds under load.
+   pc1 and pc2 were learned on their ports; pc3 wasn't (it never sent anything). Ageing time 30000 = 300 seconds.
 
 ## Verification
 
