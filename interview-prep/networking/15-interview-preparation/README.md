@@ -1,10 +1,10 @@
 # 15 · Interview Preparation 🎤
 
-Levels 1–12 teach. This module **rehearses**: it turns what you know into answers you can say clearly, in order, under time pressure, with a command that proves each claim.
+![A first pass of about 10 hours after the Level 3 milestone: question bank, scenarios, drills and whiteboard, one mock interview, review; then 20 minutes a day before an interview](../diagrams/interview-prep-plan.drawio.svg)
 
-**Start here when:** you've reached at least the [Level 3 milestone](../03-core-networking-protocols/README.md#milestone-youre-ready-for-level-4-when-you-can). Rehearsing answers you don't understand yet only builds confident mistakes.
-
-⏱️ **Estimated time:** about 10 hours for a first pass (question bank ~3 h, scenarios ~3 h, drills and whiteboard ~2 h, one mock ~1 h, review ~1 h), then 20 minutes a day before an interview. These are estimates.
+- Levels 1–12 teach. This module **rehearses**: answers you can say clearly, in order, under time pressure, with a command that proves each claim.
+- **Start after the [Level 3 milestone](../03-core-networking-protocols/README.md#milestone-youre-ready-for-level-4-when-you-can).** Rehearsing answers you don't understand yet only builds confident mistakes.
+- ⏱️ About 10 hours for a first pass (the split is in the diagram), then 20 minutes a day before an interview. All estimates.
 
 ## What's in this module
 
@@ -15,7 +15,7 @@ Levels 1–12 teach. This module **rehearses**: it turns what you know into answ
 
 ## Interview notes elsewhere in this repository
 
-These were written for the One2N interviews and are the most realistic practice material you have. The networking parts are listed here; the rest of each file covers Linux, CI/CD, databases and observability.
+Written for the One2N interviews: the most realistic practice material you have. Only the networking parts are listed; the rest covers Linux, CI/CD, databases and observability.
 
 | File | Networking parts |
 |---|---|
@@ -27,24 +27,14 @@ These were written for the One2N interviews and are the most realistic practice 
 
 ## How to answer a networking question
 
-Interviewers rarely want a definition. They want to see that you can follow a packet and prove where it stopped. Use the same five steps for almost every question:
+![Five steps: clarify, one-sentence answer, the mechanism in order, proof with a command and its output, then connect it to their stack; and what to say when you don't know](../diagrams/interview-answer-steps.drawio.svg)
 
-1. **Clarify** the question in one line. "Not reachable from where: the same VPC, the internet, another pod?"
-2. **Answer in one sentence** first. "It's listening on `127.0.0.1`, so only the same machine can connect."
-3. **Walk the mechanism in order**: the packet's path, or the layers, or the [6-step method](../03-core-networking-protocols/11-troubleshooting-connectivity.md#the-method-say-this-in-the-interview) (DNS → route → port → listener → rules → app).
-4. **Prove it**: name the command, and what its output would show. `ss -ltnp` shows `127.0.0.1:8000`.
-5. **Connect it to their stack**: the same idea in Docker, Kubernetes or AWS.
-
-```mermaid
-flowchart LR
-    C["1 · Clarify"] --> A["2 · One-sentence answer"] --> M["3 · Mechanism, in order"] --> P["4 · Proof: command + output"] --> S["5 · Their stack"]
-```
-
-**When you don't know:** say what you do know, how you'd find out (the command or the document), and what you'd expect to see. "I'm not sure of the exact default, but I'd check `sysctl net.ipv4.tcp_keepalive_time`" is a good answer; a confident guess is a bad one.
+- Interviewers rarely want a definition. They want to see you follow a packet and prove where it stopped. Use these five steps for almost every question.
+- Step 3 for "it doesn't work" questions is the [6-step method](../03-core-networking-protocols/11-troubleshooting-connectivity.md#the-method-say-this-in-the-interview) (DNS → route → port → listener → rules → app).
 
 ## Question bank by level
 
-Answer each one **out loud before** you open the link. The link goes to the lesson that answers it. ⭐ = very likely · 🔥 = a gap from the 9 Oct review · 🖥️ = you may be asked to show it live.
+Answer each one **out loud before** you open the link to the lesson that answers it. ⭐ very likely · 🔥 a gap from the 9 Oct review · 🖥️ may be asked to show it live.
 
 ### Level 1 · Fundamentals
 
@@ -100,7 +90,7 @@ Drill the maths, not just the questions: [Level 2 drills](../14-practice-exercis
 
 ### Levels 4–7, 9, 11 and 12 (not written yet)
 
-These levels are outlines. Until they're written, practise their likeliest interview topics from the notes that already exist:
+Outlines only. Until they're written, practise their likeliest topics from notes that exist:
 
 - **Cloud networking (Level 9):** overlapping CIDRs between VPCs ([deep dive A2](../../hemant-scenario-deep-dives.md)), pod CIDRs on EKS (A3), AWS to on-premises connectivity ([model answers Q50–Q51](../../hemant-model-answers.md)), and the AWS scenarios in [N1–N13](troubleshooting-scenarios-docker-kubernetes-aws.md).
 - **Kubernetes Services and Ingress (Level 10):** [Kubernetes 08 · Services and DNS](../../kubernetes/08-services-and-dns.md) and [14 · Cluster networking](../../kubernetes/14-cluster-networking.md).
@@ -108,7 +98,7 @@ These levels are outlines. Until they're written, practise their likeliest inter
 
 ## Explain-out-loud drills
 
-Talking is a separate skill from knowing. Do one or two of these a day: **set a timer, record yourself on your phone, then listen back** for gaps, filler words and steps out of order.
+Talking is a separate skill from knowing. One or two a day: **set a timer, record yourself on your phone, listen back** for gaps, filler words and steps out of order.
 
 | # | Drill | Time limit | Check against |
 |---|---|---|---|
@@ -123,7 +113,7 @@ Talking is a separate skill from knowing. Do one or two of these a day: **set a 
 
 ## Whiteboard diagrams to practise
 
-You'll often be asked to draw. Practise each one **from memory** on paper until you can draw it in two minutes while talking.
+You'll often be asked to draw. Practise each **from memory** on paper until you can draw it in two minutes while talking.
 
 | Diagram | Reference | When it comes up |
 |---|---|---|
@@ -136,7 +126,7 @@ You'll often be asked to draw. Practise each one **from memory** on paper until 
 
 ## A one-hour mock interview
 
-Ask a friend to play the interviewer, or do it alone with a recorder. They pick; you don't see the list in advance.
+A friend plays the interviewer (or do it alone with a recorder). They pick; you don't see the list in advance.
 
 | Minutes | Part | Material |
 |---|---|---|

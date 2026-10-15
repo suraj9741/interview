@@ -1,31 +1,17 @@
 # 🌐 Networking: Zero to Expert
 
-A complete networking curriculum, from "what is a network?" to designing and troubleshooting production networks in Linux, Kubernetes and the cloud. It started as the networking notes for the One2N interviews and keeps their focus: **networking sits underneath Docker, Kubernetes and AWS**, so every lesson connects back to them.
+From "what is a network?" to designing and troubleshooting production networks in Linux, Kubernetes and the cloud. Started as the networking notes for the One2N interviews: **networking sits underneath Docker, Kubernetes and AWS**, so every lesson connects back to them.
+
+![The 12 levels in four stages with their prerequisite arrows, status, time estimates and milestones; interview preparation follows the Level 3 milestone](diagrams/roadmap-levels.drawio.svg)
 
 > **Status.** Levels 1–3 (the foundations) are written in full: 24 lessons, 10 labs, 4 exercise sets with solutions. Levels 4–12 have detailed outlines, and Levels 8 and 10 each have one deep note already. The [content audit](00-learning-roadmap/content-audit.md) lists exactly what exists and what remains.
 
 ## Start here
 
-1. Check the [prerequisites](00-learning-roadmap/prerequisites.md): no networking knowledge needed, just a terminal and Docker.
-2. Read [how to study](00-learning-roadmap/how-to-study.md) (10 minutes). It explains the lesson layout, the symbols and the study loop.
-3. Pick a path in the [learning roadmap](00-learning-roadmap/learning-roadmap.md): DevOps/SRE/cloud, network engineer, or the interview fast track.
+1. [Prerequisites](00-learning-roadmap/prerequisites.md): no networking knowledge needed, just a terminal and Docker.
+2. [How to study](00-learning-roadmap/how-to-study.md) (10 minutes): the lesson layout, the symbols and the study loop.
+3. Pick a path in the [learning roadmap](00-learning-roadmap/learning-roadmap.md): DevOps/SRE/cloud, network engineer, or the interview fast track. It explains every arrow above.
 4. Begin [Level 1](01-networking-fundamentals/README.md). Set up the [lab environment](13-hands-on-labs/00-lab-environment-setup.md) before its second lab.
-
-## Study order
-
-```mermaid
-flowchart LR
-    L1["1 · Fundamentals"] --> L2["2 · Subnetting 🔥"] --> L3["3 · Core protocols"]
-    L3 --> L4["4 · Switching<br/>and routing"] & L5["5 · Services"] & L6["6 · Security"] & L8["8 · Linux"]
-    L4 & L5 --> L7["7 · Advanced"]
-    L3 --> L9["9 · Cloud 💸"]
-    L8 --> L10["10 · Containers<br/>and Kubernetes"]
-    L8 & L9 & L10 --> L11["11 · Automation and<br/>observability"]
-    L6 & L7 & L11 --> L12["12 · Expert"]
-    L3 -.-> IP["15 · Interview prep"]
-```
-
-Arrows are prerequisites; the [roadmap](00-learning-roadmap/learning-roadmap.md) explains each one and offers shorter paths.
 
 ## Modules
 
@@ -52,11 +38,11 @@ Arrows are prerequisites; the [roadmap](00-learning-roadmap/learning-roadmap.md)
 | | [Diagrams](diagrams/README.md) | ✅ | | Editable `.drawio.svg` diagrams used in the lessons |
 | | [References](references/README.md) | ✅ | | Glossary, common ports, command cheatsheet, RFCs, videos and books |
 
-**Total (estimate):** Levels 1–3 about 38 hours; all 12 levels about 190 hours; with interview preparation about 200 hours. See [pacing](00-learning-roadmap/learning-roadmap.md#pacing) for weeks at 5, 10 or 20 hours a week.
+**Total (estimate):** Levels 1–3 about 38 h; all 12 levels about 190 h; with interview preparation about 200 h. [Pacing](00-learning-roadmap/learning-roadmap.md#pacing): weeks at 5, 10 or 20 hours a week.
 
 ## Milestones
 
-Each level ends with a milestone checklist. The big checkpoints:
+Each level ends with a milestone checklist (the Mx tags in the diagram):
 
 | # | After | You can… |
 |---|---|---|
@@ -67,14 +53,14 @@ Each level ends with a milestone checklist. The big checkpoints:
 
 ## Prerequisites and tools
 
-- **Knowledge:** none in networking. You need basic terminal use and basic Docker ([details](00-learning-roadmap/prerequisites.md#skills)).
-- **Machine:** a Mac with Docker Desktop (what these notes were written on) or any Linux machine. Windows works through WSL 2 or a VM, but wasn't tested.
+- **Knowledge:** none in networking; basic terminal and basic Docker ([details](00-learning-roadmap/prerequisites.md#skills)).
+- **Machine:** a Mac with Docker Desktop (what these notes were written on) or any Linux machine. Windows through WSL 2 or a VM: not tested.
 - **Tools:** the [lab container](13-hands-on-labs/00-lab-environment-setup.md) has every Linux tool the labs use (`ip`, `tcpdump`, `tshark`, `dig`, BIND, `dnsmasq`, `openssl`, `iptables`, `conntrack`, `iperf3`…). [Tools by level](00-learning-roadmap/prerequisites.md#tools-by-level).
-- **Cost:** everything in Levels 1–8, 10 and 11 is **free** and local. Level 9's labs (planned) will use a cloud account and are marked 💸 **may cost money**.
+- **Cost:** Levels 1–8, 10 and 11 are **free** and local. Level 9's labs (planned) will use a cloud account: 💸 **may cost money**.
 
 ## Lab index
 
-All current labs are 💰 free. Times are estimates. Full details, planned labs and safety notes: [lab index](13-hands-on-labs/README.md).
+All current labs are 💰 free; times are estimates. Planned labs and safety notes: [lab index](13-hands-on-labs/README.md).
 
 | Lab | Level | Runs on | Time |
 |---|---|---|---|
@@ -117,7 +103,7 @@ Solutions are in a separate [solutions/](14-practice-exercises/solutions/) folde
 
 ## Progress checklist
 
-Tick as you go (GitHub shows these as checkboxes when you edit the file, or copy the list into your own notes).
+Tick as you go (copy the list into your own notes, or edit this file).
 
 **Getting started**
 - [ ] Read the [prerequisites](00-learning-roadmap/prerequisites.md) and [how to study](00-learning-roadmap/how-to-study.md)
@@ -165,14 +151,14 @@ Tick as you go (GitHub shows these as checkboxes when you edit the file, or copy
 
 ## How to navigate
 
-- **Folders are numbered in study order.** `00` is the roadmap; `01`–`12` are the levels; `13` labs, `14` exercises and `15` interview preparation support every level.
-- **Every level has a README** with its goal, prerequisites, time estimate, lessons in order, practice links and a milestone checklist.
-- **Lessons are numbered `level.lesson`** (3.4 is Level 3, lesson 4) and labs share the number of the level they belong to (Lab 3.4 practises Level 3). Every lesson ends with a **Next** link, so you can read straight through.
-- **Symbols:** ⭐ likely interview topic · 🔥 a gap from the 9 Oct interview review · 🖥️ may be asked to show it live · 💰 free / 💸 may cost money. All of them are explained in [how to study](00-learning-roadmap/how-to-study.md#symbols-and-labels).
-- **Output labels:** **(tested)** means copied from a real run in the lab container (Ubuntu 24.04, 14 Oct 2026); **(tested on the Mac, Oct 2026)** means copied from a real run on macOS with Docker Desktop 29.6.2; **(illustrative)** means it shows the shape of real output but wasn't captured. Your addresses, ports and timings will differ.
-- **Fundamentals vs vendor details:** lessons teach the vendor-neutral idea first, then mark AWS, Docker, Kubernetes or macOS specifics as such.
-- **Diagrams:** small ones are Mermaid blocks (GitHub renders them); larger ones are editable `.drawio.svg` files in [diagrams/](diagrams/README.md).
-- **Looking something up?** Use the [glossary](references/glossary.md) first, then your editor's search across this folder.
+- **Folders are numbered in study order:** `00` the roadmap, `01`–`12` the levels; `13` labs, `14` exercises and `15` interview preparation support every level.
+- **Every level has a README:** goal, prerequisites, time estimate, lessons in order, practice links, milestone checklist.
+- **Lessons are numbered `level.lesson`** (3.4 = Level 3, lesson 4); labs share their level's number (Lab 3.4 practises Level 3). Every lesson ends with a **Next** link.
+- **Symbols:** ⭐ likely interview topic · 🔥 a gap from the 9 Oct interview review · 🖥️ may be asked to show it live · 💰 free / 💸 may cost money ([all symbols](00-learning-roadmap/how-to-study.md#symbols-and-labels)).
+- **Output labels:** **(tested)** = copied from a real run in the lab container (Ubuntu 24.04, 14 Oct 2026); **(tested on the Mac, Oct 2026)** = a real run on macOS with Docker Desktop 29.6.2; **(illustrative)** = the shape of real output, not captured. Your addresses, ports and timings will differ.
+- **Fundamentals vs vendor details:** the vendor-neutral idea first, then AWS, Docker, Kubernetes or macOS specifics, marked as such.
+- **Diagrams:** every diagram is a draw.io `.drawio.svg` file in [diagrams/](diagrams/README.md). GitHub shows it as a picture; draw.io (app.diagrams.net, draw.io desktop or the VS Code Draw.io Integration extension) opens it for editing.
+- **Looking something up?** The [glossary](references/glossary.md) first, then your editor's search across this folder.
 
 ## Related notes in this repository
 

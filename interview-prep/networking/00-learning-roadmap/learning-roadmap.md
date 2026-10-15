@@ -1,41 +1,11 @@
 # Learning Roadmap: Zero to Expert
 
-> **Every time in this file is an estimate.** It assumes you read actively, type every command and do every lab. A topic that's new to you can take twice as long; one you already know can take half. Track your own times and adjust.
+![The 12 levels in four stages with every prerequisite arrow, each level's status, time estimate and milestone, and interview preparation after the Level 3 milestone](../diagrams/roadmap-levels.drawio.svg)
 
-This roadmap takes you from "what is a network?" to designing, automating and troubleshooting production networks. It has **12 levels** in four stages, then a module that turns the knowledge into interview answers.
-
-## The path at a glance
-
-```mermaid
-flowchart TD
-    subgraph B["Stage 1 · Beginner"]
-        L1["1 · Fundamentals"] --> L2["2 · IP addressing<br/>and subnetting 🔥"] --> L3["3 · Core protocols"]
-    end
-    subgraph I["Stage 2 · Intermediate"]
-        L4["4 · Switching<br/>and routing"]
-        L5["5 · Network services"]
-        L6["6 · Network security"]
-        L8["8 · Linux networking"]
-    end
-    subgraph A["Stage 3 · Advanced"]
-        L7["7 · Advanced networking"]
-        L9["9 · Cloud networking 💸"]
-        L10["10 · Containers and<br/>Kubernetes"]
-    end
-    subgraph E["Stage 4 · Expert"]
-        L11["11 · Automation and<br/>observability"]
-        L12["12 · Architecture and<br/>troubleshooting"]
-    end
-    L3 --> L4 & L5 & L6 & L8
-    L4 & L5 --> L7
-    L3 --> L9
-    L8 --> L10
-    L8 & L9 & L10 --> L11
-    L6 & L7 & L11 --> L12
-    L3 -.->|"once the Level 3<br/>milestone is met"| IP["15 · Interview preparation"]
-```
-
-**Solid arrows** are prerequisites: finish the level at the tail first. Levels in the same stage with no arrow between them can be studied in any order. 💸 marks the only level whose labs will use a paid cloud account.
+- From "what is a network?" to designing, automating and troubleshooting production networks: **12 levels in four stages**, then a module that turns the knowledge into interview answers.
+- **Solid arrows are prerequisites:** finish the level at the tail first. Levels in the same stage with no arrow between them: any order.
+- 💸 marks the only level whose labs will use a paid cloud account.
+- **Every time here is an estimate.** It assumes you read actively, type every command and do every lab. A new topic can take twice as long, a familiar one half. Track your own times and adjust.
 
 ## Level by level
 
@@ -57,11 +27,11 @@ flowchart TD
 
 **Totals (estimates):** Levels 1–3 about **38 hours**; all 12 levels about **190 hours**; with interview preparation about **200 hours**.
 
-What "planned" means: the level's README has a full outline (lessons, labs, related material that already exists), but the lessons aren't written yet. The [content audit](content-audit.md) lists exactly what remains.
+"Planned" = the level's README has a full outline (lessons, labs, related material that already exists), but the lessons aren't written yet. The [content audit](content-audit.md) lists what remains.
 
 ## Milestones
 
-Each level's README ends with a **milestone checklist**: tick every box before moving on. These six checkpoints sit across the levels:
+Each level's README ends with a **milestone checklist**: tick every box before moving on. The six checkpoints (the Mx tags in the diagram):
 
 | # | After | You can… | Proof |
 |---|---|---|---|
@@ -72,23 +42,25 @@ Each level's README ends with a **milestone checklist**: tick every box before m
 | M5 | Levels 8–10 | Debug Linux, cloud and Kubernetes networking from the packet up | Planned |
 | M6 | Levels 7, 11, 12 | Design for scale and failure, automate it, and lead an incident | Planned |
 
-**M3 is the most important checkpoint.** It's the point where you're interview-ready for networking fundamentals in a DevOps, SRE or cloud role, and everything after it builds on the same method.
+⭐ **M3 matters most:** interview-ready for networking fundamentals in a DevOps, SRE or cloud role; everything after it builds on the same method.
 
 ## Choose a path
 
-You don't have to do every level in order. Pick the path that matches your goal; all three start with Levels 1–3.
+![Path A: 1, 2, 3, 8, 10, 9, 11, 12. Path B: 1 to 7, then 8, 9 and 12. Path C: six fast-track steps with their hours](../diagrams/roadmap-paths.drawio.svg)
+
+All three paths start with Levels 1–3; you don't have to do every level in order.
 
 ### Path A · DevOps, SRE and cloud engineers (the main path for these notes)
 
-Levels **1 → 2 → 3 → 8 → 10 → 9 → 11**, then 12. Skip or skim 4–7 until you need them: you'll meet VLANs, BGP and QoS mostly through cloud abstractions.
+Levels **1 → 2 → 3 → 8 → 10 → 9 → 11**, then 12. Skip or skim 4–7 until you need them.
 
 ### Path B · Network engineers
 
-Levels **1 → 2 → 3 → 4 → 5 → 6 → 7**, then 8, 9 and 12. The vendor-neutral fundamentals here prepare you for vendor certifications, but don't replace their device-specific material.
+Levels **1 → 2 → 3 → 4 → 5 → 6 → 7**, then 8, 9 and 12.
 
 ### Path C · Interview fast track (about 35–40 hours, estimate)
 
-For an interview in about two weeks, at 2–3 hours a day. This covers what DevOps interviews ask most, based on the [past interview questions](../../hemant-past-interview-questions.md):
+For an interview in about two weeks, at 2–3 hours a day: what DevOps interviews ask most, based on the [past interview questions](../../hemant-past-interview-questions.md). The links:
 
 | Order | Study | Time (estimate) |
 |---|---|---|
@@ -99,8 +71,6 @@ For an interview in about two weeks, at 2–3 hours a day. This covers what DevO
 | 5 | Labs [2.1](../13-hands-on-labs/lab-02.1-subnetting-by-hand-then-verify.md), [3.1](../13-hands-on-labs/lab-03.1-capture-a-tcp-handshake.md), [3.5](../13-hands-on-labs/lab-03.5-troubleshooting-challenge.md) and [10.1](../13-hands-on-labs/lab-10.1-docker-bridge-nat-and-dns.md) | 4.5 h |
 | 6 | [Interview preparation](../15-interview-preparation/README.md): question bank, scenarios, drills, one mock | 10 h |
 
-The fast track is a shortcut, not a substitute: go back and fill in the skipped lessons afterwards.
-
 ## Pacing
 
 | Hours per week | Levels 1–3 | All 12 levels |
@@ -109,7 +79,7 @@ The fast track is a shortcut, not a substitute: go back and fill in the skipped 
 | 10 | about 4 weeks | about 4–5 months |
 | 20 (full-time study, half days) | about 2 weeks | about 10 weeks |
 
-All of these are estimates from the level totals above. Spaced practice beats cramming: five one-hour sessions teach more than one five-hour session. See [how to study](how-to-study.md).
+Estimates from the level totals above. Spaced practice beats cramming: five one-hour sessions teach more than one five-hour session ([how to study](how-to-study.md)).
 
 ## Where everything else fits
 

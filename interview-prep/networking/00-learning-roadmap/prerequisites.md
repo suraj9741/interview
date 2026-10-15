@@ -1,17 +1,20 @@
 # Prerequisites: What You Need Before Level 1
 
-**No networking knowledge is needed.** Level 1 starts from "what is a network?". You do need a little comfort with a computer's terminal, a machine that can run the labs, and about an hour to set it up.
+![Your Mac runs Lab 1.1 with its built-in tools; Docker Desktop's Linux VM holds the lab container, where the Linux labs run in network namespaces; a Linux machine, Windows or a cloud VM are the alternatives; then self-check, set up the lab environment and start Level 1](../diagrams/prerequisites-setup.drawio.svg)
+
+- **No networking knowledge needed:** Level 1 starts from "what is a network?".
+- You need a little terminal comfort, a machine that runs the labs, and about an hour to set it up.
 
 ## Skills
 
 | Skill | Needed for | How much | If you don't have it yet |
 |---|---|---|---|
-| Using a terminal | Every "Try it" section and lab | Open a terminal; run a command; `cd`, `ls`, `cat`, `less`; copy and paste; stop a command with Ctrl+C | Spend an hour with any "Linux command line basics" tutorial first |
-| Editing a text file in the terminal | A few labs | Open, change and save a file with `nano` or `vim` (`vim-tiny` is in the lab container) | `nano` is the easiest; its shortcuts are shown at the bottom of the screen |
-| `sudo` and root | Linux labs on a VM | Know that `sudo` runs one command as root, and that root can break things | In the lab container you are already root, safely isolated |
+| Using a terminal | Every "Try it" section and lab | Open a terminal; run a command; `cd`, `ls`, `cat`, `less`; copy and paste; stop a command with Ctrl+C | An hour with any "Linux command line basics" tutorial |
+| Editing a text file in the terminal | A few labs | Open, change and save a file with `nano` or `vim` (`vim-tiny` is in the lab container) | `nano` is the easiest; its shortcuts are at the bottom of the screen |
+| `sudo` and root | Linux labs on a VM | `sudo` runs one command as root, and root can break things | In the lab container you are already root, safely isolated |
 | Basic Docker | Lab setup, Lab 10.1, Level 10 | `docker build`, `docker run`, `docker exec`, `docker ps` | The [Docker notes](../../docker/README.md) in this repository |
-| Arithmetic | Level 2 | Add, multiply, and know powers of 2 up to 256 (Level 2.1 teaches the rest) | Nothing more: subnetting is practice, not talent |
-| Reading English technical docs | References, RFCs | Slowly is fine | The lessons explain every term; the [glossary](../references/glossary.md) has the rest |
+| Arithmetic | Level 2 | Add, multiply, know powers of 2 up to 256 (2.1 teaches the rest) | Nothing more: subnetting is practice, not talent |
+| Reading English technical docs | References, RFCs | Slowly is fine | Lessons explain every term; the [glossary](../references/glossary.md) has the rest |
 
 **Self-check.** If you can run these three commands and say roughly what each printed, you're ready:
 
@@ -29,20 +32,13 @@ docker run --rm alpine echo hello
 
 ## A machine for the labs
 
-| Option | Works for | Notes |
-|---|---|---|
-| **A Mac with Docker Desktop** (what these notes were written on) | Every lab | Lab 1.1 runs on macOS itself; the Linux labs run in the lab container; Lab 10.1 looks inside Docker Desktop's VM |
-| **A Linux machine or VM** (Ubuntu 24.04 recommended) | Every lab except the macOS parts of Lab 1.1 and Lab 10.1's Docker Desktop details | Install the packages listed in [option B of the setup guide](../13-hands-on-labs/00-lab-environment-setup.md#option-b-any-ubuntu-2404-machine) |
-| **Windows** | The Linux labs, through WSL 2 with Docker Desktop or an Ubuntu VM | Not tested with these notes. Use the Linux commands, not the macOS ones |
-| **A cloud VM** | The Linux labs | 💸 **Costs money** while it runs (compute, storage, public IPv4). Stop it when you finish. Only needed if you have no other option |
-
-**Hardware (estimate):** any laptop from the last few years that runs Docker Desktop comfortably. The lab container is small; the namespaces it creates use almost no memory.
-
-Set up the lab environment once, before [Lab 1.2](../13-hands-on-labs/lab-01.2-build-a-tiny-network-with-namespaces.md): [00 · Lab environment setup](../13-hands-on-labs/00-lab-environment-setup.md) (about 20 minutes, estimate).
+- **Linux machine or VM:** install the packages in [option B of the setup guide](../13-hands-on-labs/00-lab-environment-setup.md#option-b-any-ubuntu-2404-machine). It misses only the macOS parts of Lab 1.1 and Lab 10.1's Docker Desktop details.
+- **Hardware (estimate):** any laptop from the last few years that runs Docker Desktop comfortably.
+- Set up the lab environment once, before [Lab 1.2](../13-hands-on-labs/lab-01.2-build-a-tiny-network-with-namespaces.md): [00 · Lab environment setup](../13-hands-on-labs/00-lab-environment-setup.md) (about 20 minutes, estimate).
 
 ## Tools, by level
 
-You don't need to install everything now. The lab container already has every Linux tool listed here; on a Mac, the built-in tools cover Lab 1.1.
+Nothing to install now: the lab container has every Linux tool here, and the Mac's built-ins cover Lab 1.1.
 
 | Level | Tools | Where |
 |---|---|---|
@@ -56,12 +52,12 @@ You don't need to install everything now. The lab container already has every Li
 | 10 | Docker Desktop; later `kind` and `kubectl` (planned labs) | Your Mac |
 | 9 | A cloud account and its CLI (planned labs) | 💸 **may cost money**: each lab will say what and how much |
 
-**Optional but recommended:** [Wireshark](https://www.wireshark.org/) on your Mac, to open packet captures (Lab 3.1 saves one as a `.pcap` file; copy it into `/labs` to reach it from your Mac) and see the same packets in a graphical view.
+**Optional but recommended:** [Wireshark](https://www.wireshark.org/) on your Mac, to see packet captures graphically (Lab 3.1 saves a `.pcap` file; copy it into `/labs` to reach it from your Mac).
 
 ## Accounts and costs
 
 - **Levels 1–8, 10, 11 and the interview module: free.** Everything runs on your machine.
-- **Level 9 (cloud networking): may cost money.** Some cloud resources, such as NAT gateways, load balancers and public IPv4 addresses, are billed for every hour they exist, even when idle. Each lab will list what it creates, the expected cost and a cleanup step. Use a personal sandbox account with a budget alert, never a shared or production account.
+- **Level 9 (cloud networking): may cost money.** Some cloud resources (NAT gateways, load balancers, public IPv4 addresses) are billed every hour they exist, even idle. Each lab will list what it creates, the expected cost and a cleanup step. Use a personal sandbox account with a budget alert, never a shared or production account.
 
 ## Before you start Level 1
 
