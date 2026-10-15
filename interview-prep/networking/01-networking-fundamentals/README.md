@@ -1,10 +1,10 @@
 # Level 1 · Networking Fundamentals
 
-**Goal:** understand what a network is, what the boxes in it do, what labels traffic carries, how to measure it, and the layered model everyone uses to talk about it.
+![Level 1 path: 1.1 what a network is, 1.2 devices, 1.3 addresses and ports, 1.4 performance, 1.5 the OSI model, then the milestone; Lab 1.1, Lab 1.2 and the exercises below](../diagrams/level-1-map.drawio.svg)
 
-**Start here if:** you have zero networking knowledge. No prerequisites.
-
-⏱️ **Estimated time:** about 6 hours (lessons ~5 h, labs ~1 h). This is an estimate; take longer if a topic is new.
+- **Goal:** understand what a network is, what the boxes in it do, what labels traffic carries, how to measure it, and the layered model everyone uses to talk about it.
+- **Start here if** you have zero networking knowledge. No prerequisites.
+- ⏱️ **About 6 hours** (lessons ~5 h, labs ~1 h). This is an estimate; take longer if a topic is new.
 
 ## Lessons (read in this order)
 
