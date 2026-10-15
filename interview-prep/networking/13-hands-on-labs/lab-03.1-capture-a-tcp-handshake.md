@@ -1,32 +1,13 @@
 # Lab 3.1 · Capture a TCP Handshake
 
 > **Level 3** · ⏱️ about 60 minutes (estimate) · 🐧 Linux lab container ([setup](00-lab-environment-setup.md)) · 💰 free
-> Related lessons: [3.2](../03-core-networking-protocols/02-tcp-and-udp.md) · [3.3](../03-core-networking-protocols/03-tcp-in-depth.md) · [3.5](../03-core-networking-protocols/05-http-and-https.md)
+> Lessons: [3.2](../03-core-networking-protocols/02-tcp-and-udp.md) and [3.3](../03-core-networking-protocols/03-tcp-in-depth.md) first · [3.5](../03-core-networking-protocols/05-http-and-https.md) · Tools: `tcpdump`, `tshark`, `ss`, `curl`, `nc`, `iptables`, `tc`, `python3 -m http.server`
 
-## Objective
+![Lab 3.1 topology: client namespace eth0 10.10.0.1/24 and server namespace eth0 10.10.0.2/24 joined by a veth pair; the server runs web servers on 8080 and 8081 and a UDP listener on 5000](../diagrams/lab-3.1-topology.drawio.svg)
 
-- **Part B:** capture a complete TCP connection (handshake, data, close) and see TIME_WAIT.
-- **Part C:** see what a **closed** TCP port looks like (RST, "refused").
-- **Part D:** compare a firewall **DROP** (timeout, SYN retries) with a **REJECT** (instant failure).
-- **Part E:** compare a closed and an open **UDP** port.
-- **Part F:** speak HTTP by hand, compare HTTP/1.0 and HTTP/1.1 connection reuse, and time a request.
-- **Part G:** decode one packet's layers with `tshark`, and read TCP internals with `ss -ti`.
-
-## Prerequisites
-
-- The [lab environment](00-lab-environment-setup.md) running.
-- Lessons 3.2 and 3.3.
-
-## Tools
-
-`tcpdump`, `tshark`, `ss`, `curl`, `nc`, `iptables`, `tc`, `python3 -m http.server`.
-
-## Topology
-
-```mermaid
-flowchart LR
-    C["client namespace<br/>10.10.0.1/24"] ---|veth| S["server namespace<br/>10.10.0.2/24<br/>web server :8080"]
-```
+- Capture a complete TCP connection (handshake, data, close) and find the **TIME-WAIT** socket.
+- See four ways a connection fails: a **closed** port (RST), a firewall **DROP** (timeout, SYN retries), a **REJECT** (instant), a closed **UDP** port (an ICMP error nobody notices).
+- Speak HTTP by hand, compare HTTP/1.0 and HTTP/1.1 connection reuse, time a request, decode one packet's layers and read `ss -ti`.
 
 ## Part A · Build it
 
@@ -79,9 +60,9 @@ TIME-WAIT 0      0          10.10.0.1:54370    10.10.0.2:8080
 10.10.0.1.54370 > 10.10.0.2.8080: Flags [.], ack 210, win 63, ...
 ```
 
-✍️ Label each of the 12 packets yourself (handshake, request, ACK, response headers, body, close), then compare with the table in [3.3](../03-core-networking-protocols/03-tcp-in-depth.md#a-complete-connection-packet-by-packet-tested). Which side is in **TIME-WAIT**? (In this run the client closed first; in another run the server did. Check yours.)
-
-Use `tcpdump -S` to see absolute instead of relative sequence numbers.
+- ✍️ Label each of the 12 packets yourself (handshake, request, ACK, response headers, body, close), then compare with the table in [3.3](../03-core-networking-protocols/03-tcp-in-depth.md#a-complete-connection-packet-by-packet-tested).
+- Which side is in **TIME-WAIT**? In this run the client closed first; in another run the server did. Check yours.
+- `tcpdump -S` shows absolute instead of relative sequence numbers.
 
 ## Part C · A closed TCP port
 
@@ -102,7 +83,7 @@ nc: connect to 10.10.0.2 port 9999 (tcp) failed: Connection refused
 10.10.0.2.9999 > 10.10.0.1.51358: Flags [R.], seq 0, ack 2750311666, win 0, length 0
 ```
 
-One SYN, one RST, instant failure.
+- One SYN, one RST, instant failure.
 
 ## Part D · DROP vs REJECT
 
@@ -132,7 +113,8 @@ curl: (28) Failed to connect to 10.10.0.2 port 8080 after 4002 ms: Timeout was r
 curl: (7) Failed to connect to 10.10.0.2 port 8080 after 0 ms: Couldn't connect to server
 ```
 
-The same SYN (same `seq`) is re-sent about once a second (`-ttt` shows the gap since the previous packet). On kernels older than 6.5 the gaps double instead (1, 2, 4 s …). Check yours: `sysctl net.ipv4.tcp_syn_linear_timeouts`.
+- DROP: the same SYN (same `seq`) is re-sent about once a second (`-ttt` shows the gap since the previous packet).
+- On kernels older than 6.5 the gaps double instead (1, 2, 4 s …). Check yours: `sysctl net.ipv4.tcp_syn_linear_timeouts`.
 
 ## Part E · UDP: closed vs open
 
@@ -159,7 +141,8 @@ nc exit=0
 hello over udp
 ```
 
-The closed port answered with **ICMP port unreachable**, yet `nc` reported success (exit 0): it never noticed. (`tcpdump` tried to decode the 3 bytes as DNS because 5353 is the mDNS port.)
+- The closed port answered with **ICMP port unreachable**, yet `nc` reported success (exit 0): it never noticed.
+- `tcpdump` tried to decode the 3 bytes as DNS because 5353 is the mDNS port.
 
 ## Part F · HTTP by hand, connection reuse and timing
 
@@ -200,7 +183,7 @@ hello from the server
 dns=0.000019 connect=0.000162 ttfb=0.001369 total=0.001414
 ```
 
-(The HTTP/1.1 server serves files from the directory it was started in, which is why the command starts it from `/tmp/lab31/www`.)
+- The HTTP/1.1 server serves files from the directory it was started in, which is why the command starts it from `/tmp/lab31/www`.
 
 ## Part G · Decode a packet and read TCP internals
 
@@ -224,18 +207,12 @@ ip netns exec server tc qdisc del dev eth0 root
 downloaded 10000000 bytes in 4.193788 s
 ```
 
-153 bytes = 14 (Ethernet) + 20 (IP) + 32 (TCP with timestamps) + 87 (HTTP). The `ss` fields are explained in [3.3](../03-core-networking-protocols/03-tcp-in-depth.md#reading-ss--ti). Your congestion control may be `cubic` instead of `bbr`.
+- 153 bytes = 14 (Ethernet) + 20 (IP) + 32 (TCP with timestamps) + 87 (HTTP).
+- The `ss` fields are explained in [3.3](../03-core-networking-protocols/03-tcp-in-depth.md#reading-ss--ti). Your congestion control may be `cubic` instead of `bbr`.
 
 ## Expected results
 
-| Situation | Client sees | On the wire |
-|---|---|---|
-| Open TCP port | Data | SYN, SYN-ACK, ACK … FIN |
-| Closed TCP port | `(7)` / refused, instantly | SYN → RST |
-| DROP | `(28)` timeout | SYN, SYN, SYN … |
-| REJECT | `(7)`, instantly | SYN → ICMP port unreachable |
-| Closed UDP port | Nothing (nc exit 0) | Datagram → ICMP port unreachable |
-| Open UDP port | Nothing (no reply needed) | One datagram |
+![Six cases on two lifelines: open TCP gets data; closed TCP gets RST and curl (7); DROP gets four SYNs and curl (28) after 4002 ms; REJECT gets ICMP port unreachable and curl (7); closed UDP gets ICMP but nc exits 0; open UDP gets one datagram and no reply](../diagrams/lab-3.1-what-comes-back.drawio.svg)
 
 ## Verification
 
@@ -263,3 +240,4 @@ ip netns list
 1. Make the **server** close first: use the HTTP/1.1 server with `curl -H 'Connection: close'`. Where is TIME-WAIT now?
 2. Use `tc qdisc add dev eth0 root netem loss 10%` on the server (if `sch_netem` is available in your kernel) during the big download, and find the retransmissions with `ss -ti` (`retrans:`) and in a capture.
 3. Write a 10-line Python TCP server that accepts a connection and never calls `close()`. Connect with `nc`, press Ctrl-C on `nc`, and find the **CLOSE-WAIT** socket with `ss -tan`.
+

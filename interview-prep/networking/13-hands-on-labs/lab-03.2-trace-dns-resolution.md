@@ -1,55 +1,18 @@
 # Lab 3.2 · Trace DNS Resolution
 
 > **Level 3** · ⏱️ about 60 minutes (estimate) · 🐧 Linux lab container ([setup](00-lab-environment-setup.md)) · 💰 free, fully offline
-> Related lesson: [3.4 · DNS](../03-core-networking-protocols/04-dns.md)
+> Lesson: [3.4 · DNS](../03-core-networking-protocols/04-dns.md) first · Tools: BIND 9 (`named`) for all four servers, `dig`, `nslookup`, `getent`, `tcpdump`, `iptables`, the script [files/lab-03.2/dns-lab.sh](files/lab-03.2/dns-lab.sh)
 
-## Objective
+![Lab 3.2 topology: client 10.53.0.100, resolver 10.53.0.53, root 10.53.0.10, tld 10.53.0.20 and auth 10.53.0.30, each eth0 plugged into bridge br0 in the sw namespace through a p-<node> port](../diagrams/lab-3.2-topology.drawio.svg)
 
-Build a **complete, private copy of the DNS hierarchy**: a root server, a TLD server for `lab.`, an authoritative server for `example.lab.`, a recursive resolver and a client. Then:
+- The script builds a **complete, private copy of the DNS hierarchy**: a root server, a TLD server for `lab.`, an authoritative server for `example.lab.`, a recursive resolver and a client.
+- Watch one client question turn into a chain of referrals; compare **recursive**, **authoritative** and **referral** answers.
+- Read every record type, the TTL countdown and **negative caching**; see why `dig` and applications disagree (**search domains**).
+- Break the servers one by one and read each error: **SERVFAIL**, **connection refused**, **timed out**.
 
-- watch one client question turn into a chain of referrals;
-- compare **recursive**, **authoritative** and **referral** answers;
-- read every record type, TTL countdown and **negative caching**;
-- see why `dig` and applications disagree (**search domains**);
-- break the servers one by one and read each error: **SERVFAIL**, **connection refused**, **timed out**.
+![The resolution chain: client asks the resolver (1), the resolver asks root (2), TLD (3) and auth (4), following referrals with glue, and returns the CNAME and A record (5); each server box lists its zone's key records](../diagrams/lab-3.2-referral-chain.drawio.svg)
 
-## Prerequisites
-
-- The [lab environment](00-lab-environment-setup.md) running.
-- Lesson 3.4.
-
-## Tools
-
-BIND 9 (`named`) for all four servers, `dig`, `nslookup`, `getent`, `tcpdump`, `iptables`, and the script [files/lab-03.2/dns-lab.sh](files/lab-03.2/dns-lab.sh).
-
-## Topology
-
-```mermaid
-flowchart TB
-    subgraph net["One switch (bridge br0), subnet 10.53.0.0/24"]
-        client["client<br/>10.53.0.100<br/>resolv.conf → 10.53.0.53<br/>search example.lab"]
-        resolver["resolver<br/>10.53.0.53<br/>recursive, caching"]
-        root["root server '.'<br/>10.53.0.10<br/>a.root-servers.net"]
-        tld["TLD server 'lab.'<br/>10.53.0.20<br/>ns1.nic.lab"]
-        auth["authoritative 'example.lab.'<br/>10.53.0.30<br/>ns1.example.lab"]
-    end
-    client -- "1. recursive query" --> resolver
-    resolver -- "2. iterative" --> root
-    resolver -- "3. iterative" --> tld
-    resolver -- "4. iterative" --> auth
-```
-
-## Configuration
-
-The script writes these zones (open it to read them; the comments explain each part):
-
-| Server | Zone | Key records |
-|---|---|---|
-| root | `.` | `lab. NS ns1.nic.lab.` + glue `10.53.0.20`; reverse delegation for `0.53.10.in-addr.arpa.` |
-| tld | `lab.` | `example.lab. NS ns1.example.lab.` + glue `10.53.0.30` |
-| auth | `example.lab.` (TTL 300, negative TTL 60) | `A 10.53.0.80`, `AAAA fd00:53::80`, `www CNAME example.lab.`, `api A .81` and `.82`, `MX 10 mail`, `mail A .25`, `TXT "v=spf1 mx -all"` |
-| auth | `0.53.10.in-addr.arpa.` | `PTR` for `.80` and `.81` |
-| resolver | root hints only | `a.root-servers.net = 10.53.0.10`: it knows nothing else at start |
+The zones the script writes are in the boxes above (open the script to read them; the comments explain each part).
 
 ## Steps
 
@@ -211,15 +174,13 @@ $C iptables -F OUTPUT
 | c) | `communications error to 10.53.0.53#53: connection refused` ×3, `no servers could be reached`; `curl: (6) Could not resolve host: www.example.lab` | The host is there, but **nothing listens** on port 53 |
 | d) | `communications error to 10.53.0.53#53: timed out` ×3, `no servers could be reached`, after about **15 s** | Packets are **dropped**: 3 tries × 5 s |
 
-## Expected results
-
-You have seen, in your own captures and outputs: a full recursive resolution, `aa` vs referral, TTL countdown, negative caching, the search-domain difference, and four distinct failure signatures.
-
 ## Verification
 
 ```bash
 $C dig www.example.lab +short          # → example.lab. and 10.53.0.80 after everything is restored
 ```
+
+You have seen a full recursive resolution, `aa` vs referral, TTL countdown, negative caching, the search-domain difference, and four distinct failure signatures.
 
 ## Troubleshooting
 
@@ -244,3 +205,4 @@ ip netns list            # should print nothing
 1. Add a record `new.example.lab A 10.53.0.99` to `/tmp/dnslab/auth/example.lab.zone`, **increase the SOA serial**, and reload with `kill -HUP $(cat /tmp/dnslab/auth/named.pid)`. Query it **before** and after adding it. How long does the client keep getting NXDOMAIN, and why?
 2. Lower the zone TTL to 10 seconds, then time how long a stale answer survives after you change a record.
 3. Give the authoritative server a second name server on a new namespace (`ns2`, `10.53.0.31`, a secondary zone). Stop `ns1`. Does resolution still work with an empty cache?
+

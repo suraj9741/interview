@@ -96,17 +96,6 @@ Saying "the link is 1 Gbit/s, so the server must be slow" is the trap: on long p
 
 **19.** Example (from a typical home setup; yours will differ):
 
-```mermaid
-flowchart LR
-    phone["Phone<br/>192.168.29.31"] -. Wi-Fi .- box
-    laptop["Laptop<br/>192.168.29.20"] -. Wi-Fi .- box
-    tv["TV<br/>192.168.29.40"] --- box
-    subgraph box["Home router box"]
-        direction TB
-        ap["Wi-Fi access point"] --- sw["Switch"] --- rt["Router + NAT + firewall<br/>LAN 192.168.29.1<br/>DHCP server · DNS forwarder"]
-        rt --- modem["Modem / ONT"]
-    end
-    modem --- isp["Provider<br/>WAN IP: public, or 100.64.x.x if CGNAT"]
-```
+![Example home network: phone and laptop on Wi-Fi and a TV on a cable connect to the home router box (Wi-Fi access point, switch, router with NAT, firewall, DHCP and DNS forwarder at LAN 192.168.29.1, and a modem/ONT), which connects to the provider: a public WAN IP, or 100.64.x.x with CGNAT](../../diagrams/sol-1-home-network.drawio.svg)
 
 Check: the router's LAN IP is your **default gateway** and (often) your **DNS server**; `curl ifconfig.me` shows the **public IP**. If the router's WAN IP is not the same as that public IP, there's another NAT (CGNAT) upstream.

@@ -1,40 +1,16 @@
 # Lab 3.4 · NAT and Port Forwarding
 
 > **Level 3** · ⏱️ about 45 minutes (estimate) · 🐧 Linux lab container ([setup](00-lab-environment-setup.md)) · 💰 free, fully offline
-> Related lesson: [3.8 · NAT, PAT and port forwarding](../03-core-networking-protocols/08-nat-pat-and-port-forwarding.md) · Linux details: [8.6 · Netfilter, NAT and conntrack](../08-linux-networking/06-netfilter-nat-and-conntrack.md)
+> Lessons: [3.8 · NAT, PAT and port forwarding](../03-core-networking-protocols/08-nat-pat-and-port-forwarding.md) and the routing lab ([Lab 2.2](lab-02.2-routing-between-two-subnets.md)) first · Linux details: [8.6 · Netfilter, NAT and conntrack](../08-linux-networking/06-netfilter-nat-and-conntrack.md) · Tools: `ip`, `iptables` (the nat table), `conntrack`, `tcpdump`, `curl`, `python3 -m http.server`
 
-## Objective
+![Lab 3.4 topology: laptop eth0 192.168.1.10/24 (plus .11 later) to router lan 192.168.1.1/24, router wan 203.0.113.1/24 to web eth0 203.0.113.50/24; the router gets a MASQUERADE rule in step 3 and a DNAT rule in step 6](../diagrams/lab-3.4-topology.drawio.svg)
 
-Build a home network in miniature (a laptop, a home router and a server "on the internet") and:
-
-- prove that a private address **can't get replies** from the internet without NAT;
-- add **source NAT** (PAT / MASQUERADE) and see the server log the router's address instead of the laptop's;
-- read the router's **translation table** (conntrack);
-- force a **port rewrite** by making two hosts use the same source port;
-- add a **port forward** (DNAT) so the server can reach an app on the laptop.
-
-## Prerequisites
-
-- The [lab environment](00-lab-environment-setup.md) running.
-- Lesson 3.8, and the routing lab ([Lab 2.2](lab-02.2-routing-between-two-subnets.md)).
-
-## Tools
-
-`ip`, `iptables` (the nat table), `conntrack`, `tcpdump`, `curl`, `python3 -m http.server`.
-
-## Topology
-
-```mermaid
-flowchart LR
-    L["laptop<br/>eth0 192.168.1.10/24 (+ .11 later)<br/>default via 192.168.1.1<br/>app on :8000"] ---|veth| R["router<br/>lan 192.168.1.1/24<br/>wan 203.0.113.1/24<br/>ip_forward=1"]
-    R ---|veth| W["web (the internet)<br/>eth0 203.0.113.50/24<br/>web server on :80<br/>no route to 192.168.1.0/24"]
-```
-
-`203.0.113.0/24` is a documentation range (TEST-NET-3) standing in for public addresses. The `web` namespace has **no route** to `192.168.1.0/24`, just as no internet router has a route to your home's private range.
+- Prove that a private address **can't get replies** from the internet without NAT.
+- Add **source NAT** (PAT / MASQUERADE), read the router's **translation table** (conntrack), and force a **port rewrite** with two hosts on the same source port.
+- Add a **port forward** (DNAT) so the "internet" can reach an app on the laptop.
+- `203.0.113.0/24` is a documentation range (TEST-NET-3) standing in for public addresses. `web` has **no route** to `192.168.1.0/24`, just as no internet router has a route to your home's private range. All commands run as root in the lab container.
 
 ## Steps
-
-All commands run as root in the lab container.
 
 ### 1. Build it
 
@@ -90,7 +66,8 @@ IP 192.168.1.10.39970 > 203.0.113.50.80: Flags [S], seq 1419682051, win 64
 RTNETLINK answers: Network is unreachable
 ```
 
-✍️ The router **did forward** the SYN: the server received it, twice (the second is a retransmission). The server can't answer, because it has no route to `192.168.1.10`. The laptop only sees a timeout. On the real internet the outcome is the same, and providers usually also filter packets with private source addresses.
+- ✍️ The router **did forward** the SYN: the server received it twice (the second is a retransmission). It can't answer: it has no route to `192.168.1.10`. The laptop only sees a timeout.
+- On the real internet the outcome is the same, and providers usually also filter packets with private source addresses.
 
 ### 3. Add source NAT (PAT)
 
@@ -111,7 +88,8 @@ IP 203.0.113.50.80 > 203.0.113.1.56196: Flags [S.], seq 1240458598, ack 145
 203.0.113.1 - - [14/Oct/2026 20:14:34] "GET / HTTP/1.1" 200 -
 ```
 
-The rule reads: "for packets **from** the LAN, leaving **through** `wan`, replace the source with `wan`'s address". `MASQUERADE` picks up the interface's current address, which suits a home router whose public IP changes. (With a fixed public IP, `-j SNAT --to-source 203.0.113.1` does the same.) The server now sees, and answers, `203.0.113.1`.
+- The rule: "for packets **from** the LAN, leaving **through** `wan`, replace the source with `wan`'s address". The server now sees, and answers, `203.0.113.1`.
+- `MASQUERADE` picks up the interface's current address, which suits a home router whose public IP changes. With a fixed public IP, `-j SNAT --to-source 203.0.113.1` does the same.
 
 ### 4. The translation table
 
@@ -139,7 +117,9 @@ Read the conntrack line in two halves:
 | `src=203.0.113.50 dst=203.0.113.1 sport=80 dport=56196` | The **reply** the router expects. Its destination is the router, not the laptop: that's the NAT |
 | `[ASSURED]` | Traffic was seen in both directions |
 
-The rule counter is **1 packet, 60 bytes** although the whole request was several packets: only the **first** packet of a connection (the SYN) goes through the `nat` table. Every later packet is translated from the conntrack entry.
+- The rule counter is **1 packet, 60 bytes** although the request was several packets: only the **first** packet of a connection (the SYN) goes through the `nat` table. Every later packet is translated from the conntrack entry.
+
+![Five flows through the router: no NAT (forwarded unchanged, no reply), SNAT on the way out, conntrack rewriting the reply, a port clash forcing a new source port, and DNAT on the way in](../diagrams/lab-3.4-nat-rewrites.drawio.svg)
 
 ### 5. Two hosts, one source port
 
@@ -166,7 +146,8 @@ tcp      6 115 TIME_WAIT src=192.168.1.10 dst=203.0.113.50 sport=40000 dport=80 
 tcp      6 115 TIME_WAIT src=192.168.1.11 dst=203.0.113.50 sport=40000 dport=80 src=203.0.113.50 dst=203.0.113.1 sport=80 dport=41599 [ASSURED] mark=0 use=1
 ```
 
-The first connection kept port 40000. The second **couldn't**: `203.0.113.1:40000 → 203.0.113.50:80` was still in the table (in TIME_WAIT), so the router changed the **port** too. That's the "P" in PAT, and why one public IP supports only so many connections **to the same destination**.
+- The first connection kept port 40000. The second **couldn't**: `203.0.113.1:40000 → 203.0.113.50:80` was still in the table (in TIME_WAIT), so the router changed the **port** too.
+- That's the "P" in PAT, and why one public IP supports only so many connections **to the same destination**.
 
 ### 6. Port forwarding (DNAT)
 
@@ -184,7 +165,8 @@ curl: (7) Failed to connect to 203.0.113.1 port 8080 after 0 ms: Couldn't connec
 curl: (7) Failed to connect to 192.168.1.10 port 8000 after 0 ms: Couldn't connect to server
 ```
 
-The router has nothing on 8080 (it answers with a reset), and the web server has no route to the private address. Now forward the router's port 8080 to the laptop's port 8000:
+- The router has nothing on 8080 (it answers with a reset); the web server has no route to the private address.
+- Now forward the router's port 8080 to the laptop's port 8000:
 
 ```bash
 ip netns exec router iptables -t nat -A PREROUTING -i wan -p tcp --dport 8080 -j DNAT --to-destination 192.168.1.10:8000
@@ -208,18 +190,7 @@ tcp      6 119 TIME_WAIT src=203.0.113.50 dst=203.0.113.1 sport=59870 dport=8080
 - DNAT is in **PREROUTING**: the destination must be rewritten **before** the routing decision, so the router routes the packet to the LAN instead of delivering it to itself.
 - The laptop's log shows the **real client** (`203.0.113.50`): DNAT changes only the destination.
 - The conntrack entry's reply half expects the answer **from `192.168.1.10:8000`**, and rewrites it back to `203.0.113.1:8080` on the way out.
-
-This is exactly what `docker run -p 8080:80` sets up on a Docker host ([Lab 10.1](lab-10.1-docker-bridge-nat-and-dns.md)).
-
-## Expected results
-
-| Situation | What you saw |
-|---|---|
-| No NAT | `curl: (28)` timeout; the server **received** SYNs from `192.168.1.10` and had no route back |
-| MASQUERADE | `200`; the server logged `203.0.113.1`; one conntrack entry per connection |
-| Same source port twice | The second connection's port rewritten |
-| No port forward | `curl: (7)` from the internet side |
-| DNAT | `laptop app`; the laptop logged the real client IP; the rule counted 1 packet |
+- This is exactly what `docker run -p 8080:80` sets up on a Docker host ([Lab 10.1](lab-10.1-docker-bridge-nat-and-dns.md)).
 
 ## Verification
 

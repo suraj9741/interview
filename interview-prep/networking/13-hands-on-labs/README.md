@@ -1,16 +1,11 @@
 # 13 · Hands-On Labs 🖥️
 
-Reading about a TCP handshake is not the same as capturing one. Every lab here builds something small, makes it work, then **breaks it on purpose** so you learn what each failure looks like.
+![The labs in order: setup and Level 1, Level 2, Level 3 ending in the 3.5 capstone, Level 10, and the planned labs](../diagrams/labs-map.drawio.svg)
 
-## Start here
-
-1. Set up the lab environment once: [00 · Lab environment setup](00-lab-environment-setup.md). It's one Docker image on your Mac (or any Ubuntu VM).
-2. Do each lab **after** its lesson, in the order below.
-3. Write your answers down **before** you read the expected output.
-
-## How each lab is laid out
-
-Objective · prerequisites · tools · topology · steps (with expected output) · expected results · verification · troubleshooting · 🧹 cleanup · challenges.
+- Every lab builds something small, makes it work, then **breaks it on purpose** so you learn what each failure looks like.
+- Set up the lab environment once: [00 · Lab environment setup](00-lab-environment-setup.md). It's one Docker image on your Mac (or any Ubuntu VM).
+- Do each lab **after** its lesson, in the order below. Write your answers down **before** you read the expected output.
+- Each lab: a header line (level, time, platform, cost, lessons, tools) · a topology diagram · steps with expected output · verification · troubleshooting · 🧹 cleanup · challenges.
 
 ## What "tested" means here
 
@@ -20,9 +15,13 @@ Objective · prerequisites · tools · topology · steps (with expected output) 
 | **(tested on the Mac, Oct 2026)** | Run on macOS with Docker Desktop |
 | **(illustrative)** | Shows the shape of the output; it was **not** captured from a real run |
 
-**How the labs were checked (14 Oct 2026).** Labs 1.2 to 3.4 were re-run end to end by running every `bash` block in order as one script, cleanup included (Lab 2.2's step table was run step by step the same way). Lab 3.5's baseline, all eight faults and all eight fixes were run. The re-run found and fixed two problems: a `wait` in Lab 3.1 that hung on the background web server, and a capture window in Lab 2.3 too short when the client needs a second Discover. Labs 1.1 and 10.1 run on macOS with Docker Desktop and were **not** re-run; their outputs come from the original runs on the Mac (7–8 Oct 2026).
+**How the labs were checked (14 Oct 2026):**
 
-The lab container's [Dockerfile](files/netlab/Dockerfile) installs the same packages, but **the image itself was not built** during testing: the commands ran in an equivalent Ubuntu 24.04 environment. If a package is missing in yours, `apt-get install` it and please fix the Dockerfile.
+- Labs 1.2 to 3.4: every `bash` block run in order as one script, cleanup included (Lab 2.2's step table step by step the same way).
+- Lab 3.5: the baseline, all eight faults and all eight fixes were run.
+- The re-run found and fixed two problems: a `wait` in Lab 3.1 that hung on the background web server, and a capture window in Lab 2.3 too short when the client needs a second Discover.
+- Labs 1.1 and 10.1 run on macOS with Docker Desktop and were **not** re-run; their outputs come from the original runs on the Mac (7–8 Oct 2026).
+- The lab container's [Dockerfile](files/netlab/Dockerfile) installs the same packages, but **the image itself was not built** during testing: the commands ran in an equivalent Ubuntu 24.04 environment. If a package is missing in yours, `apt-get install` it and please fix the Dockerfile.
 
 ## Cost
 

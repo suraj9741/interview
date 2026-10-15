@@ -1,39 +1,17 @@
 # Lab 3.3 · TLS: Certificates and the Handshake
 
 > **Level 3** · ⏱️ about 60 minutes (estimate) · 🐧 Linux lab container ([setup](00-lab-environment-setup.md)) · 💰 free, fully offline
-> Related lesson: [3.6 · TLS and certificates](../03-core-networking-protocols/06-tls-and-certificates.md)
+> Lesson: [3.6 · TLS and certificates](../03-core-networking-protocols/06-tls-and-certificates.md) first, and the TCP handshake from [Lab 3.1](lab-03.1-capture-a-tcp-handshake.md) · Tools: `openssl` (3.0 in the lab container), `curl`, `tshark`, `faketime` (to make an already-expired certificate), `ip`
 
-## Objective
+![Lab 3.3 topology: tls-client namespace eth0 10.20.0.1/24 with a hosts file mapping web.example.lab to 10.20.0.2, joined by a veth pair to tls-server eth0 10.20.0.2/24 running openssl s_server on 8443 (valid), 9443 (expired) and 10443 (mutual TLS)](../diagrams/lab-3.3-topology.drawio.svg)
 
-Be your own certificate authority, then:
-
-- issue a server certificate with the right **SAN** (subject alternative name);
-- serve HTTPS with `openssl s_server` and connect with `curl` and `openssl s_client`;
-- reproduce the four errors you'll meet at work: **untrusted issuer**, **name mismatch** (by IP and by another name), **expired**, and see what `-k` really does;
-- see in a capture what an observer can read (the **SNI**) and what they can't (the certificate, in TLS 1.3);
-- turn on **mutual TLS** and watch a client without a certificate get rejected.
-
-## Prerequisites
-
-- The [lab environment](00-lab-environment-setup.md) running.
-- Lesson 3.6, and the TCP handshake from [Lab 3.1](lab-03.1-capture-a-tcp-handshake.md).
-
-## Tools
-
-`openssl` (3.0 in the lab container), `curl`, `tshark`, `faketime` (to make an already-expired certificate), `ip`.
-
-## Topology
-
-```mermaid
-flowchart LR
-    C["tls-client namespace<br/>eth0 10.20.0.1/24<br/>/etc/hosts: web.example.lab → 10.20.0.2<br/>trusts: ca.crt (only when told to)"] ---|veth| S["tls-server namespace<br/>eth0 10.20.0.2/24<br/>openssl s_server :8443 (valid cert)<br/>:9443 (expired) · :10443 (mTLS)"]
-```
-
-There's no DNS server: the client gets the name from its own **hosts file**. `ip netns exec` uses `/etc/netns/<name>/hosts` in place of `/etc/hosts` when that file exists.
+- Be your own certificate authority; sign the server's **CSR** (certificate signing request) into a certificate with the right **SAN** (subject alternative name). The server's private key never goes to the CA.
+- Serve HTTPS with `openssl s_server`; connect with `curl` and `openssl s_client`.
+- Reproduce the errors you'll meet at work (**untrusted issuer**, **name mismatch** by IP and by another name, **expired**) and see what `-k` really does.
+- See in a capture what an observer can read (the **SNI**) and what they can't (the certificate, in TLS 1.3); then turn on **mutual TLS**.
+- There's no DNS server: `ip netns exec` uses `/etc/netns/<name>/hosts` in place of `/etc/hosts` when that file exists. All commands run as root in the lab container.
 
 ## Steps
-
-All commands run as root in the lab container.
 
 ### 1. Build the network
 
@@ -53,6 +31,8 @@ ip netns exec tls-client getent hosts web.example.lab
 
 ### 2. Create a certificate authority
 
+![The server and the client each make a key and a CSR; the Lab Root CA (self-signed, CA:TRUE) signs server.crt, an already-expired old.crt from the same CSR, and client.crt](../diagrams/lab-3.3-certificates.drawio.svg)
+
 ```bash
 mkdir -p /tmp/lab33 && cd /tmp/lab33
 openssl req -x509 -newkey rsa:2048 -nodes -keyout ca.key -out ca.crt -days 30 -subj "/CN=Lab Root CA"
@@ -68,11 +48,9 @@ X509v3 Basic Constraints: critical
     CA:TRUE
 ```
 
-A **root** certificate is **self-signed** (subject = issuer) and marked `CA:TRUE`: it may sign other certificates. `ca.key` is the most sensitive file in this lab; a real CA keeps it offline.
+- A **root** certificate is **self-signed** (subject = issuer) and marked `CA:TRUE`: it may sign other certificates. A real CA keeps its key offline.
 
 ### 3. Issue a server certificate
-
-The server makes its own key and a **CSR** (certificate signing request). The CA signs the CSR. The server's private key never goes to the CA.
 
 ```bash
 openssl req -newkey rsa:2048 -nodes -keyout server.key -out server.csr \
@@ -97,7 +75,7 @@ X509v3 Subject Alternative Name:
 server.crt: OK
 ```
 
-✍️ Note the three things a client checks: **who issued it** (`issuer`), **when it's valid** (`notBefore`/`notAfter`), and **which names it covers** (the SAN). Clients match the hostname against the **SAN**, not the CN. `-copy_extensions copy` is what carries the SAN from the CSR into the certificate; without it, the certificate would have no SAN and every name check would fail.
+✍️ Find the three things a client checks in this output: `issuer`, `notBefore`/`notAfter`, and the SAN. Clients match the hostname against the **SAN**, not the CN.
 
 ### 4. Serve HTTPS
 
@@ -106,7 +84,7 @@ server.crt: OK
 sleep 1
 ```
 
-`-www` makes `s_server` answer any HTTP `GET` with a status page. `-4` makes it listen on IPv4.
+- `-www` makes `s_server` answer any HTTP `GET` with a status page. `-4` makes it listen on IPv4.
 
 ### 5. Connect, and reproduce the first two errors
 
@@ -158,7 +136,8 @@ New, TLSv1.3, Cipher is TLS_AES_256_GCM_SHA384
 Verify return code: 0 (ok)
 ```
 
-Decode the curl line: **TLS 1.3**, symmetric cipher **AES-256-GCM** with SHA-384, key exchange **X25519**, and the server proved it owns its key with an **RSA-PSS** signature. The `0 s: / i:` lines are the **chain the server sent**: only one certificate here, because the server is signed directly by the root.
+- Decode the curl line: **TLS 1.3**, symmetric cipher **AES-256-GCM** with SHA-384, key exchange **X25519**, and the server proved it owns its key with an **RSA-PSS** signature.
+- The `0 s: / i:` lines are the **chain the server sent**: only one certificate here, because the server is signed directly by the root.
 
 Now without the CA:
 
@@ -265,19 +244,12 @@ HTTP 200
 4057262F0C7F0000:error:0A0000C7:SSL routines:tls_process_client_certificate:peer did not return a certificate:../ssl/statem/statem_srvr.c:3509:
 ```
 
-Without a client certificate the server sends a `certificate required` alert; the server's log says why. With one, it's accepted. This is how service meshes authenticate one service to another.
+- Without a client certificate the server sends a `certificate required` alert; the server's log says why. With one, it's accepted.
+- This is how service meshes authenticate one service to another.
 
 ## Expected results
 
-| Situation | Result |
-|---|---|
-| Trusted CA, right name, valid dates | `HTTP 200`, `Verify return code: 0 (ok)` |
-| CA not trusted | `curl: (60) … unable to get local issuer certificate` |
-| By IP / by another name | `curl: (60) … no alternative certificate subject name matches …` |
-| Expired | `curl: (60) … certificate has expired` |
-| `-k` | `HTTP 200`, with no protection |
-| HTTP to an HTTPS port | `curl: (52) Empty reply from server` |
-| mTLS without a client certificate | `curl: (56) … alert certificate required` |
+![Each TLS failure and its client message: untrusted CA, name not in the SAN, expired, plain HTTP to a TLS port, mutual TLS without a client certificate, and -k which returns 200 with no protection](../diagrams/lab-3.3-tls-errors.drawio.svg)
 
 ## Verification
 
@@ -313,3 +285,4 @@ ip netns list            # should print nothing
 2. Issue a certificate with `subjectAltName=DNS:web.example.lab,IP:10.20.0.2`. Does step 5b work now?
 3. Issue a **wildcard** certificate for `*.example.lab`. Does it match `web.example.lab`? `example.lab`? `a.b.example.lab`? Predict first, then test with `--resolve`.
 4. Using `-alpn h2,http/1.1` on `s_server`, find the curl line that shows which application protocol was agreed.
+
