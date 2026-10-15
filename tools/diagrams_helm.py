@@ -129,7 +129,184 @@ def release_states():
     return d
 
 
-ALL = [helm_flow, helm_versions, upgrade_lifecycle, release_states]
+def values_order():
+    d = Diagram("01-values-order", 1000, 400, "Values: which one wins? (the higher layer wins)")
+    d.box("hi", 20, 60, 90, 50, "highest\n(wins)", "none", size=11)
+    d.box("lo", 20, 255, 90, 50, "lowest", "none", size=11)
+    d.edge("lo", "hi")
+    d.box("l4", 120, 60, 420, 50, "4 · --set, --set-string, --set-json, --set-file, --set-literal", "orange", size=11)
+    d.box("l3", 120, 125, 420, 50, "3 · -f files, in the order given\n-f values.yaml -f values-prod.yaml (later wins)", "yellow", size=11,
+          bold_first=False)
+    d.box("l2", 120, 190, 420, 50, "2 · A parent chart's values for its subchart", "blue", size=11)
+    d.box("l1", 120, 255, 420, 50, "1 · The chart's own values.yaml (defaults)", "gray", size=11)
+    d.text("ex", 600, 40, 380, 24, "Example: image.tag", size=12, bold=True)
+    d.box("e1", 600, 70, 380, 44, "values.yaml → tag: latest", "gray", size=11)
+    d.box("e2", 600, 140, 380, 44, "-f values-prod.yaml → tag: 1.4", "yellow", size=11)
+    d.box("e3", 600, 210, 380, 44, "--set image.tag=4f2a9c1", "orange", size=11)
+    d.box("e4", 600, 280, 380, 44, "Result: 4f2a9c1", "green", size=12, bold=True)
+    d.edge("e1", "e2")
+    d.edge("e2", "e3")
+    d.edge("e3", "e4")
+    d.text("cap", 20, 345, 960, 40,
+           "helm get values web -n shop = only what YOU passed.  Add --all to see the merged result.", size=11)
+    return d
+
+
+def release_secret():
+    d = Diagram("01-release-secret", 1100, 400, "Where Helm keeps a release: one Secret per revision")
+    d.box("s1", 20, 60, 240, 76, "Secret per revision\nsh.helm.release.v1.web.v3\nlabel status=deployed", "orange", size=11)
+    d.box("s2", 340, 66, 160, 64, "base64 -d\n(Kubernetes' encoding)", "white", size=11)
+    d.box("s3", 540, 66, 140, 64, "base64 -d\n(Helm's encoding)", "white", size=11)
+    d.box("s4", 720, 66, 100, 64, "gunzip", "white", size=11)
+    d.box("s5", 860, 60, 220, 76, "JSON release record", "green", size=12)
+    d.edge("s1", "s2", ".data.release")
+    d.edge("s2", "s3")
+    d.edge("s3", "s4")
+    d.edge("s4", "s5")
+    d.group("keys", 20, 180, 1060, 140,
+            "Inside (tested keys): apply_method, chart, config, hooks, info, manifest, name, namespace, version", "gray", size=12)
+    d.box("k1", 40, 220, 320, 80, "manifest\nthe OLD input of the next\n3-way merge (02)", "blue", size=11)
+    d.box("k2", 390, 220, 320, 80, "apply_method: csa or ssa\ndecides how the next upgrade\nis applied (03)", "purple", size=11)
+    d.box("k3", 740, 220, 320, 80, "config = your values\nanyone who can read Secrets\nhere can read them", "red", size=11)
+    d.edge("s5", "keys")
+    d.text("cap", 20, 335, 1060, 50,
+           "No Tiller since Helm 3: the cluster itself holds the history.  --history-max (default 10) = how many revision Secrets are kept.\n"
+           "Never put passwords in values: use External Secrets or Sealed Secrets.", size=11)
+    return d
+
+
+def three_way_rules():
+    d = Diagram("02-three-way-rules", 1100, 460, "3-way merge: two questions, so three inputs")
+    d.box("old", 20, 55, 300, 80, "OLD\nmanifest stored in the release Secret\n(what Helm set last time)", "gray", size=11)
+    d.box("new", 400, 55, 300, 80, "NEW\nthe chart rendered with\ntoday's values", "blue", size=11)
+    d.box("live", 780, 55, 300, 80, "LIVE\nthe object in the cluster now", "red", size=11)
+    d.box("qdel", 170, 190, 320, 64, "What should I DELETE?\ncompare OLD vs NEW", "orange", size=12)
+    d.box("qset", 610, 190, 320, 64, "What should I SET?\ncompare NEW vs LIVE", "green", size=12)
+    d.edge("old", "qdel")
+    d.edge("new", "qdel")
+    d.edge("new", "qset")
+    d.edge("live", "qset")
+    d.box("r1", 20, 310, 340, 76, "In OLD, not in NEW → delete it\nonly what Helm set itself", "orange", size=11)
+    d.box("r2", 380, 310, 340, 76, "NEW ≠ LIVE → set it to NEW\nNEW = LIVE → left out of the patch", "green", size=11)
+    d.box("r3", 740, 310, 340, 76, "Only in LIVE → left alone\nsidecars, hand-added annotations", "gray", size=11)
+    d.edge("qdel", "r1")
+    d.edge("qset", "r2")
+    d.edge("qset", "r3", dashed=True)
+    d.text("cap", 20, 400, 1060, 50,
+           "\"Strategic\": built-in lists merge by key (containers and env by name), so kubectl set env survives.\n"
+           "Custom resources have no merge keys: Helm uses a 2-way merge (OLD vs NEW), so a hand edit survives unless the chart changed it.",
+           size=11)
+    return d
+
+
+def block_deletion():
+    d = Diagram("02-block-deletion", 1100, 400, "Tested surprise: deletion works on whole blocks")
+    for gx, title, gc, old, new, live, res, rc in [
+        (20, "Chart drops its ONLY pod annotation", "red",
+         "OLD\nowner", "NEW\n(no annotations\nblock at all)", "LIVE\nowner, restartedAt",
+         "Patch deletes the WHOLE block\nrestartedAt lost + a new rollout", "red"),
+        (560, "Chart keeps another annotation (tier: web)", "green",
+         "OLD\nowner, tier", "NEW\ntier", "LIVE\nowner, tier,\nrestartedAt",
+         "Patch deletes only owner\nrestartedAt kept", "green"),
+    ]:
+        p = f"g{gx}"
+        d.group(p, gx, 45, 520, 280, title, gc, size=12)
+        d.box(p + "o", gx + 20, 90, 150, 80, old, "gray", size=11)
+        d.box(p + "n", gx + 185, 90, 150, 80, new, "blue", size=11)
+        d.box(p + "l", gx + 350, 90, 150, 80, live, "white", size=11)
+        d.box(p + "r", gx + 20, 230, 480, 70, res, rc, size=12)
+        for k in "onl":
+            d.edge(p + k, p + "r")
+    d.text("cap", 20, 340, 1060, 50,
+           "The 3-way merge deletes at the level where OLD and NEW differ.\n"
+           "Server-side apply kept restartedAt in both cases: it has its own owner (kubectl-rollout).", size=11)
+    return d
+
+
+def csa_or_ssa():
+    d = Diagram("03-csa-or-ssa", 1000, 380, "How Helm 4 picks server-side or client-side apply")
+    d.box("inst", 20, 60, 200, 60, "helm install", "blue", size=12)
+    d.box("upg", 20, 210, 200, 60, "helm upgrade\nhelm rollback", "blue", size=12)
+    d.box("auto", 280, 195, 300, 90, "--server-side=auto (default)\nreads apply_method from the\nprevious release Secret", "yellow", size=11)
+    d.box("ssa", 680, 50, 300, 80, "SSA: the API server merges\nchecks field owners → conflicts", "green", size=11)
+    d.box("csa", 680, 230, 300, 80, "CSA: Helm's 3-way merge\nhand edits silently overwritten", "orange", size=11)
+    d.edge("inst", "ssa", "default true")
+    d.edge("upg", "auto")
+    d.edge("auto", "ssa", "ssa")
+    d.edge("auto", "csa", "csa")
+    d.edge("csa", "ssa", "one upgrade with\n--server-side=true", dashed=True)
+    d.text("cap", 20, 325, 960, 40,
+           "Releases created by Helm 3 stored csa, so they keep the 3-way merge after you move to Helm 4 until that one switch.", size=11)
+    return d
+
+
+def hpa_handover():
+    d = Diagram("03-hpa-handover", 1100, 400, "Moving replicas from Helm to an HPA (tested)")
+    d.text("t1", 20, 42, 600, 24, "Trap: Helm alone owns replicas", size=13, bold=True, align="left")
+    d.box("a1", 20, 72, 240, 70, "Helm is the only owner\nof replicas (3)", "gray", size=11)
+    d.box("a2", 300, 72, 240, 70, "Chart stops sending replicas\n(autoscaling.enabled=true)", "blue", size=11)
+    d.box("a3", 580, 72, 240, 70, "Rule 4: only owner stopped\n→ field deleted → 1 replica", "red", size=11)
+    d.box("a4", 860, 72, 220, 70, "~15 s later the HPA\nscales to minReplicas 4", "yellow", size=11)
+    d.edge("a1", "a2")
+    d.edge("a2", "a3")
+    d.edge("a3", "a4")
+    d.text("t2", 20, 172, 600, 24, "Safe order: hand the field over first", size=13, bold=True, align="left")
+    d.box("b1", 20, 202, 240, 70, "HPA scales first\n→ now owns replicas", "gray", size=11)
+    d.box("b2", 300, 202, 240, 70, "Chart stops sending replicas", "blue", size=11)
+    d.box("b3", 580, 202, 500, 70, "The field still has an owner (the HPA)\nnothing drops", "green", size=11)
+    d.edge("b1", "b2")
+    d.edge("b2", "b3")
+    d.text("cap", 20, 300, 1060, 80,
+           "Adopting an HPA made with kubectl autoscale:\n"
+           "--take-ownership passes Helm's own label check (invalid ownership metadata)\n"
+           "--force-conflicts takes the fields kubectl-autoscale owns.  You may need both.", size=11)
+    return d
+
+
+def values_flags():
+    d = Diagram("05-values-flags", 1100, 400, "--reuse-values vs --reset-values vs --reset-then-reuse-values")
+    cols = [
+        (20, "--reuse-values", [("Your -f / --set", "orange", False), ("Last release's values", "yellow", False),
+                               ("New chart defaults: IGNORED", "white", True)],
+         "New defaults in a newer chart\nare missing (the classic bug)", "red"),
+        (390, "--reset-values", [("Your -f / --set", "orange", False), ("Last release's values: DROPPED", "white", True),
+                                ("New chart's values.yaml", "gray", False)],
+         "Clean, but settings passed only\nin the last release are lost", "yellow"),
+        (760, "--reset-then-reuse-values", [("Your -f / --set", "orange", False), ("Last release's values", "yellow", False),
+                                           ("New chart's values.yaml", "gray", False)],
+         "New defaults + kept settings\nfixes the --reuse-values gotcha", "green"),
+    ]
+    for x, title, layers, res, rc in cols:
+        d.text(f"t{x}", x, 45, 320, 24, title, size=13, bold=True)
+        for i, (label, c, dash) in enumerate(layers):
+            d.box(f"l{x}{i}", x, 80 + i * 56, 320, 48, label, c, size=11, dashed=dash)
+        d.box(f"r{x}", x, 270, 320, 64, res, rc, size=11)
+        d.edge(f"l{x}2", f"r{x}")
+    d.text("cap", 20, 350, 1060, 40,
+           "Top layer wins.  Safest in CI: pass full values files every time, so none of these flags matter.", size=11)
+    return d
+
+
+def debug_order():
+    d = Diagram("06-debug-order", 1100, 290, "Debugging a Helm release, in order")
+    steps = [
+        ("1 · What does Helm think?\nhelm status\nhelm history\n(failed revision = the error)", "purple"),
+        ("2 · What did Helm apply?\nhelm get manifest\nget values --all\nget hooks", "blue"),
+        ("3 · What's in the cluster?\nhelm get manifest |\nkubectl diff -n shop -f -", "yellow"),
+        ("4 · Who changed it?\n--show-managed-fields\n+ EKS audit logs\n(the person)", "orange"),
+        ("5 · Helm or Kubernetes?\ndeployed but broken\n= debug the pods", "green"),
+    ]
+    for i, (label, c) in enumerate(steps):
+        d.box(f"s{i}", 20 + i * 215, 55, 195, 110, label, c, size=11)
+        if i:
+            d.edge(f"s{i - 1}", f"s{i}")
+    d.box("w1", 20, 200, 520, 64, "deployed ≠ healthy\nwithout --wait Helm waits for hooks only, not pods", "red", size=11)
+    d.box("w2", 560, 200, 520, 64, "pending-* = a killed run (\"another operation in progress\")\nhelm rollback to the last deployed revision", "orange", size=11)
+    return d
+
+
+ALL = [helm_flow, helm_versions, upgrade_lifecycle, release_states, values_order, release_secret,
+       three_way_rules, block_deletion, csa_or_ssa, hpa_handover, values_flags, debug_order]
 
 if __name__ == "__main__":
     force = "--force" in sys.argv
