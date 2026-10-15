@@ -140,7 +140,67 @@ def debug_ladder():
     return d
 
 
-ALL = [building_story, netfilter_chains, dns_journey, debug_ladder]
+def osi_layers():
+    d = Diagram("08-osi-layers", 960, 640, "The 7 OSI layers: what each one adds, and what works there")
+    d.text("h1", 20, 44, 250, 22, "Layer", size=12, bold=True)
+    d.text("h2", 290, 44, 210, 22, "Data is called", size=12, bold=True)
+    d.text("h3", 520, 44, 420, 22, "Examples (protocols · devices · tools)", size=12, bold=True)
+    layers = [
+        ("7 · Application\nwhat the program says", "data\nGET /health", "HTTP · DNS · SSH · gRPC\nALB, API gateway, ingress-nginx", "purple"),
+        ("6 · Presentation\nformat, encrypt, compress", "data\nJSON · TLS records", "TLS, UTF-8, gzip, JPEG\n(in TCP/IP: part of the app)", "purple"),
+        ("5 · Session\nopen, keep, close a dialog", "data", "TLS session resume, RPC sessions\n(in TCP/IP: part of the app)", "purple"),
+        ("4 · Transport\nport to port, reliable or not", "segment (TCP)\ndatagram (UDP)", "TCP · UDP · QUIC\nNLB, security group, kube-proxy", "blue"),
+        ("3 · Network\nhost to host, across networks", "packet\nsrc IP → dst IP", "IP · ICMP · routing · NAT\nrouter, route table, iptables", "green"),
+        ("2 · Data link\nnext hop on the same network", "frame\nsrc MAC → dst MAC", "Ethernet · Wi-Fi · ARP · VLAN\nswitch, bridge (docker0), veth", "yellow"),
+        ("1 · Physical\nbits on a wire or radio", "bits", "cable, fibre, radio, NIC\nhub, repeater", "orange"),
+    ]
+    for i, (name, unit, ex, color) in enumerate(layers):
+        y = 72 + i * 68
+        d.box(f"l{i}", 20, y, 250, 56, name, color, size=11)
+        d.box(f"u{i}", 290, y, 210, 56, unit, "white", size=11)
+        d.box(f"x{i}", 520, y, 420, 56, ex, "white", size=11, align="left")
+    d.box("n-send", 20, 556, 450, 66,
+          "Sending: each layer wraps the data from the layer above\n(adds its header) and passes it DOWN: encapsulation.\n"
+          "Receiving: each layer reads its header and passes it UP.",
+          "gray", size=11, align="left")
+    d.box("n-mnemonic", 490, 556, 450, 66,
+          "Remember 7 → 1: All People Seem To Need Data Processing\n"
+          "TCP/IP folds 7 + 6 + 5 into one Application layer,\nand 2 + 1 into one Link layer.",
+          "gray", size=11, align="left")
+    return d
+
+
+def osi_encapsulation():
+    d = Diagram("08-osi-encapsulation", 960, 470, "Encapsulation: how curl http://10.0.2.15/health is wrapped before it leaves")
+    http = ("HTTP: GET /health", "purple", 260)
+    tcp = ("TCP header\nports 45000 → 80", "blue", 150)
+    ip = ("IP header\n10.0.1.25 → 10.0.2.15", "green", 170)
+    rows = [
+        ("L7 data", [http]),
+        ("L4 segment", [tcp, http]),
+        ("L3 packet", [ip, tcp, http]),
+        ("L2 frame", [("Eth header\nMACs of next hop", "yellow", 140), ip, tcp, http, ("FCS", "yellow", 60)]),
+    ]
+    for r, (label, parts) in enumerate(rows):
+        y = 50 + r * 72
+        d.text(f"lab{r}", 20, y, 100, 56, label, size=12, bold=True)
+        x = 940 - sum(w for _, _, w in parts)
+        for c, (text, color, w) in enumerate(parts):
+            d.box(f"r{r}c{c}", x, y, w, 56, text, color, size=11, bold_first=False)
+            x += w
+    d.box("n-hop", 20, 350, 450, 104,
+          "At every router hop\nThe L2 frame is thrown away and rebuilt with new MACs.\n"
+          "The IP addresses stay the same end to end\n(unless NAT changes them, see 02).",
+          "white", size=11, align="left")
+    d.box("n-read", 490, 350, 450, 104,
+          "Which device reads how deep?\nSwitch / bridge: up to L2 (MAC)\n"
+          "Router / NAT / security group: up to L3–L4 (IP, port)\n"
+          "ALB / ingress / proxy: up to L7 (host, path, headers)",
+          "white", size=11, align="left")
+    return d
+
+
+ALL = [building_story, netfilter_chains, dns_journey, debug_ladder, osi_layers, osi_encapsulation]
 
 if __name__ == "__main__":
     force = "--force" in sys.argv
