@@ -1,40 +1,22 @@
 # 08 · Services and DNS ⭐
 
-## Why Services exist
-
-Pods come and go, and **every new pod gets a new IP**. A Service gives you:
-- a **stable virtual IP** (the ClusterIP);
-- a **stable DNS name**;
-- **load balancing** across all the **ready** pods matching its **label selector**.
+Every new pod gets a new IP. A Service gives a **stable virtual IP**, a **stable DNS name** and **load balancing** over the **ready** pods matching its label selector.
 
 ![How Service traffic flows](diagrams/08-service-traffic.drawio.svg)
 
+- ⭐ The ClusterIP is **not a machine**: kube-proxy writes DNAT rules on every node, and the client node's kernel rewrites the packet.
+- You **can't ping** it in iptables / nftables mode (rules exist only for its TCP/UDP ports). IPVS mode put it on a dummy interface, so ping answered. Cilium can replace kube-proxy with eBPF.
+
 ## Service types
 
-| Type | Reachable from | How | Use |
-|---|---|---|---|
-| **ClusterIP** (default) | Inside the cluster only | A virtual IP | Service-to-service traffic |
-| **NodePort** | Outside, via `<any-node-IP>:<30000–32767>` | Opens the port on **every** node | Testing; or behind your own load balancer |
-| **LoadBalancer** | The internet or your VPC | The cloud creates a load balancer → NodePorts or pod IPs. On EKS, the AWS Load Balancer Controller makes an **NLB** ([20](20-eks.md)). | Exposing one service |
-| **ExternalName** | Inside the cluster | A DNS **CNAME** to an outside name, no proxying | Giving an external database a cluster name |
-| **Headless** (`clusterIP: None`) | Inside the cluster | **No virtual IP**; DNS returns **each pod's IP** | StatefulSets, client-side load balancing |
+![Service types](diagrams/08-service-types.drawio.svg)
 
-**The three ports:** `port` = the Service's port · `targetPort` = the container's port · `nodePort` = the port opened on each node.
-
-## How a ClusterIP actually works ⭐ (deep fundamentals)
-
-1. You create a Service with `selector: app=web`.
-2. The **EndpointSlice controller** keeps a list of the **IPs of ready pods** with `app=web`.
-3. **kube-proxy on every node** watches Services and EndpointSlices, and writes **iptables / nftables rules**: "traffic to `10.96.12.34:80` → rewrite (DNAT) to one of the pod IPs, port 8080".
-4. A client pod connects to the ClusterIP. The **kernel on the client's own node** rewrites the destination and sends the packet straight to a pod.
-
-⚠️ So the **ClusterIP isn't a real machine or process**. Nothing "listens" on it, and in the default iptables/nftables mode you **can't ping it**: rules exist only for the Service's TCP/UDP ports. (In the older IPVS mode, the IP sits on a dummy interface on each node, so ping can answer.) Cilium can replace kube-proxy and do the same job with eBPF.
-
-## Useful Service settings
-
-- `sessionAffinity: ClientIP`: send the same client to the same pod.
-- `externalTrafficPolicy: Local` (NodePort and LoadBalancer): only nodes that have a local pod receive traffic, so the **client's source IP is kept** and there's no extra hop. `Cluster` (the default) spreads traffic more evenly but rewrites the source IP.
-- **A Service without a selector**, plus your own EndpointSlice, can point at IPs outside the cluster.
+| Setting | Effect |
+|---|---|
+| `sessionAffinity: ClientIP` | Same client → same pod |
+| `externalTrafficPolicy: Local` | Keeps client source IP, no extra hop; only nodes with a local pod get traffic |
+| `externalTrafficPolicy: Cluster` (default) | Spreads evenly, rewrites the source IP |
+| No selector + your own EndpointSlice | Point a Service at IPs outside the cluster |
 
 ```yaml
 apiVersion: v1
@@ -53,26 +35,22 @@ spec:
 
 ## DNS (CoreDNS) ⭐
 
-| Name | Resolves to |
-|---|---|
-| `web` | Works only from the **same namespace**, thanks to the search domains |
-| `web.shop` | Works from any namespace |
-| `web.shop.svc.cluster.local` | The full name (FQDN) |
-| `db-0.db.shop.svc.cluster.local` | One StatefulSet pod, through a **headless** Service |
-| `_http._tcp.web.shop.svc.cluster.local` | An SRV record for a named port |
+![DNS lookup in a pod](diagrams/08-dns-lookup.drawio.svg)
 
-- A pod's `/etc/resolv.conf` points at the **CoreDNS Service IP**, with `search <ns>.svc.cluster.local svc.cluster.local cluster.local` and **`ndots:5`**.
-- ⚠️ With `ndots:5`, an outside name like `api.stripe.com` first tries every search domain, which means several wasted lookups. Use a **trailing dot** (`api.stripe.com.`), lower `ndots` in `dnsConfig`, or run NodeLocal DNSCache. (Model answers Q3 and Q6 cover the details.)
+- SRV records exist for named ports: `_http._tcp.web.shop.svc.cluster.local`.
+- Model answers Q3 and Q6 go deeper on `ndots`.
 
-> **Docker link:** in Docker, containers on a user-defined network find each other by **name** through Docker's DNS at `127.0.0.11` ([Docker 08](../docker/08-networking.md)). In Kubernetes, **Services and CoreDNS** do this across the whole cluster.
+> **Docker link:** Docker's DNS at `127.0.0.11` resolves names on one network ([Docker 08](../docker/08-networking.md)); Services + CoreDNS do it cluster-wide.
 
 ## Interview angle
 
-- ⭐ "ClusterIP vs NodePort vs LoadBalancer vs headless?" → use the table above.
-- ⭐ "How does a ClusterIP work if nothing listens on it?" → kube-proxy programs DNAT rules on every node; the client node's kernel rewrites the packet to a ready pod's IP.
-- ⭐ "A Service has no endpoints. Why?" → the selector doesn't match the pod labels, the pods aren't Ready (readiness probe), or they're in a different namespace.
-- "What's a headless Service for?" → giving each pod its own DNS record (StatefulSets) instead of one virtual IP.
-- "How do you keep the client's real IP?" → `externalTrafficPolicy: Local`, or proxy-protocol / `X-Forwarded-For` headers at the load balancer.
+| Question | Answer |
+|---|---|
+| ⭐ ClusterIP vs NodePort vs LoadBalancer vs headless? | Use the Service types diagram. |
+| ⭐ How does a ClusterIP work if nothing listens? | kube-proxy DNAT rules on every node; the client node's kernel picks a ready pod. |
+| ⭐ Service has no endpoints? | Selector ≠ labels, pods not Ready, or wrong namespace. |
+| Headless Service for? | One DNS record per pod (StatefulSets) instead of one virtual IP. |
+| Keep the client's real IP? | `externalTrafficPolicy: Local`, or proxy protocol / `X-Forwarded-For`. |
 
 ## Practice 🖥️
 
@@ -82,6 +60,5 @@ kubectl expose deployment web --port=80 --target-port=80
 kubectl get svc web
 kubectl get endpointslices -l kubernetes.io/service-name=web
 kubectl run tmp --rm -it --image=busybox:1.36 --restart=Never -- sh
+# inside: nslookup web · wget -qO- web · cat /etc/resolv.conf
 ```
-
-Inside the busybox shell, run `nslookup web`, `wget -qO- web` and `cat /etc/resolv.conf`.
