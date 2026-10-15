@@ -1,54 +1,17 @@
 # 3.6 · TLS and Certificates
 
-> **Level 3 · Core networking protocols** · Lesson 6 of 11 · ⏱️ about 2 hours (estimate)
+> **Level 3 · Core networking protocols** · Lesson 6 of 11 · ⏱️ about 2 hours (estimate) · 🧪 [Lab 3.3](../13-hands-on-labs/lab-03.3-tls-certificates-and-handshake.md)
 > ⬅️ [3.5 HTTP and HTTPS](05-http-and-https.md) · ➡️ [3.7 ICMP, ping and traceroute](07-icmp-ping-and-traceroute.md)
 
-## What you'll learn
+![TLS 1.3 handshake between curl and web.example.lab: ClientHello with SNI and ALPN, ServerHello with the key share, then encrypted EncryptedExtensions, Certificate, CertificateVerify and Finished, the client's Finished, and the encrypted HTTP request](../diagrams/3.6-tls13-handshake.drawio.svg)
 
-- The three things **TLS** gives you: **encryption**, **integrity** and **authentication**.
-- The **TLS 1.3 handshake**, message by message, from a real `curl -v`.
-- What's inside a **certificate** (subject, SAN, issuer, validity) and how a **chain of trust** is checked.
-- How to make your own CA and server certificate with `openssl`, and reproduce every common certificate **error** (tested).
-- **SNI**, **ALPN**, **mTLS**, and where TLS is terminated in real architectures.
+- **TLS** (Transport Layer Security; the old name was SSL) gives **encryption** (strangers can carry it but not read it), **integrity** (tampering is noticed) and **authentication** (the server's **certificate**, issued by a **certificate authority (CA)** you trust, proves who it is).
+- HTTPS, SMTPS, IMAPS, LDAPS, database connections and the Kubernetes API all use it. TLS runs on top of a TCP connection ([3.3](03-tcp-in-depth.md)); QUIC builds it in.
+- **Two kinds of crypto:** asymmetric (a key pair; the private key never leaves the server; slow) proves identity and agrees on keys; symmetric (one shared key; fast) encrypts the data.
+- ⭐ **TLS 1.3 takes one round trip** before data flows (TLS 1.2 took two). **CertificateVerify** proves the server owns the private key.
+- Certificate errors are among the most common production incidents: **expired certificates**, **wrong names**, **missing intermediates**. `openssl s_client` is the tool interviewers expect you to know.
 
-## Before you start
-
-- [3.5](05-http-and-https.md): HTTP, and the fact that HTTPS = HTTP inside TLS.
-- [3.3](03-tcp-in-depth.md): TLS runs on top of a TCP connection (QUIC builds it in).
-
----
-
-## The idea in plain words
-
-Imagine sending a letter through many strangers' hands.
-
-- **Encryption**: the letter is in a locked box; strangers can carry it but not read it.
-- **Integrity**: if anyone tampers with the box, the receiver notices.
-- **Authentication**: before you put anything in the box, you check the receiver's **ID card** (the **certificate**), issued by an authority you trust (a **certificate authority, CA**). Otherwise you might be locking your letter in a box that belongs to an impostor.
-
-TLS (Transport Layer Security; the old name was SSL) does all three. **HTTPS, SMTPS, IMAPS, LDAPS, database connections and the Kubernetes API** all use it.
-
-## Why it matters
-
-- Certificate errors are among the most common production incidents: **expired certificates**, **wrong names**, **missing intermediates**.
-- You'll decide where to **terminate** TLS (load balancer, ingress, pod), and whether internal traffic needs **mutual TLS**.
-- `openssl s_client` is the tool interviewers expect you to know.
-
----
-
-## How it works
-
-### Two kinds of cryptography, used together
-
-| | Asymmetric (public key) | Symmetric |
-|---|---|---|
-| Keys | A **key pair**: public (share freely) + private (never leaves the server) | One shared secret key |
-| Speed | Slow | Fast |
-| Used in TLS for | **Proving identity** (signatures) and **agreeing on a key** | **Encrypting the actual data** (e.g. AES-GCM, ChaCha20) |
-
-The handshake uses asymmetric crypto to authenticate the server and to agree on fresh symmetric keys with **(EC)DHE** key exchange. Because the keys are ephemeral, recording the traffic and stealing the server's private key **later** still doesn't decrypt it: **forward secrecy**.
-
-### The TLS 1.3 handshake (tested)
+## The TLS 1.3 handshake (tested)
 
 `curl -v` to an `openssl s_server` in [Lab 3.3](../13-hands-on-labs/lab-03.3-tls-certificates-and-handshake.md), trusting the lab CA **(tested in the lab container)**:
 
@@ -75,33 +38,10 @@ The handshake uses asymmetric crypto to authenticate the server and to agree on 
 *  SSL certificate verify ok.
 ```
 
-```mermaid
-sequenceDiagram
-    participant C as Client (curl)
-    participant S as Server (web.example.lab)
-    Note over C,S: TCP handshake already done
-    C->>S: ClientHello: TLS versions, cipher suites, key share (X25519),<br/>SNI = web.example.lab, ALPN = h2, http/1.1
-    S->>C: ServerHello: chosen cipher + its key share
-    Note over C,S: Both compute the same keys. Everything below is encrypted
-    S->>C: EncryptedExtensions (e.g. ALPN choice)
-    S->>C: Certificate (the chain)
-    S->>C: CertificateVerify (signature proving it owns the private key)
-    S->>C: Finished
-    C->>S: Finished
-    C->>S: HTTP request (encrypted application data)
-```
+- **Finished** (both sides) is a hash of everything so far, so tampering with any earlier message is detected.
+- The "Change cipher spec" line is a compatibility leftover with no real role in 1.3.
 
-| Message | Purpose |
-|---|---|
-| **ClientHello** | "Here's what I support, here's my half of the key exchange, I want `web.example.lab` (**SNI**), I can speak `h2` or `http/1.1` (**ALPN**)" |
-| **ServerHello** | "We'll use TLS 1.3 with `TLS_AES_256_GCM_SHA384` and X25519; here's my half" |
-| **Certificate** | The server's certificate (and intermediates) |
-| **CertificateVerify** | A signature over the handshake with the server's **private key**: proof it really owns the certificate |
-| **Finished** (both) | A hash of everything so far, so tampering with any earlier message is detected |
-
-**TLS 1.3 takes one round trip** before data flows (TLS 1.2 took two). The "Change cipher spec" line is a compatibility leftover with no real role in 1.3.
-
-### What an observer can still see (tested)
+## What an observer can still see (tested)
 
 The capture of that same handshake, decoded with `tshark` **(tested in the lab container)**:
 
@@ -111,13 +51,14 @@ The capture of that same handshake, decoded with `tshark` **(tested in the lab c
     8   0.006426    10.20.0.1 → 10.20.0.2    TLSv1.3 146 Change Cipher Spec, Application Data
 ```
 
-- The **SNI** (the site name) is visible **in clear text** in the ClientHello. That's how firewalls and proxies filter HTTPS by domain. (**Encrypted Client Hello**, ECH, is the newer extension that hides it.)
-- In TLS 1.3 the **certificate is encrypted**: it's inside the "Application Data" records. (In TLS 1.2 it was visible.)
-- The IP addresses, ports, timing and sizes are always visible.
+- The **SNI** (the site name) is **clear text** in the ClientHello: that's how firewalls and proxies filter HTTPS by domain. **Encrypted Client Hello** (ECH) is the newer extension that hides it.
+- In TLS 1.3 the **certificate is encrypted** (inside the "Application Data" records); in TLS 1.2 it was visible. IPs, ports, timing and sizes are always visible.
 
-### Certificates
+## Certificates and the chain of trust
 
-A certificate (X.509) binds a **public key** to **names**, signed by an **issuer**. The fields that matter:
+![The leaf certificate is signed by an optional intermediate CA, which is signed by a root CA in the client's trust store; the client checks the chain, the hostname against the SAN, the dates and the CertificateVerify signature](../diagrams/3.6-cert-chain.drawio.svg)
+
+A certificate (X.509) binds a **public key** to **names**, signed by an **issuer**:
 
 | Field | In the lab certificate | Checked how |
 |---|---|---|
@@ -128,14 +69,8 @@ A certificate (X.509) binds a **public key** to **names**, signed by an **issuer
 | **Public key** | RSA 2048 | Used to verify `CertificateVerify` |
 | **Key usage / extended key usage** | (server authentication) | Must allow the use |
 
-### The chain of trust
-
-```mermaid
-flowchart LR
-    L["Leaf certificate<br/>CN=web.example.lab<br/>signed by →"] --> I["Intermediate CA<br/>(optional, usual in real life)<br/>signed by →"] --> R["Root CA<br/>self-signed<br/>in the client's trust store"]
-```
-
-The client checks each signature up the chain until it reaches a root it already trusts (the OS or browser **trust store**, `/etc/ssl/certs` on Linux, Keychain on macOS). Servers must send the **leaf and the intermediates**; the root isn't sent (the client must already have it). Forgetting the intermediate is a classic bug: browsers sometimes cope (they cache intermediates), `curl` and APIs fail.
+- Servers must send the **leaf and the intermediates**; the root isn't sent. Forgetting the intermediate is a classic bug: browsers sometimes cope (they cache intermediates), `curl` and APIs fail.
+- The **CSR** (certificate signing request) carries the public key and requested names; the CA signs it. The private key **never leaves** the server.
 
 Building a mini PKI by hand **(tested in the lab container, OpenSSL 3)**:
 
@@ -154,9 +89,7 @@ $ openssl verify -CAfile ca.crt server.crt
 server.crt: OK
 ```
 
-The **CSR** (certificate signing request) carries the public key and requested names; the CA signs it. The private key **never leaves** the server.
-
-### Every common error, reproduced (tested)
+## Every common error, reproduced (tested)
 
 All from [Lab 3.3](../13-hands-on-labs/lab-03.3-tls-certificates-and-handshake.md) **(tested in the lab container)**:
 
@@ -178,21 +111,24 @@ New, TLSv1.3, Cipher is TLS_AES_256_GCM_SHA384
 Verify return code: 0 (ok)
 ```
 
-### SNI, ALPN and mutual TLS
+## SNI, ALPN and mutual TLS
 
 - **SNI** (Server Name Indication): the client names the site in the ClientHello, so one IP can serve many certificates. A missing or wrong SNI gets the **default** certificate → name mismatch. Always pass `-servername` to `s_client`.
-- **ALPN**: the client and server agree on the application protocol (`h2`, `http/1.1`) during the handshake. The lab's `s_server` didn't pick one, so curl used HTTP/1.1.
+- **ALPN**: client and server agree on the application protocol (`h2`, `http/1.1`) during the handshake. The lab's `s_server` didn't pick one, so curl used HTTP/1.1.
 - **Mutual TLS (mTLS)**: the server **also** asks for a client certificate. Used for service-to-service authentication (service meshes like Istio/Linkerd, the Kubernetes API with client certs, partner APIs).
 
-### Where TLS ends: termination options
+## Where TLS ends: termination options
 
-| Option | How | Trade-off |
-|---|---|---|
-| **Terminate at the load balancer** | ALB / ingress has the certificate; plain HTTP to backends | Simple, LB can route on HTTP; traffic inside the VPC is unencrypted |
-| **Re-encrypt** | LB terminates, then opens new TLS to the backend | Encrypted end to end; two sets of certificates |
-| **Passthrough** | NLB (TCP) forwards the encrypted bytes; the backend terminates | The LB can't see HTTP (no path routing); backend manages certificates |
+![Three options: terminate at the load balancer and send plain HTTP to the backend; re-encrypt with new TLS to the backend; or pass the TLS bytes through an NLB so the backend terminates](../diagrams/3.6-tls-termination.drawio.svg)
 
----
+## Where you meet it
+
+| Where | What to know |
+|---|---|
+| AWS Certificate Manager (ACM) | Issues and renews public certificates for ALB, NLB (TLS listeners), CloudFront and API Gateway; you never see the private key |
+| Kubernetes | **cert-manager** requests certificates (e.g. from **Let's Encrypt**, via ACME) and stores them as Secrets for ingresses. The API server, kubelets and etcd use certificates from the cluster CA |
+| Short lifetimes | Let's Encrypt certificates last 90 days; the maximum lifetime for public certificates is being reduced in stages (CA/Browser Forum ballot SC-081: 200 days from March 2026, down to 47 days by 2029). **Automate renewal** (ACM, cert-manager, ACME) and monitor expiry; never track dates by hand |
+| Corporate proxies | Proxies that inspect HTTPS re-sign traffic with their own CA; tools that don't trust that CA fail with `unable to get local issuer certificate` |
 
 ## Try it
 
@@ -212,37 +148,17 @@ openssl x509 -in cert.pem -noout -text | less
 
 These work the same on macOS (LibreSSL's `openssl`; some options differ slightly) and Linux.
 
-## In the real world
-
-- **AWS Certificate Manager (ACM)** issues and renews public certificates for ALB, NLB (TLS listeners), CloudFront and API Gateway; you never see the private key.
-- **Kubernetes:** **cert-manager** requests certificates (e.g. from **Let's Encrypt**, via ACME) and stores them as Secrets for ingresses. The API server, kubelets and etcd use certificates from the cluster CA.
-- **Short lifetimes:** Let's Encrypt certificates last 90 days, and the maximum lifetime for public certificates is being reduced in stages (CA/Browser Forum ballot SC-081: 200 days from March 2026, down to 47 days by 2029). **Automate renewal**; never track expiry dates by hand.
-- **Corporate proxies** that inspect HTTPS re-sign traffic with their own CA; tools that don't trust that CA fail with `unable to get local issuer certificate`.
-
-## Common mistakes
-
-| Mistake | Fix |
-|---|---|
-| Putting the name only in the CN | Put every hostname in the **SAN** |
-| Serving the leaf without the intermediate | Serve the **full chain** (leaf + intermediates) |
-| Using `-k` / `verify=False` "temporarily" | Add the CA to the trust store (`--cacert`, `REQUESTS_CA_BUNDLE`, `update-ca-certificates`) |
-| Testing with `s_client` without `-servername` | Without SNI you may get a different (default) certificate |
-| Manual renewal reminders | ACM / cert-manager / ACME automation and expiry monitoring |
-
 ## Troubleshooting
 
-| Error | Cause | Check |
+| You see | It means | Next step |
 |---|---|---|
-| `unable to get local issuer certificate` | Unknown CA, or a **missing intermediate** | `openssl s_client -showcerts`: is the chain complete? Is the CA in the trust store? |
-| `no alternative certificate subject name matches` / `hostname mismatch` | Wrong name (or IP), wrong SNI, default certificate | `openssl x509 -noout -ext subjectAltName`; use the right hostname |
+| `unable to get local issuer certificate` | Unknown CA, or a **missing intermediate** (serve the **full chain**: leaf + intermediates) | `openssl s_client -showcerts`: is the chain complete? Is the CA in the trust store? |
+| `no alternative certificate subject name matches` / `hostname mismatch` | Wrong name (or IP), wrong SNI, default certificate, or the name only in the CN | `openssl x509 -noout -ext subjectAltName`; put every hostname in the **SAN**; use the right hostname |
 | `certificate has expired` / `not yet valid` | Expired certificate, or the **client's clock** is wrong | `-dates` on the cert; `date` on the client |
-| `self-signed certificate` / `self signed certificate in certificate chain` | Self-signed leaf, or a private/proxy root not trusted | Trust the CA properly |
+| `self-signed certificate` / `self signed certificate in certificate chain` | Self-signed leaf, or a private/proxy root not trusted | Trust the CA properly (`--cacert`, `REQUESTS_CA_BUNDLE`, `update-ca-certificates`), never `-k` / `verify=False` "temporarily" |
 | `wrong version number` / `packet length too long` | Speaking TLS to a **plain HTTP** port (or the reverse) | Check the port and scheme |
 | Handshake failure / `no shared cipher` | Client and server have no common TLS version or cipher | `openssl s_client -tls1_2` / `-tls1_3`; server's TLS policy |
-
-## Hands-on lab
-
-[Lab 3.3 · TLS: certificates and the handshake](../13-hands-on-labs/lab-03.3-tls-certificates-and-handshake.md): create a CA, issue a server certificate, serve HTTPS, reproduce every error in the table above, and see the SNI in a capture.
+| `s_client` shows a different certificate | No SNI: you got the default certificate | Add `-servername` |
 
 ## Interview angle
 
@@ -272,14 +188,4 @@ These work the same on macOS (LibreSSL's `openssl`; some options differ slightly
 
 </details>
 
-## Summary
-
-- TLS gives **encryption, integrity and authentication**; asymmetric crypto for identity and key agreement, symmetric for data.
-- TLS 1.3: **one round trip**; certificate encrypted; **SNI** still visible.
-- A certificate is trusted if its **chain** reaches a trusted root, the **hostname matches a SAN**, and it's **within its dates**.
-- Most errors are: unknown CA / missing intermediate, name mismatch, expired (or a wrong clock).
-- Never ship `-k`. Automate certificates (ACM, cert-manager).
-
-## Next
-
-➡️ [3.7 · ICMP, ping and traceroute](07-icmp-ping-and-traceroute.md): the network's own error messages, and the tools built on them.
+➡️ **Next:** [3.7 · ICMP, ping and traceroute](07-icmp-ping-and-traceroute.md): the network's own error messages, and the tools built on them.
