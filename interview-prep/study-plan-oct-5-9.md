@@ -29,6 +29,8 @@ The basics Hemant digs into are covered **inside** the topic they belong to:
 
 ## How the hours are split
 
+![Mon 5 to Fri 9 Oct: what each slot covers](diagrams/p1-week-plan.drawio.svg)
+
 | Topic | Hours | When |
 |---|---|---|
 | **Docker** | ~5 h | Mon evening, Tue morning, Tue evening (first part) |
@@ -40,6 +42,8 @@ The basics Hemant digs into are covered **inside** the topic they belong to:
 | **Revision + practice interview** | ~4 h | Fri morning |
 
 ## How to learn deeply when you learn slowly ⭐
+
+![How to learn one topic deeply](diagrams/p2-learning-loop.drawio.svg)
 
 Do this for **every topic**:
 

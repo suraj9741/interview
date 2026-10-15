@@ -1,5 +1,7 @@
 # 03 · Docker Images
 
+![Image names, tags, digests, multi-arch](diagrams/03-image-anatomy.drawio.svg)
+
 ## What an image is
 
 - A **read-only template**: a stack of **filesystem layers** plus a **config** (default command, env vars, user, exposed ports).

@@ -1,5 +1,7 @@
 # 12 · Docker Troubleshooting ⭐
 
+![Container troubleshooting flowchart](diagrams/12-debug-flow.drawio.svg)
+
 ## Debugging method (say these steps in the interview)
 
 1. **Status:** `docker ps -a`. Is it running, restarting, or exited (with which code)?

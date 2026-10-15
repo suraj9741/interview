@@ -77,6 +77,8 @@ Error from server (Conflict): Apply failed with 1 conflict: conflict with "kubec
 
 ## How Helm picks CSA or SSA 🧪
 
+![How Helm 4 picks server-side or client-side apply](diagrams/03-csa-or-ssa.drawio.svg)
+
 | Command | Default | Meaning |
 |---|---|---|
 | `helm install` | `--server-side=true` | New releases use SSA |
@@ -85,6 +87,8 @@ Error from server (Conflict): Apply failed with 1 conflict: conflict with "kubec
 Each release Secret stores the method. I decoded two: `apply_method = ssa` for the server-side release, `apply_method = csa` for the `--server-side=false` one. That's why releases created by Helm 3 keep the 3-way merge after you move to Helm 4.
 
 ## The HPA case, end to end 🧪
+
+![Moving replicas from Helm to an HPA](diagrams/03-hpa-handover.drawio.svg)
 
 **1 · The fight.** An HPA (`minReplicas: 4`) scaled the Deployment from 3 to 4 and took the tag. The next `helm upgrade` failed:
 

@@ -38,6 +38,8 @@ demo/
 
 ## Values: which one wins?
 
+![Values order](diagrams/01-values-order.drawio.svg)
+
 From lowest to highest priority (the last one wins):
 
 1. The chart's own `values.yaml`
@@ -69,6 +71,8 @@ Three ways to check what will be applied:
 | `helm upgrade web ./demo --dry-run=server` | Yes, but saves nothing | Real API validation and admission policies |
 
 ## Where a release is stored 🧪
+
+![Where Helm keeps a release](diagrams/01-release-secret.drawio.svg)
 
 There is **no Tiller** since Helm 3. The release lives in the cluster as **one Secret per revision**:
 

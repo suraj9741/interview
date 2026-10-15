@@ -230,7 +230,179 @@ def compose():
     return d
 
 
-ALL = [container_vs_vm, architecture, overlay, lifecycle, multistage, mounts, bridge, packet_flow, compose]
+def namespaces_cgroups():
+    d = Diagram("02-namespaces-cgroups", 1000, 410, "A container = a normal process + namespaces + cgroups")
+    d.group("ns", 20, 50, 320, 300, "Namespaces: what it can SEE", "blue")
+    items = [("pid: own process tree from PID 1", "white"), ("net: own interfaces, IPs, ports", "white"),
+             ("mnt: own root filesystem", "white"), ("uts: own hostname", "white"), ("ipc: own shared memory", "white"),
+             ("user: UID mapping (OFF by default!)", "red"), ("cgroup: own view of cgroups", "white")]
+    for i, (label, color) in enumerate(items):
+        d.box(f"ns{i}", 35, 85 + i * 37, 290, 30, label, color, size=11, align="left")
+    d.box("proc", 380, 160, 240, 80, "Your container process\nPID 1 inside the container\nPID 4812 on the host", "green")
+    d.group("cg", 660, 50, 320, 200, "cgroups: what it can USE", "orange")
+    limits = ["memory: --memory 512m → over = OOM kill (137)", "cpu: --cpus 1.5 → over = throttled",
+              "pids: --pids-limit 200 → no fork bombs", "io: disk read / write limits"]
+    for i, label in enumerate(limits):
+        d.box(f"cg{i}", 675, 85 + i * 40, 290, 32, label, "white", size=11, align="left")
+    d.box("root", 660, 270, 320, 80, "User namespace off → root in the container\nis UID 0 on the host → run as non-root",
+          "red", size=11, bold_first=False)
+    d.edge("proc", "ns")
+    d.edge("proc", "cg")
+    d.text("caption", 0, 362, 1000, 40,
+           "Also: capabilities (Docker keeps ~14 of ~40) · seccomp (blocks dangerous syscalls) · AppArmor / SELinux.\n"
+           "Modern Linux uses cgroup v2. Kubernetes limits become exactly these cgroup settings on the node.", size=11)
+    return d
+
+
+def image_anatomy():
+    d = Diagram("03-image-anatomy", 1000, 410, "Image names, tags vs digests, multi-arch")
+    d.box("reg", 20, 50, 330, 56, "123456789012.dkr.ecr.….amazonaws.com\nregistry (none = docker.io)", "blue", size=11)
+    d.box("repo", 360, 50, 170, 56, "team/api\nrepository", "green")
+    d.box("tag", 540, 50, 200, 56, ":1.4.2\ntag (none = latest)", "yellow")
+    d.box("dig", 750, 50, 230, 56, "@sha256:9f2c…\ndigest", "purple")
+    d.box("t", 20, 150, 200, 56, "tag nginx:1.27\na movable pointer", "yellow")
+    d.box("i1", 330, 135, 250, 38, "image sha256:aaa… (Monday)", "gray", size=11)
+    d.box("i2", 330, 188, 250, 38, "image sha256:bbb… (Friday)", "green", size=11)
+    d.box("dd", 650, 150, 330, 56, "digest @sha256:bbb… = exact content\nnever changes → deploy by digest / git SHA",
+          "purple", size=11)
+    d.edge("t", "i1", "was", dashed=True)
+    d.edge("t", "i2", "now")
+    d.edge("dd", "i2")
+    d.box("ml", 20, 275, 260, 60, "nginx:1.27 (manifest list)\none name, many platforms", "blue")
+    d.box("amd", 340, 262, 260, 38, "linux/amd64 → most EC2", "white", size=11)
+    d.box("arm", 340, 310, 260, 38, "linux/arm64 → M-series Mac, Graviton", "white", size=11)
+    d.box("err", 650, 262, 330, 86, "Built on a Mac (arm64 only), run on amd64\n→ exec format error\n"
+          "fix: buildx --platform linux/amd64,linux/arm64", "red", size=11)
+    d.edge("ml", "amd")
+    d.edge("ml", "arm")
+    d.text("caption", 0, 365, 1000, 36,
+           "latest is only the default tag name, not \"the newest\". It can point anywhere, so never deploy it.", size=12)
+    return d
+
+
+def pid1_signals():
+    d = Diagram("04-pid1-signals", 1000, 340, "docker stop and PID 1: why some containers take 10 s to stop")
+    d.box("stop", 20, 130, 170, 60, "docker stop\n(or pod deleted)", "white")
+    d.box("shell", 230, 50, 270, 60, "Shell form: CMD node app.js\nPID 1 = /bin/sh -c", "red")
+    d.box("ign", 540, 50, 210, 60, "sh doesn't forward it\napp never hears SIGTERM", "red", size=11)
+    d.box("kill", 790, 50, 190, 60, "10 s later: SIGKILL\nexit 137, dropped requests", "red", size=11)
+    d.box("exec", 230, 210, 270, 60, "Exec form: CMD [\"node\", \"app.js\"]\nPID 1 = node", "green")
+    d.box("hand", 540, 210, 210, 60, "app handles SIGTERM\nfinishes in-flight requests", "green", size=11)
+    d.box("ok", 790, 210, 190, 60, "exits 0\nclean shutdown", "green")
+    d.edge("stop", "shell", "SIGTERM")
+    d.edge("stop", "exec", "SIGTERM")
+    d.edge("shell", "ign")
+    d.edge("ign", "kill")
+    d.edge("exec", "hand")
+    d.edge("hand", "ok")
+    d.text("caption", 0, 290, 1000, 40,
+           "PID 1 ignores signals it has no handler for, and must reap zombie children: use --init (tini) if the app forks.\n"
+           "Kubernetes sends the same SIGTERM on pod delete, then SIGKILL after 30 s (terminationGracePeriodSeconds).",
+           size=11)
+    return d
+
+
+def cmd_entrypoint():
+    d = Diagram("05-cmd-entrypoint", 1000, 330, "ENTRYPOINT is what runs, CMD is the default arguments")
+    d.box("ep", 20, 55, 300, 56, "ENTRYPOINT [\"python\", \"app.py\"]\nthe executable", "purple")
+    d.box("cmd", 20, 140, 300, 56, "CMD [\"--port\", \"8000\"]\ndefault arguments", "yellow")
+    cases = [("docker run img", "python app.py --port 8000"),
+             ("docker run img --port 9000", "python app.py --port 9000\n(CMD replaced)"),
+             ("docker run --entrypoint sh img", "sh\n(ENTRYPOINT replaced, image CMD cleared)")]
+    for i, (cmd, result) in enumerate(cases):
+        y = 50 + i * 62
+        d.box(f"c{i}", 380, y, 260, 50, cmd, "white", bold_first=False)
+        d.box(f"r{i}", 700, y, 280, 50, result, "green", size=11, bold_first=False)
+        d.edge(f"c{i}", f"r{i}")
+    d.box("k8s", 20, 245, 960, 40, "Kubernetes pod spec:  command:  replaces ENTRYPOINT   ·   args:  replaces CMD", "blue",
+          bold=True)
+    d.text("caption", 0, 292, 1000, 30,
+           "Always use exec form [\"a\", \"b\"]: shell form runs /bin/sh as PID 1, and SIGTERM never reaches your app.",
+           size=11)
+    return d
+
+
+def layer_cache():
+    d = Diagram("06-layer-cache", 1000, 370, "Layer cache: one change rebuilds that layer and everything after it")
+    d.group("bad", 20, 50, 460, 250, "✗ Code copied before dependencies", "red")
+    bad = [("FROM python:3.12-slim · cached", "green"), ("COPY . . · code changed → rebuilt", "red"),
+           ("RUN pip install -r requirements.txt · rebuilt (slow)", "red")]
+    for i, (label, color) in enumerate(bad):
+        d.box(f"b{i}", 40, 95 + i * 55, 420, 44, label, color, size=11, bold_first=False)
+    d.group("good", 520, 50, 460, 250, "✓ Dependencies first", "green")
+    good = [("FROM python:3.12-slim · cached", "green"), ("COPY requirements.txt . · cached", "green"),
+            ("RUN pip install -r requirements.txt · cached", "green"), ("COPY . . · rebuilt (only this, fast)", "yellow")]
+    for i, (label, color) in enumerate(good):
+        d.box(f"g{i}", 540, 95 + i * 50, 420, 40, label, color, size=11, bold_first=False)
+    d.text("caption", 0, 310, 1000, 50,
+           "Same trap: RUN apt-get update on its own line is cached forever → always apt-get update && apt-get install in one RUN.\n"
+           "Deleting files in a later RUN doesn't shrink the image: the earlier layer still holds them.", size=11)
+    return d
+
+
+def default_vs_user_bridge():
+    d = Diagram("08-default-vs-user-bridge", 1000, 330, "The classic trap: names only resolve on a user-defined network")
+    d.group("def", 20, 50, 460, 200, "Default bridge (docker0)", "gray")
+    d.box("a", 50, 100, 170, 54, "api\n172.17.0.2", "green")
+    d.box("b", 280, 100, 170, 54, "db\n172.17.0.3", "green")
+    d.edge("a", "b", "ping db ✗", dashed=True)
+    d.text("dn", 30, 175, 440, 60, "No DNS: only IP addresses work.\nEvery container that didn't pick a network lands here.",
+           size=11)
+    d.group("usr", 520, 50, 460, 200, "User-defined: docker network create appnet", "blue")
+    d.box("a2", 550, 100, 170, 54, "api", "green")
+    d.box("b2", 780, 100, 170, 54, "db", "green")
+    d.box("dns", 665, 185, 170, 44, "DNS 127.0.0.11", "purple")
+    d.edge("a2", "b2", "db:5432 ✓")
+    d.edge("a2", "dns", "resolve db", dashed=True)
+    d.text("caption", 0, 265, 1000, 50,
+           "Compose creates a user-defined network for you. Isolation: only containers you attach; connect running ones with\n"
+           "docker network connect. In Kubernetes, Services + CoreDNS do this across the whole cluster.", size=11)
+    return d
+
+
+def docker_security_layers():
+    d = Diagram("10-security-layers", 1000, 340, "Securing containers: 4 layers, say them in this order")
+    layers = [("1 · Image", "minimal pinned base · scan (Trivy, Scout) · SBOM (Syft) · sign (cosign) · rebuild for patches", "blue"),
+              ("2 · Build", "no secrets in ARG / ENV / layers (BuildKit --secret) · .dockerignore · multi-stage", "green"),
+              ("3 · Runtime", "non-root · --read-only · --cap-drop ALL · no-new-privileges · limits · never --privileged or docker.sock",
+               "orange"),
+              ("4 · Host", "patch · docker group = root · no TCP 2375 · rootless or userns-remap · CIS benchmark · log rotation",
+               "gray")]
+    for i, (name, detail, color) in enumerate(layers):
+        y = 55 + i * 58
+        d.box(f"n{i}", 20, y, 160, 48, name, color, bold=True)
+        d.box(f"d{i}", 190, y, 790, 48, detail, color, align="left", size=11)
+    d.text("caption", 0, 290, 1000, 40,
+           "Why it matters: containers share the host kernel and the user namespace is off by default,\n"
+           "so root in a container is UID 0 on the host. One escape = the whole host.", size=11)
+    return d
+
+
+def debug_flow():
+    d = Diagram("12-debug-flow", 1000, 520, "Container troubleshooting flowchart")
+    d.box("start", 400, 50, 200, 44, "Container not working", "red", shape="ellipse")
+    qs = [("q1", 120, "Exited?", "a1", "docker logs + exit code\n137 OOM · 127 not found · 0 ran in background"),
+          ("q2", 200, "Restarting / unhealthy?", "a2", "inspect .State.Health\nhealth cmd, port, curl missing"),
+          ("q3", 280, "Running but unreachable?", "a3", "listens on 127.0.0.1? no -p?\nport taken? host firewall"),
+          ("q4", 360, "Can't reach others by name?", "a4", "default bridge has no DNS\nuse a user-defined network"),
+          ("q5", 440, "Disk full / slow build?", "a5", "docker system df · log rotation\nprune · layer order")]
+    for qid, y, q, aid, a in qs:
+        d.box(qid, 370, y, 260, 50, q, "yellow")
+        d.box(aid, 680, y - 5, 300, 60, a, "white", size=11)
+    d.edge("start", "q1")
+    for i, (qid, _y, _q, aid, _a) in enumerate(qs):
+        d.edge(qid, aid, "yes")
+        if i + 1 < len(qs):
+            d.edge(qid, qs[i + 1][0], "no")
+    d.text("first", 20, 120, 320, 370,
+           "Always start with:\n1. docker ps -a\n2. docker logs --tail 100 c\n3. docker inspect c\n4. docker exec -it c sh\n"
+           "5. docker stats\n6. docker events --since 30m\n7. docker system df", size=11, align="left")
+    return d
+
+
+ALL = [container_vs_vm, architecture, overlay, lifecycle, multistage, mounts, bridge, packet_flow, compose,
+       namespaces_cgroups, image_anatomy, pid1_signals, cmd_entrypoint, layer_cache, default_vs_user_bridge,
+       docker_security_layers, debug_flow]
 
 if __name__ == "__main__":
     force = "--force" in sys.argv

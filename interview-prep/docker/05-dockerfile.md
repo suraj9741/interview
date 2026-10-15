@@ -24,6 +24,8 @@ A **Dockerfile** is a text file of instructions that `docker build` runs, top to
 
 ## CMD vs ENTRYPOINT ⭐
 
+![CMD vs ENTRYPOINT](diagrams/05-cmd-entrypoint.drawio.svg)
+
 - **ENTRYPOINT** = *what* runs (the executable). **CMD** = the default *arguments*, or the default command if there's no ENTRYPOINT.
 - `docker run image something` **replaces CMD**. `--entrypoint` replaces ENTRYPOINT.
 

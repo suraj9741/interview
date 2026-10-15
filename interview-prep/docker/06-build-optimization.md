@@ -12,6 +12,8 @@ docker build -t app:1.0 -f Dockerfile .
 
 ## Layer caching rules ⭐
 
+![Layer cache](diagrams/06-layer-cache.drawio.svg)
+
 1. Docker reuses a cached layer only if **the instruction is unchanged** and, for `COPY`/`ADD`, **the copied files' contents are unchanged** (it compares checksums).
 2. Once one layer has to be rebuilt, **every layer after it is rebuilt too**.
 3. So: put the steps that **rarely change at the top** and the ones that **change often at the bottom**.

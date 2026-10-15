@@ -30,6 +30,8 @@ Hemant said the next round focuses on **Docker, Kubernetes, AWS, CI/CD and secur
 
 ### Q1. Walk me through everything that happens when you type mixy.com in the browser.
 
+![What happens when you type mixy.com](diagrams/01-url-to-page.drawio.svg)
+
 **Say:**
 1. **Parse the input.** The browser decides whether it's a URL or a search term. There's no scheme, so it picks `https` (and checks its HSTS list).
 2. **DNS lookup.** Browser cache → OS cache and `/etc/hosts` → the recursive resolver from `resolv.conf` or DHCP. If nothing is cached, the resolver asks root → `.com` TLD → mixy.com's authoritative server, gets the A/AAAA record, and caches it for its TTL.
@@ -54,6 +56,8 @@ Hemant said the next round focuses on **Docker, Kubernetes, AWS, CI/CD and secur
 **Follow-up:** "How do you see Chrome's DNS cache?" → `chrome://net-internals/#dns`. "On macOS, who does the resolving?" → the `mDNSResponder` system service.
 
 ### Q3. 🖥️ What is resolv.conf? How does the system know which resolver to use?
+
+![DNS lookup from a pod](kubernetes/diagrams/08-dns-lookup.drawio.svg)
 
 **Say:**
 - `/etc/resolv.conf` configures the system's DNS stub resolver (the client-side DNS lookup library):
@@ -119,6 +123,8 @@ Hemant said the next round focuses on **Docker, Kubernetes, AWS, CI/CD and secur
 
 ### Q9. Explain the hierarchy of root, TLD and authoritative name server. Who answers what?
 
+![Who answers what in DNS](diagrams/09-dns-hierarchy.drawio.svg)
+
 **Say:**
 - **Stub resolver** (on your machine): only asks a recursive resolver and waits.
 - **Recursive resolver** (ISP, 8.8.8.8, 1.1.1.1, or the AWS VPC resolver at the VPC's base address +2): does the walking and caches the results.
@@ -131,6 +137,8 @@ Hemant said the next round focuses on **Docker, Kubernetes, AWS, CI/CD and secur
 ---
 
 # 2. IP addressing
+
+![How a laptop with a private IP talks to anything](diagrams/11-private-ip-nat.drawio.svg)
 
 ### Q10. Is that a private or a public IP address? Why do you say so?
 
@@ -171,6 +179,8 @@ Hemant said the next round focuses on **Docker, Kubernetes, AWS, CI/CD and secur
 ---
 
 # 3. TCP, UDP and HTTP
+
+![TCP, then TLS, then HTTP](diagrams/14-tcp-tls-http.drawio.svg)
 
 ### Q13. You have the IP address. What happens next?
 
@@ -292,6 +302,8 @@ Type it by hand. If you pipe it in instead, macOS `nc` quits as soon as the inpu
 
 ### Q20. Why do sleeping processes appear there? Why should they be there at all?
 
+![PID 1 and signals in a container](docker/diagrams/04-pid1-signals.drawio.svg)
+
 **Say:**
 - Most processes are **waiting for something**: network data, a timer, user input, a lock, a child process. That's state `S`.
 - They're still alive, holding memory and open sockets, but using **no CPU**.
@@ -335,6 +347,8 @@ Type it by hand. If you pipe it in instead, macOS `nc` quits as soon as the inpu
 
 ### Q24. 🖥️ In netstat output, what are Recv-Q and Send-Q? How are they useful when debugging?
 
+![Recv-Q and Send-Q](diagrams/24-recv-send-q.drawio.svg)
+
 **Say:**
 - **On established connections:**
   - **Recv-Q** = bytes the kernel received that the **app hasn't read yet**.
@@ -368,6 +382,8 @@ Type it by hand. If you pipe it in instead, macOS `nc` quits as soon as the inpu
 
 ### Q26. example.com/ABC works but example.com/DEF does not. What is your debugging approach?
 
+![/ABC works, /DEF doesn't](diagrams/26-path-debug.drawio.svg)
+
 **Say:**
 1. **Clarify first** (Q27): what exactly fails, for whom, and since when?
 2. **Narrow it down:** `/ABC` works, so DNS, TLS and reaching the load balancer are fine. The problem is **path-specific**, which points at routing.
@@ -398,6 +414,8 @@ Type it by hand. If you pipe it in instead, macOS `nc` quits as soon as the inpu
 **Follow-up:** he answers ("it returns 502"), and you continue from Q28. **This question is a test: actually ask.**
 
 ### Q28. It returns 502. What do 501, 502 and 503 each mean?
+
+![Which 5xx came from where](diagrams/28-5xx-who.drawio.svg)
 
 **Say:**
 - **500 Internal Server Error:** a generic error in the app (worth mentioning as a bonus).
@@ -496,6 +514,8 @@ Type it by hand. If you pipe it in instead, macOS `nc` quits as soon as the inpu
 
 # 7. CI/CD and delivery
 
+![Build once, promote the same image](diagrams/38-build-once-promote.drawio.svg)
+
 ### Q35. What is your suggestion around CI/CD overall?
 
 **Say:**
@@ -593,6 +613,8 @@ Type it by hand. If you pipe it in instead, macOS `nc` quits as soon as the inpu
 
 ### Q41. The database will not scale. What would you propose?
 
+![Database scaling ladder](diagrams/41-db-scaling-ladder.drawio.svg)
+
 **Say:**
 - **Measure first.** What's the bottleneck: CPU, IOPS, connections, locks or specific queries? Use Performance Insights and `pg_stat_statements`.
 - Then, from cheapest to most complex:
@@ -609,6 +631,8 @@ Type it by hand. If you pipe it in instead, macOS `nc` quits as soon as the inpu
 **Follow-up:** "Reads or writes?" → that decides it: reads → replicas and caching; writes → partitioning, queues or sharding.
 
 ### Q42. How would you migrate Postgres from EC2 to RDS with live customer data and no downtime?
+
+![Postgres on EC2 to RDS](diagrams/42-pg-to-rds.drawio.svg)
 
 **Say:**
 1. **Assess:** Postgres version, extensions RDS supports, superuser features RDS doesn't allow, data size, write rate.
@@ -717,6 +741,8 @@ Be honest: it's **near**-zero downtime, with a write pause of a few seconds.
 
 ### Q49. How does Loki actually work, and when would you choose it over CloudWatch?
 
+![How Loki works](diagrams/49-loki.drawio.svg)
+
 **Say:**
 - **Like Prometheus, but for logs.** It indexes **only labels** (`app`, `namespace`, `pod`, `level`), never the full text. Log lines are compressed into **chunks stored in object storage** (S3).
 - **Components:**
@@ -737,6 +763,8 @@ Be honest: it's **near**-zero downtime, with a write pause of a few seconds.
 ---
 
 # 10. Hybrid connectivity *(medium; AWS networking)*
+
+![Transit Gateway hub and spoke](diagrams/s14-transit-gateway.drawio.svg)
 
 ### Q50. How do you establish connectivity between AWS and on-prem? What are the best practices?
 
@@ -815,6 +843,8 @@ Be honest: it's **near**-zero downtime, with a write pause of a few seconds.
 
 ### Q55. 🔥 What do shift-left principles actually mean in a pipeline?
 
+![Shift-left in a pipeline](diagrams/55-shift-left.drawio.svg)
+
 **Say:**
 - **Definition:** move quality and security checks **earlier** in the delivery process ("left" on the timeline), where problems are **cheapest to fix**: at the developer's machine or the PR, not in production.
 - **Concretely, stage by stage:**
@@ -858,6 +888,8 @@ Be honest: it's **near**-zero downtime, with a write pause of a few seconds.
 
 ### Q57. 🔥 OS security: how secrets leak, and how to prevent a repeat of the key incident.
 
+![Secrets: how they leak, how to stop it](diagrams/57-secret-leak.drawio.svg)
+
 > Recall the details of "the key incident" from your last interview, and fit this answer to it.
 
 **Say. How secrets leak:**
@@ -892,6 +924,10 @@ Be honest: it's **near**-zero downtime, with a write pause of a few seconds.
 **Follow-up:** "The key was in Git for 2 days and you deleted the commit. Are you safe?" → **No.** Rotate it and check CloudTrail for use.
 
 ### Q58. 🔥 Linux and networking fundamentals end to end.
+
+![Container packet flow](docker/diagrams/08-packet-flow.drawio.svg)
+
+![Pod to pod](kubernetes/diagrams/14-pod-to-pod.drawio.svg)
 
 **Say:** this is Q1–Q25 told as **one story**. Practise telling it in 5 minutes:
 1. **Client:** browser → DNS (`resolv.conf`, recursive resolver, root → TLD → authoritative, TTL).

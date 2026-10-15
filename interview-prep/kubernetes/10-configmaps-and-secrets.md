@@ -1,5 +1,7 @@
 # 10 · ConfigMaps and Secrets
 
+![Two ways config reaches a container](diagrams/10-config-to-pod.drawio.svg)
+
 Keep configuration **out of the image**: the same image then runs in dev, QA and prod, and only its config changes ("build once, promote everywhere", model answer Q38).
 
 ## ConfigMap

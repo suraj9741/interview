@@ -39,6 +39,24 @@
 
 ### Points to learn
 
+![Container vs VM](docker/diagrams/01-container-vs-vm.drawio.svg)
+
+![Layer cache](docker/diagrams/06-layer-cache.drawio.svg)
+
+![Kubernetes architecture](kubernetes/diagrams/02-architecture.drawio.svg)
+
+![What happens after kubectl apply](kubernetes/diagrams/04-kubectl-apply-flow.drawio.svg)
+
+![Service types](kubernetes/diagrams/08-service-types.drawio.svg)
+
+![Build once, promote the same image](diagrams/38-build-once-promote.drawio.svg)
+
+![GitOps flow](kubernetes/diagrams/21-gitops-flow.drawio.svg)
+
+![VPC with public, app and data subnets](diagrams/r1-vpc-subnets-nat-igw.drawio.svg)
+
+![Traffic flow and route tables](diagrams/r5-traffic-flows-route-tables.drawio.svg)
+
 - **Container vs VM:** a container is a normal Linux process.
   - **Namespaces** limit what it can see: processes, network, files, hostname.
   - **cgroups** limit what it can use: CPU and memory.
@@ -156,6 +174,8 @@
 
 ### Debugging order (say this in the interview)
 
+![Kubernetes troubleshooting flowchart](kubernetes/diagrams/17-troubleshooting-flowchart.drawio.svg)
+
 1. `kubectl get pods`
 2. `kubectl describe pod` (read the Events at the bottom)
 3. `kubectl logs` / `kubectl logs --previous`
@@ -177,6 +197,8 @@
 | [ ] | Missing ConfigMap used as env vars | `CreateContainerConfigError` (used as a volume instead: stuck in `ContainerCreating`) | `describe pod` |
 
 ### Then learn
+
+![Autoscaling](kubernetes/diagrams/12-autoscaling.drawio.svg)
 
 - **HPA vs Cluster Autoscaler:**
   - **HPA** adds pods. It needs metrics-server, and requests must be set.
@@ -304,6 +326,8 @@
 - [ ] "How does a pod on EKS get access to S3 securely?"
 
 ## Afternoon (2h): Security review by layer
+
+![Kubernetes security layers](kubernetes/diagrams/15-security-layers.drawio.svg)
 
 - **CI:** dependency and secret scanning, OIDC, minimal token permissions
 - **Image:** small base image, non-root user, Trivy scan, no secrets

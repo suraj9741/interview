@@ -1,5 +1,7 @@
 # 18 · Cluster Operations: Nodes, Upgrades, Backups
 
+![Upgrade order](diagrams/18-upgrade-order.drawio.svg)
+
 ## Node maintenance
 
 | Command | Effect |

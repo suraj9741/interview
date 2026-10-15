@@ -1,5 +1,7 @@
 # 16 · Observability: Logs, Metrics, Events
 
+![Where Kubernetes logs and metrics come from](diagrams/16-k8s-observability.drawio.svg)
+
 The full stack design is in the model answers (Q45–Q49), with a [diagram](../diagrams/46-observability-stack.drawio.svg). This file covers what's **specific to Kubernetes**.
 
 ## Logs

@@ -1,5 +1,7 @@
 # 06 · Troubleshooting Helm
 
+![Debugging a Helm release, in order](diagrams/06-debug-order.drawio.svg)
+
 ## Release states
 
 ![Release revision states](diagrams/06-release-states.drawio.svg)

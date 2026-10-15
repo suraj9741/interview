@@ -1,5 +1,7 @@
 # 12 · Resources, QoS and Autoscaling ⭐
 
+![Requests vs limits](diagrams/12-requests-limits.drawio.svg)
+
 ## Requests vs limits
 
 | | **Request** | **Limit** |

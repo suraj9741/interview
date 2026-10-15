@@ -42,6 +42,8 @@ Each component below follows the same shape: **what it is**, **what it does step
 
 ### kube-apiserver: the front door
 
+![Every API request goes through this pipeline](diagrams/02-api-request-pipeline.drawio.svg)
+
 **What it is.** A stateless REST (HTTPS) server, listening on port **6443**. It is the only way to read or change cluster state. kubectl, the scheduler, every controller, every kubelet and every operator are all just clients of it.
 
 **What it does with every request:**
@@ -68,6 +70,8 @@ Each component below follows the same shape: **what it is**, **what it does step
 
 ### etcd: the cluster's memory
 
+![etcd Raft quorum](diagrams/02-etcd-quorum.drawio.svg)
+
 **What it is.** A distributed, strongly consistent key-value store. Every Kubernetes object is stored as a key such as `/registry/pods/default/web-abc`. Clients use port **2379**; members talk to each other on port **2380**.
 
 **How it works:**
@@ -87,6 +91,8 @@ Each component below follows the same shape: **what it is**, **what it does step
 **When it breaks:** lose quorum and the API server can't write (and soon can't read) anything. Lose all members with no backup and the cluster's state is gone for good.
 
 ### kube-scheduler: picks a node for each pod
+
+![Scheduler: filter, score, bind](diagrams/02-scheduler-steps.drawio.svg)
 
 **What it is.** A controller that watches for pods with an empty `spec.nodeName`. It **only decides**; it never starts anything. It writes its decision back to the API server, and the kubelet does the rest.
 
@@ -112,6 +118,8 @@ Each component below follows the same shape: **what it is**, **what it does step
 **When it breaks:** new pods stay `Pending` with no `FailedScheduling` events at all, which is the giveaway. Pods already running are unaffected.
 
 ### kube-controller-manager: the self-healing engine
+
+![Inside a controller](diagrams/02-controller-internals.drawio.svg)
 
 **What it is.** One binary that runs dozens of **controllers**. Each controller is a reconciliation loop: watch objects → compare desired with actual → act → repeat ([01](01-fundamentals.md)).
 
@@ -191,6 +199,8 @@ Each component below follows the same shape: **what it is**, **what it does step
 
 ### kube-proxy: makes Service IPs work
 
+![How Service traffic reaches a pod](diagrams/08-service-traffic.drawio.svg)
+
 **What it is.** A DaemonSet pod on every node. It watches **Services** and **EndpointSlices** and turns them into kernel networking rules.
 
 **What it does:** a Service's ClusterIP is **virtual**: no interface owns it. kube-proxy writes rules that say "a packet to `10.96.12.5:80` → pick one of these ready pod IPs and rewrite the destination (DNAT)". When a pod becomes ready or goes away, the EndpointSlice changes and kube-proxy updates the rules on every node ([08](08-services-and-dns.md)).
@@ -220,6 +230,8 @@ Each component below follows the same shape: **what it is**, **what it does step
 
 ## How the parts talk
 
+![What happens on kubectl apply](diagrams/04-kubectl-apply-flow.drawio.svg)
+
 - Everything goes **through the API server**. Components **watch** for changes instead of polling each other.
 - The kubelet watches for pods on its own node. The API server calls the kubelet for `kubectl logs`, `exec` and `port-forward`.
 - Controllers never talk to each other; they only read and write objects. That loose coupling is why Kubernetes is easy to extend ([19](19-extending-kubernetes.md)).
@@ -238,6 +250,8 @@ Each component below follows the same shape: **what it is**, **what it does step
 **One loop, start to finish:** you scale a Deployment from 2 to 3. The API server saves it → the Deployment controller updates the ReplicaSet → the ReplicaSet controller creates 1 Pod → the scheduler binds it to a node → that node's kubelet starts it and reports Ready → the EndpointSlice controller adds its IP → kube-proxy on every node updates its rules. Six components cooperated, and **none of them called another directly**. The full version of this story is [04](04-kubectl-apply-flow.md).
 
 ## High availability
+
+![HA control plane](diagrams/02-ha-control-plane.drawio.svg)
 
 - Run **3 (or 5) control plane nodes** behind a load balancer.
 - etcd needs a **majority (quorum)** to work: 3 members survive 1 failure, 5 members survive 2. Use **odd numbers**, because 4 members still only survive 1 failure.

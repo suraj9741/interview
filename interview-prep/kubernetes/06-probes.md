@@ -1,5 +1,7 @@
 # 06 · Probes: Liveness, Readiness, Startup ⭐
 
+![Probes](diagrams/06-probes.drawio.svg)
+
 The **kubelet** runs probes against each container to decide **restart?** and **send traffic?**
 
 | Probe | Question it answers | When it fails |

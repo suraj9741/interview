@@ -1,5 +1,7 @@
 # 15 · Kubernetes Security ⭐🔥
 
+![7 security layers](diagrams/15-security-layers.drawio.svg)
+
 Security comes in **layers**. Walk through them in this order in the interview:
 
 | Layer | Controls |
@@ -13,6 +15,8 @@ Security comes in **layers**. Walk through them in this order in the interview:
 | 7. **Detection** | Audit logs, runtime detection (Falco, GuardDuty), CIS benchmark (kube-bench) |
 
 ## 1. API access: every request passes 3 gates
+
+![API request pipeline](diagrams/02-api-request-pipeline.drawio.svg)
 
 1. **Authentication** (who?): X.509 client certificates, bearer tokens, OIDC (SSO). On **EKS**, an IAM user or role is mapped to Kubernetes through **access entries** (the older way is the `aws-auth` ConfigMap).
 2. **Authorization** (allowed?): **RBAC**, plus the Node authorizer for kubelets.

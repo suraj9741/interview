@@ -26,6 +26,8 @@
 
 ## Namespaces: what a container can SEE ⭐
 
+![Namespaces and cgroups](diagrams/02-namespaces-cgroups.drawio.svg)
+
 | Namespace | Isolates |
 |---|---|
 | `pid` | Process IDs: the container sees its own process tree, starting at PID 1 |

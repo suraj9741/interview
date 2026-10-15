@@ -1,5 +1,7 @@
 # 04 · The Drift Scenario (Hemant's A1) ⭐🔥
 
+![How each Helm version updates an object that someone edited by hand](diagrams/02-helm-versions.drawio.svg)
+
 **The question:** release `web` was installed with `replicas: 3`. During an incident someone ran `kubectl edit deploy web` (replicas → 5) and added an annotation `team=x`. Next day CI runs `helm upgrade` with the **same** chart and values. What happens?
 
 The full version, with every follow-up, is in [the scenario deep dives, A1](../hemant-scenario-deep-dives.md). This page is the version to practise out loud.

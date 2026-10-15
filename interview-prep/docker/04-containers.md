@@ -61,6 +61,8 @@ States you'll see in `docker ps -a`: **created, running, paused, restarting, exi
 
 ## Signals and PID 1 ⭐ (Hemant asks this)
 
+![docker stop and PID 1](diagrams/04-pid1-signals.drawio.svg)
+
 - Your app runs as **PID 1** inside the container. The kernel treats PID 1 specially: **signals it has no handler for are ignored**.
 - So if your app doesn't handle SIGTERM, `docker stop` waits **10 seconds** and then SIGKILLs it. That means no graceful shutdown and dropped requests.
 - **Shell form** `CMD node app.js` runs as `/bin/sh -c "node app.js"`. Usually **sh becomes PID 1** and doesn't pass SIGTERM on to node. (Some shells replace themselves with the command, but don't rely on it.) Use **exec form** `CMD ["node", "app.js"]`.

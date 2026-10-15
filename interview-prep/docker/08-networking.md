@@ -13,6 +13,8 @@
 
 ## ⚠️ Default bridge vs user-defined bridge (the classic trap)
 
+![Default vs user-defined bridge](diagrams/08-default-vs-user-bridge.drawio.svg)
+
 | | Default `bridge` | User-defined (`docker network create appnet`) |
 |---|---|---|
 | Containers find each other **by name (DNS)** | ❌ **No, only by IP** | ✅ **Yes** (built-in DNS server at `127.0.0.11`) |

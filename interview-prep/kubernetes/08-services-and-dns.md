@@ -11,6 +11,8 @@ Pods come and go, and **every new pod gets a new IP**. A Service gives you:
 
 ## Service types
 
+![Service types](diagrams/08-service-types.drawio.svg)
+
 | Type | Reachable from | How | Use |
 |---|---|---|---|
 | **ClusterIP** (default) | Inside the cluster only | A virtual IP | Service-to-service traffic |
@@ -52,6 +54,8 @@ spec:
 ```
 
 ## DNS (CoreDNS) ⭐
+
+![DNS lookup in a pod](diagrams/08-dns-lookup.drawio.svg)
 
 | Name | Resolves to |
 |---|---|

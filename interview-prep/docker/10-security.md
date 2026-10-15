@@ -1,5 +1,7 @@
 # 10 · Docker Security ⭐ (part of Hemant's 🔥 security homework)
 
+![4 security layers](diagrams/10-security-layers.drawio.svg)
+
 ## The basic risk
 
 - Containers **share the host kernel**, so a kernel bug or a misconfiguration can lead to a **container escape**.

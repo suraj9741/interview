@@ -14,6 +14,8 @@
 
 ## Pod phases vs container states ⭐
 
+![Pod phase vs container state](diagrams/05-pod-lifecycle.drawio.svg)
+
 **Pod phase** (`kubectl get pod` → STATUS, roughly):
 
 | Phase | Meaning |
@@ -95,6 +97,8 @@ spec:
 ```
 
 ## Graceful shutdown ⭐ (the sequence and the race)
+
+![Graceful shutdown and the race](diagrams/05-graceful-shutdown.drawio.svg)
 
 When a pod is deleted (scale-down, rollout, node drain):
 

@@ -32,6 +32,8 @@
 
 ## What "3-way merge" really means
 
+![3-way merge: two questions, so three inputs](diagrams/02-three-way-rules.drawio.svg)
+
 **The job:** turn LIVE into what the chart wants, **without destroying changes made by other people and controllers**. Helm must answer **two questions**, and each needs a different pair of inputs:
 
 | Question | Compare | Why this pair |
@@ -63,6 +65,8 @@ For built-in types, Kubernetes knows how to merge **lists by a key**: containers
 | **NEW vs LIVE** (make the cluster exactly the chart) | Everything others added is destroyed | 🧪 `--force-replace` wiped a hand-added annotation, an env var and `kubectl rollout restart`'s annotation in one go |
 
 ## Tested: one upgrade, five kinds of field 🧪
+
+![Deletion works on whole blocks](diagrams/02-block-deletion.drawio.svg)
 
 1. The chart set `replicas: 3` and a pod annotation `owner: helm-team`.
 2. By hand: `kubectl edit` (replicas → 5), `kubectl annotate deploy … team=x`, `kubectl rollout restart` (adds a `restartedAt` pod annotation), `kubectl set env … DEBUG=true`.

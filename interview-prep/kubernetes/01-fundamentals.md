@@ -1,5 +1,7 @@
 # 01 · Kubernetes Fundamentals ⭐
 
+![The 5 core ideas](diagrams/01-core-ideas.drawio.svg)
+
 ## What Kubernetes is
 
 - Kubernetes (K8s) is a **container orchestrator**: it runs containers across **many machines** and keeps them running.

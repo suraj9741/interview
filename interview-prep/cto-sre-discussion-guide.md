@@ -1,5 +1,7 @@
 # How to Handle the "General Discussion" with a CTO-Level SRE
 
+![How a CTO-level SRE call usually flows](diagrams/c1-call-flow.drawio.svg)
+
 A CTO-level SRE is not checking whether you remember commands. Hemant already did that kind of round. This person wants to know **how you think**, **whether they can trust you with production**, and **whether you can talk to clients and teams**.
 
 ---
@@ -57,6 +59,8 @@ Practise this out loud 5 times. Don't read it.
 
 ## 5. How to answer any open question
 
+![Two shapes for any open question](diagrams/c2-answer-frameworks.drawio.svg)
+
 ### A) Scenario or design questions ("How would you…", "The system is down…")
 
 Use **Clarify → Impact → Options → Decide → Measure**:
@@ -98,6 +102,8 @@ Write 3–4 real stories from your own work. Use bullet points only, then practi
 ---
 
 ## 7. Questions a CTO-level SRE often asks
+
+![SLI, SLO and error budget](diagrams/c3-slo-error-budget.drawio.svg)
 
 You don't need memorised answers. Know the **direction** of a good answer.
 

@@ -108,6 +108,8 @@ spec:
 
 ## 5xx errors at the Ingress (links to model answers Q28–Q29)
 
+![Where Ingress errors come from](diagrams/09-ingress-errors.drawio.svg)
+
 | Status | Usual cause |
 |---|---|
 | **503** | The Service has **no ready endpoints** (selector mismatch or failing readiness), or an ALB target group with no healthy targets |

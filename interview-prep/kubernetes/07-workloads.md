@@ -1,5 +1,7 @@
 # 07 · Workloads: Deployments, StatefulSets, DaemonSets, Jobs ⭐
 
+![Which workload controller](diagrams/07-workload-types.drawio.svg)
+
 ## Which controller do I use?
 
 | Controller | Use it for | Key behaviour |

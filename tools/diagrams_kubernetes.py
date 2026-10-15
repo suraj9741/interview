@@ -93,6 +93,125 @@ def node_internals():
     return d
 
 
+def api_request_pipeline():
+    d = Diagram("02-api-request-pipeline", 1000, 430, "kube-apiserver: what happens to every request")
+    d.box("client", 20, 60, 220, 70, "Any client, HTTPS :6443\nkubectl · controllers ·\nscheduler · kubelets", "white")
+    d.box("authn", 265, 60, 220, 70, "1 · Authentication\nwho are you?\ncert · token · OIDC · IAM", "purple")
+    d.box("authz", 510, 60, 220, 70, "2 · Authorization\nmay you do this verb here?\nRBAC · Node authorizer", "purple")
+    d.box("mutate", 755, 60, 225, 70, "3 · Mutating admission\nmay change the object\ndefaults · inject sidecar", "purple")
+    d.box("schema", 755, 190, 225, 70, "4 · Schema validation\nis the object well formed?", "purple")
+    d.box("validate", 510, 190, 220, 70, "5 · Validating admission\nmay reject it\nPod Security · Kyverno · OPA", "purple")
+    d.box("etcd", 300, 180, 160, 90, "6 · etcd\nobject saved", "yellow", shape="cylinder")
+    d.box("watch", 20, 190, 230, 70, "7 · Watchers notified\nADDED · MODIFIED · DELETED\n(no polling)", "green")
+    d.edge("client", "authn")
+    d.edge("authn", "authz")
+    d.edge("authz", "mutate")
+    d.edge("mutate", "schema")
+    d.edge("schema", "validate")
+    d.edge("validate", "etcd")
+    d.edge("etcd", "watch")
+    d.text("fail", 0, 280, 1000, 24,
+           "Fails at 1 → 401 Unauthorized  ·  fails at 2 → 403 Forbidden  ·  fails at 3–5 → request denied, nothing saved",
+           size=12, bold=True)
+    d.box("f1", 20, 320, 230, 86, "Watch cache\nthousands of watchers are\nserved from memory,\nnot from etcd", "gray", size=11)
+    d.box("f2", 265, 320, 230, 86, "resourceVersion\nupdate an old version →\n409 Conflict → re-read\nand retry (no locks)", "gray", size=11)
+    d.box("f3", 510, 320, 220, 86, "logs · exec · port-forward\nkubectl → API server →\nkubelet :10250", "gray", size=11)
+    d.box("f4", 755, 320, 225, 86, "Stateless\nrun several copies behind\na load balancer; the only\ncomponent that talks to etcd", "gray", size=11)
+    return d
+
+
+def scheduler_steps():
+    d = Diagram("02-scheduler-steps", 1000, 340, "kube-scheduler: filter → score → bind (it only decides)")
+    steps = [("pod", "New Pod\nnodeName empty", "yellow"), ("queue", "1 · Queue\nby priority", "gray"),
+             ("filter", "2 · Filter\ncan it run here?", "blue"), ("score", "3 · Score\nwhich is best?", "blue"),
+             ("bind", "4 · Bind\nsets nodeName", "purple"), ("kubelet", "kubelet\nstarts the pod", "orange")]
+    for i, (sid, label, color) in enumerate(steps):
+        d.box(sid, 20 + i * 164, 56, 140, 56, label, color)
+    for (a, *_), (b, *_) in zip(steps, steps[1:]):
+        d.edge(a, b)
+    d.box("fd", 230, 150, 260, 120, "Filter drops a node if:\n• not enough requested CPU / memory\n"
+          "• a taint the pod doesn't tolerate\n• nodeSelector / affinity mismatch\n• host port already taken\n"
+          "• volume is in another zone\n• node is cordoned", "white", size=11, valign="top", align="left")
+    d.box("sd", 510, 150, 220, 120, "Score ranks nodes 0–100:\n• least allocated\n• balanced CPU / memory\n"
+          "• image already on the node\n• pod (anti-)affinity\n• topology spread", "white", size=11,
+          valign="top", align="left")
+    d.box("fail", 750, 150, 230, 120, "No node passes Filter?\npod stays Pending\nevent FailedScheduling:\n"
+          "\"0/3 nodes are available:\n3 Insufficient cpu\"\nhigher priority → may preempt", "red", size=11)
+    d.edge("filter", "fd", dashed=True)
+    d.edge("score", "sd", dashed=True)
+    d.text("caption", 0, 282, 1000, 50,
+           "Filter uses requests, not real usage. Scheduler down → new pods Pending with NO FailedScheduling events.\n"
+           "HA: several copies, one active leader (Lease). Every step is a plugin; a 2nd scheduler via spec.schedulerName.",
+           size=11)
+    return d
+
+
+def etcd_quorum():
+    d = Diagram("02-etcd-quorum", 1000, 380, "etcd: one leader, a majority must agree (Raft)")
+    d.box("api", 20, 65, 170, 60, "kube-apiserver\nthe only etcd client", "purple")
+    d.box("leader", 300, 50, 170, 90, "etcd leader\nall writes go here", "yellow", shape="cylinder")
+    d.box("f1", 220, 210, 160, 90, "etcd follower", "yellow", shape="cylinder")
+    d.box("f2", 400, 210, 160, 90, "etcd follower", "yellow", shape="cylinder")
+    d.edge("api", "leader", "read / write\n:2379")
+    d.edge("leader", "f1", "Raft :2380", both=True)
+    d.edge("leader", "f2", "Raft :2380", both=True)
+    d.box("q", 620, 50, 360, 100, "Quorum = majority of members\n3 members → survives 1 failure\n"
+          "4 members → survives 1 (no gain)\n5 members → survives 2\n→ always run an odd number", "blue",
+          valign="top", align="left")
+    d.box("rem", 620, 170, 360, 120, "Remember\n• slow disk → leader elections → flaky API (use SSD)\n"
+          "• quota 2 GiB default (up to 8 GiB); full → read-only\n  \"mvcc: database space exceeded\"\n"
+          "• backup: etcdctl snapshot save\n• restore: etcdutl snapshot restore → new data dir\n"
+          "• Secrets live here → encryption at rest", "white", size=11, valign="top", align="left")
+    d.text("caption", 0, 330, 1000, 40,
+           "A write is committed only when a majority has it on disk → strong consistency.\n"
+           "Every change gets a revision number → that is Kubernetes' resourceVersion, and watches are built on it.",
+           size=11)
+    return d
+
+
+def controller_internals():
+    d = Diagram("02-controller-internals", 1000, 400, "Inside every controller: informer → work queue → worker")
+    d.box("api", 20, 150, 170, 60, "kube-apiserver", "purple")
+    d.box("inf", 260, 70, 190, 60, "Informer\nlist once, then watch", "blue")
+    d.box("cache", 260, 200, 190, 60, "Local cache\nreads cost no API calls", "yellow")
+    d.box("q", 520, 70, 190, 60, "Work queue\nkeys of changed objects", "gray")
+    d.box("w", 780, 70, 200, 60, "Worker\ncompare desired vs actual", "green")
+    d.edge("api", "inf", "watch")
+    d.edge("inf", "cache", "update")
+    d.edge("inf", "q", "key changed")
+    d.edge("q", "w", "pop key")
+    d.edge("w", "q", "error → retry with backoff", dashed=True, points=[(880, 165), (615, 165)])
+    d.edge("w", "cache", "read state", dashed=True, points=[(880, 230)])
+    d.edge("w", "api", "write the fix (create / update / delete objects)", points=[(880, 300), (105, 300)])
+    d.text("caption", 0, 320, 1000, 70,
+           "Controllers never call each other: the Deployment controller just writes a ReplicaSet;\n"
+           "the ReplicaSet controller sees it on its own watch and creates Pods.\n"
+           "One active copy at a time via leader election (a Lease). Every operator you write uses this same pattern.",
+           size=11)
+    return d
+
+
+def ha_control_plane():
+    d = Diagram("02-ha-control-plane", 1000, 400, "HA control plane: 3 nodes behind a load balancer")
+    d.box("lb", 390, 46, 220, 44, "Load balancer :6443", "orange")
+    roles = [("leader", "leader"), ("standby", "standby"), ("standby", "standby")]
+    for i, (sched, cm) in enumerate(roles):
+        x = 20 + i * 330
+        d.group(f"cp{i}", x, 120, 300, 200, f"Control plane node {i + 1}", "gray")
+        d.box(f"api{i}", x + 15, 155, 270, 34, "kube-apiserver · active", "purple", size=11)
+        d.box(f"s{i}", x + 15, 197, 270, 34, f"kube-scheduler · {sched}", "green" if sched == "leader" else "white",
+              size=11)
+        d.box(f"c{i}", x + 15, 239, 270, 34, f"controller-manager · {cm}", "green" if cm == "leader" else "white",
+              size=11)
+        d.box(f"e{i}", x + 15, 281, 270, 30, "etcd member" + (" (Raft leader)" if i == 1 else ""), "yellow", size=11)
+        d.edge("lb", f"api{i}")
+    d.text("caption", 0, 335, 1000, 56,
+           "API servers are active-active. Scheduler and controller-manager are active-passive: one leader, chosen by a Lease.\n"
+           "etcd needs a majority: 3 nodes survive 1 failure. On EKS AWS runs all of this across 3 AZs; you never see it.",
+           size=11)
+    return d
+
+
 def labels_selectors():
     d = Diagram("03-labels-selectors", 860, 340, "Labels and selectors connect objects")
     d.box("deploy", 30, 70, 230, 60, "Deployment web\nselector: app=web", "blue")
@@ -401,9 +520,403 @@ def gitops():
     return d
 
 
-ALL = [reconciliation_loop, architecture, node_internals, labels_selectors, apply_flow, pod_anatomy, deployment_rollout,
+def core_ideas():
+    d = Diagram("01-core-ideas", 1000, 400, "Kubernetes in one picture: the 5 core ideas")
+    d.box("you", 20, 70, 180, 70, "You\nwrite YAML: replicas: 3\n(1) declarative", "white")
+    d.box("api", 290, 70, 230, 70, "API server + etcd\nstores every object\n(3) everything is an API object", "purple")
+    d.box("ctrl", 600, 70, 230, 70, "Controllers\nobserve → compare → act\n(2) reconciliation loop", "green")
+    d.box("svc", 270, 230, 230, 70, "Service web\nselector app=web, stable IP\n(5) labels connect things", "orange")
+    d.group("pods", 540, 180, 450, 140, "Pods with label app=web  ·  (4) cattle, not pets", "gray", size=12)
+    d.box("p1", 555, 225, 100, 60, "web-a\n10.0.1.5", "green", size=11)
+    d.box("p2", 665, 225, 100, 60, "web-b\n10.0.2.7", "green", size=11)
+    d.box("p3", 775, 225, 100, 60, "web-c ✗\ncrashed", "red", size=11)
+    d.box("p4", 885, 225, 95, 60, "web-d (new)\n10.0.3.9", "green", size=11)
+    d.edge("you", "api", "kubectl apply")
+    d.edge("api", "ctrl", "watch")
+    d.edge("ctrl", "pods", "create / replace")
+    d.edge("svc", "pods", "app=web")
+    d.text("caption", 0, 335, 1000, 50,
+           "A pod crashes → the controller sees 2 ≠ 3 → it creates a new pod with a new name and IP.\n"
+           "The Service still finds it by label. Nobody ran a command: that is self-healing.", size=12)
+    return d
+
+
+def ownership_finalizers():
+    d = Diagram("03-ownership-finalizers", 1000, 380, "Owners, garbage collection and finalizers")
+    d.box("dep", 20, 60, 200, 50, "Deployment web", "blue")
+    d.box("rs", 20, 150, 200, 50, "ReplicaSet web-7d9f", "blue")
+    d.box("pods", 20, 240, 200, 50, "Pods web-7d9f-xxxxx", "green")
+    d.edge("dep", "rs", "owns")
+    d.edge("rs", "pods", "owns")
+    d.text("gc", 235, 60, 260, 240,
+           "Child → owner link:\nmetadata.ownerReferences\n\nDelete the Deployment:\n• background (default):\n  children deleted after it\n"
+           "• foreground: children first\n• --cascade=orphan:\n  children are kept", size=11, align="left")
+    d.box("del", 530, 60, 200, 50, "kubectl delete pvc data", "white")
+    d.box("term", 530, 150, 190, 60, "Terminating\ndeletionTimestamp set", "yellow")
+    d.box("ctrl", 800, 150, 180, 60, "Controller cleans up,\nremoves its finalizer", "green")
+    d.box("gone", 800, 250, 180, 50, "Object deleted", "gray")
+    d.box("stuck", 530, 250, 190, 60, "Controller gone?\nstuck Terminating", "red")
+    d.edge("del", "term")
+    d.edge("term", "ctrl", "finalizer set")
+    d.edge("ctrl", "gone", "finalizers: []")
+    d.edge("term", "stuck", "nobody removes it", dashed=True)
+    d.text("caption", 0, 325, 1000, 44,
+           "Finalizer examples: kubernetes.io/pvc-protection (PVC still mounted) · LB controller deletes the cloud LB first.\n"
+           "Find them: kubectl get <kind> <name> -o yaml | grep -A3 finalizers", size=11)
+    return d
+
+
+def pod_lifecycle():
+    d = Diagram("05-pod-lifecycle", 1000, 380, "Pod phase (the summary) vs container state (the detail)")
+    d.box("pending", 20, 60, 190, 60, "Pending\nnot scheduled / pulling", "yellow")
+    d.box("running", 270, 60, 190, 60, "Running\n≥ 1 container running", "green")
+    d.box("succ", 520, 42, 190, 44, "Succeeded · all exited 0", "blue", size=11)
+    d.box("failed", 520, 96, 190, 44, "Failed · one exited non-zero", "red", size=11)
+    d.box("unknown", 770, 60, 210, 60, "Unknown\nnode not reporting", "gray")
+    d.edge("pending", "running")
+    d.edge("running", "succ")
+    d.edge("running", "failed")
+    d.group("cs", 20, 170, 960, 150, "Container state", "white", size=12)
+    d.box("waiting", 40, 205, 300, 64, "Waiting + reason\nContainerCreating · ImagePullBackOff\nCrashLoopBackOff · ConfigError", "yellow",
+          size=11)
+    d.box("crun", 380, 205, 170, 64, "Running", "green")
+    d.box("cterm", 590, 205, 370, 64, "Terminated + reason + exit code\nCompleted 0 · Error 1 · OOMKilled 137", "red", size=11)
+    d.edge("waiting", "crun")
+    d.edge("crun", "cterm")
+    d.edge("cterm", "waiting", "restartPolicy restarts it → back to Waiting", dashed=True,
+           points=[(775, 298), (190, 298)])
+    d.text("caption", 0, 330, 1000, 40,
+           "CrashLoopBackOff is a Waiting reason, not a phase: each restart waits longer, 10 s → 20 s → 40 s … up to 5 min.",
+           size=12)
+    return d
+
+
+def graceful_shutdown():
+    d = Diagram("05-graceful-shutdown", 1000, 360, "Deleting a pod: two things start at the same moment (the race)")
+    d.box("del", 20, 135, 210, 70, "Pod deleted\nscale-down · rollout · drain", "white")
+    d.box("ep", 260, 50, 220, 60, "Removed from\nService endpoints", "orange")
+    d.box("kp", 530, 50, 220, 60, "kube-proxy on every node\nupdates rules (takes a moment)", "orange", size=11)
+    d.box("race", 790, 50, 190, 60, "Race: requests still\narrive while app stops", "red")
+    d.box("pre", 260, 230, 220, 60, "1 · preStop hook\nsleep 5–10 s", "blue")
+    d.box("sig", 530, 230, 220, 60, "2 · SIGTERM to PID 1\nfinish in-flight requests", "yellow")
+    d.box("kill", 790, 230, 190, 60, "3 · SIGKILL\nafter grace period (30 s)", "red", size=11)
+    d.edge("del", "ep")
+    d.edge("del", "pre")
+    d.edge("ep", "kp")
+    d.edge("kp", "race", dashed=True)
+    d.edge("pre", "sig")
+    d.edge("sig", "kill")
+    d.text("caption", 0, 305, 1000, 44,
+           "Fix the race: a short preStop sleep (routing updates before SIGTERM) + an app that handles SIGTERM\n"
+           "+ readiness probes + maxUnavailable: 0. Kubernetes waits 30 s by default; docker stop waits 10 s.", size=11)
+    return d
+
+
+def probes():
+    d = Diagram("06-probes", 1000, 360, "Probes: the kubelet asks three questions")
+    d.box("start", 20, 120, 240, 76, "Startup probe\nhas it finished starting?\nthe others wait until it passes", "purple")
+    d.box("live", 320, 50, 230, 60, "Liveness probe\nis the process stuck?", "orange")
+    d.box("ready", 320, 210, 230, 60, "Readiness probe\ncan it take traffic now?", "blue")
+    d.box("restart", 630, 50, 350, 60, "Fails → container is RESTARTED\ncheck only the container, never the DB", "red")
+    d.box("unready", 630, 210, 350, 60, "Fails → removed from Service endpoints\nNOT restarted; back when it passes", "yellow")
+    d.edge("start", "live", "passes")
+    d.edge("start", "ready", "passes")
+    d.edge("live", "restart", "fails 3×")
+    d.edge("ready", "unready", "fails 3×")
+    d.text("caption", 0, 290, 1000, 60,
+           "Types: httpGet (200–399) · tcpSocket · exec (exit 0) · grpc.   Defaults: period 10 s · timeout 1 s · failureThreshold 3.\n"
+           "Startup budget = failureThreshold × periodSeconds (30 × 10 s = 5 min). Startup keeps failing → restarted.\n"
+           "Liveness that checks the database → every pod restarts at once during a DB slowdown.", size=11)
+    return d
+
+
+def workload_types():
+    d = Diagram("07-workload-types", 1000, 410, "Which workload controller?")
+    cols = [
+        ("dep", "Deployment\nstateless: APIs, web", "blue", ["web-7f9c-x2k", "web-7f9c-p8d", "web-7f9c-m4q"],
+         "random names, any node;\nrolling update + rollback"),
+        ("sts", "StatefulSet\ndatabases, Kafka", "purple", ["db-0 + PVC data-db-0", "db-1 + PVC data-db-1", "db-2 + PVC data-db-2"],
+         "stable name + own disk;\nordered 0 → 1 → 2; headless Svc"),
+        ("ds", "DaemonSet\nnode agents", "orange", ["node-1: log agent", "node-2: log agent", "node-3: log agent"],
+         "one pod per node;\nnew node → gets one"),
+        ("job", "Job / CronJob\nrun to completion", "green", ["Job: pod → Completed ✓", "retries: backoffLimit 6", "CronJob: Job at 0 2 * * *"],
+         "migrations, batch, backups;\nconcurrencyPolicy: Forbid"),
+    ]
+    for i, (cid, label, color, items, note) in enumerate(cols):
+        x = 20 + i * 245
+        d.group(cid, x, 50, 225, 290, label, color, size=12)
+        for j, item in enumerate(items):
+            d.box(f"{cid}{j}", x + 12, 105 + j * 56, 201, 44, item, "white", size=11)
+        d.text(f"{cid}n", x, 275, 225, 56, note, size=11)
+    d.text("caption", 0, 355, 1000, 44,
+           "ReplicaSet: never create it yourself; the Deployment makes one per version.\n"
+           "PodDisruptionBudget (minAvailable / maxUnavailable) limits how many pods a drain may evict at once.", size=11)
+    return d
+
+
+def service_types():
+    d = Diagram("08-service-types", 1000, 470, "Service types: who can reach the pods, and how")
+    rows = [
+        ("ClusterIP (default)", "blue", "Pod in the cluster", "ClusterIP 10.96.12.34:80\nvirtual IP, kube-proxy DNAT", "ready pods :8080"),
+        ("NodePort", "yellow", "Outside client", "any-node-IP:30000–32767\nopened on every node", "ready pods :8080"),
+        ("LoadBalancer", "orange", "Internet / VPC", "Cloud LB (NLB on EKS)\n→ NodePorts or pod IPs", "ready pods :8080"),
+        ("Headless", "green", "Pod in the cluster", "clusterIP: None\nDNS returns every pod IP", "db-0, db-1 directly"),
+        ("ExternalName", "gray", "Pod in the cluster", "DNS CNAME → db.example.com\nno proxying at all", "service outside"),
+    ]
+    for i, (name, color, caller, middle, target) in enumerate(rows):
+        y = 55 + i * 70
+        d.box(f"t{i}", 20, y, 160, 54, name, color, bold=True)
+        d.box(f"c{i}", 210, y, 170, 54, caller, "white")
+        d.box(f"m{i}", 430, y, 320, 54, middle, color, bold_first=False)
+        d.box(f"p{i}", 800, y, 180, 54, target, "white")
+        d.edge(f"c{i}", f"m{i}")
+        d.edge(f"m{i}", f"p{i}")
+    d.text("caption", 0, 410, 1000, 50,
+           "Ports: port = the Service's port · targetPort = the container's port · nodePort = the port on each node.\n"
+           "externalTrafficPolicy: Local keeps the client's source IP (only nodes with a local pod get traffic).", size=11)
+    return d
+
+
+def dns_lookup():
+    d = Diagram("08-dns-lookup", 1000, 330, "DNS inside a pod: search domains and ndots:5")
+    d.box("conf", 20, 55, 270, 120, "/etc/resolv.conf in every pod\nnameserver 10.96.0.10 (CoreDNS)\nsearch shop.svc.cluster.local\n"
+          "    svc.cluster.local cluster.local\noptions ndots:5", "white", size=11, valign="top", align="left")
+    d.box("short", 340, 50, 330, 56, "web → web.shop.svc.cluster.local\nfound on the 1st try", "green", bold_first=False)
+    d.box("ext", 340, 125, 330, 100, "api.stripe.com (2 dots < 5, so search first)\n✗ api.stripe.com.shop.svc.cluster.local\n"
+          "✗ api.stripe.com.svc.cluster.local\n✗ api.stripe.com.cluster.local\n✓ api.stripe.com", "yellow", size=11,
+          align="left")
+    d.box("dns", 730, 90, 250, 70, "CoreDNS\ncluster names → ClusterIPs\neverything else → upstream", "purple")
+    d.edge("conf", "short")
+    d.edge("conf", "ext")
+    d.edge("short", "dns")
+    d.edge("ext", "dns")
+    d.text("caption", 0, 245, 1000, 70,
+           "Names: web (same namespace) · web.shop (any namespace) · db-0.db.shop.svc.cluster.local (one pod, headless).\n"
+           "Slow external lookups? Use a trailing dot (api.stripe.com.), lower ndots in dnsConfig, or NodeLocal DNSCache.",
+           size=11)
+    return d
+
+
+def ingress_errors():
+    d = Diagram("09-ingress-errors", 1000, 340, "Where Ingress errors come from")
+    d.box("client", 20, 70, 140, 50, "Client", "gray", shape="ellipse")
+    d.box("lb", 210, 60, 210, 70, "ALB / Ingress controller\nmatches host + path", "orange")
+    d.box("svc", 470, 60, 210, 70, "Service\nEndpointSlice: ready pods", "blue")
+    d.box("pod", 730, 60, 250, 70, "Pod :targetPort\nyour app", "green")
+    d.edge("client", "lb")
+    d.edge("lb", "svc")
+    d.edge("svc", "pod")
+    d.box("e404", 210, 180, 210, 80, "404\nno rule matched: host,\npathType, ingressClassName", "red", size=11)
+    d.box("e503", 470, 180, 210, 80, "503\nno ready endpoints:\nselector or readiness", "red", size=11)
+    d.box("e502", 730, 180, 120, 80, "502\nconn. reset\nwrong targetPort\nkeep-alive < idle", "red", size=11)
+    d.box("e504", 860, 180, 120, 80, "504\napp too slow,\nLB timed out", "red", size=11)
+    d.edge("lb", "e404", dashed=True)
+    d.edge("svc", "e503", dashed=True)
+    d.edge("pod", "e502", dashed=True)
+    d.edge("pod", "e504", dashed=True)
+    d.text("caption", 0, 280, 1000, 50,
+           "An Ingress is only rules; a controller implements them. The Ingress API is frozen and ingress-nginx was retired\n"
+           "(maintenance ended March 2026). Gateway API is the successor.", size=11)
+    return d
+
+
+def config_to_pod():
+    d = Diagram("10-config-to-pod", 1000, 330, "Two ways config reaches a container")
+    d.box("cm", 20, 60, 200, 60, "ConfigMap\nplain settings, ≤ 1 MiB", "yellow")
+    d.box("sec", 20, 180, 200, 60, "Secret\nbase64, NOT encrypted", "orange")
+    d.box("env", 330, 60, 270, 60, "Environment variables\nenv / envFrom", "blue")
+    d.box("file", 330, 180, 270, 60, "Mounted files (a volume)\n/etc/app/<key>", "green")
+    d.box("envres", 680, 60, 300, 60, "Change → seen only after a pod restart\nleaks more easily (crash dumps)", "red",
+          bold_first=False, size=11)
+    d.box("fileres", 680, 180, 300, 60, "Change → file updates after a short delay\napp must re-read it · never with subPath",
+          "green", bold_first=False, size=11)
+    for a in ("cm", "sec"):
+        for b in ("env", "file"):
+            d.edge(a, b)
+    d.edge("env", "envres")
+    d.edge("file", "fileres")
+    d.text("caption", 0, 260, 1000, 60,
+           "Roll pods on a config change: kubectl rollout restart · Helm checksum/config annotation · Kustomize configMapGenerator.\n"
+           "Protect Secrets: KMS encryption at rest · RBAC (list = read the values) · External Secrets from Secrets Manager.",
+           size=11)
+    return d
+
+
+def requests_limits():
+    d = Diagram("12-requests-limits", 1000, 360, "Requests are for the scheduler, limits are for the kernel")
+    d.group("node", 20, 50, 440, 220, "Node with 4 CPU", "gray")
+    d.text("l1", 30, 85, 420, 20, "Requested (what the scheduler counts)", size=11, align="left")
+    d.box("ra", 30, 108, 150, 44, "pod A · 1.5", "blue", size=11)
+    d.box("rb", 180, 108, 200, 44, "pod B · 2.0", "blue", size=11)
+    d.box("rf", 380, 108, 70, 44, "free 0.5", "white", size=11)
+    d.text("l2", 30, 165, 420, 20, "Actually used (what kubectl top shows)", size=11, align="left")
+    d.box("use", 30, 190, 420, 60, "pod A uses 0.3 · pod B uses 0.4\nthe node looks idle", "white", size=11, bold_first=False)
+    d.box("new", 20, 285, 440, 60, "New pod requests 1 CPU → Pending\n\"Insufficient cpu\" (only 0.5 unrequested)", "red")
+    d.box("cpu", 510, 50, 470, 50, "CPU over its limit → THROTTLED (slowed), never killed", "yellow")
+    d.box("mem", 510, 115, 470, 50, "Memory over its limit → OOMKilled (exit code 137)", "red")
+    d.box("qos", 510, 180, 470, 90, "QoS class = eviction order when the node runs low\n1st  BestEffort: no requests or limits\n"
+          "2nd  Burstable: some requests or limits set\nlast  Guaranteed: requests = limits for CPU and memory",
+          "blue", valign="top", align="left")
+    return d
+
+
+def taints_affinity():
+    d = Diagram("13-taints-affinity", 1000, 450, "Taints repel, affinity attracts: dedicated nodes need both")
+    d.box("ml", 20, 60, 300, 76, "ML pod\ntoleration: dedicated=gpu\nnode affinity: gpu=true", "green")
+    d.box("web", 20, 190, 300, 60, "Web pod\nno toleration", "white")
+    d.box("tol", 20, 300, 300, 60, "Pod with a toleration only\nno affinity", "yellow")
+    d.box("gpu", 640, 60, 340, 76, "GPU node\ntaint: dedicated=gpu:NoSchedule\nlabel: gpu=true", "purple")
+    d.box("normal", 640, 250, 340, 60, "Normal node\nno taint", "gray")
+    d.edge("ml", "gpu", "lands here")
+    d.edge("web", "gpu", "blocked by the taint", dashed=True)
+    d.edge("web", "normal")
+    d.edge("tol", "normal", "may still land here:\na toleration allows, it doesn't attract", dashed=True)
+    d.text("caption", 0, 380, 1000, 60,
+           "Taint effects: NoSchedule · PreferNoSchedule · NoExecute (also evicts running pods).\n"
+           "Not-ready nodes get a NoExecute taint; pods tolerate it for 300 s, then they are evicted.\n"
+           "Spread replicas across AZs: topologySpreadConstraints on topology.kubernetes.io/zone, maxSkew 1.", size=11)
+    return d
+
+
+def pod_to_pod():
+    d = Diagram("14-pod-to-pod", 1000, 380, "Pod A on node 1 → pod B on node 2")
+    for side, x, pod, wrap in (("1", 20, "Pod A · eth0 10.244.1.5", "Overlay: wrap in VXLAN\nnode IPs outside"),
+                               ("2", 680, "Pod B · eth0 10.244.2.9", "Overlay: unwrap VXLAN")):
+        d.group(f"n{side}", x, 50, 300, 240, f"Node {side}", "gray")
+        d.box(f"pod{side}", x + 25, 90, 250, 44, pod, "green")
+        d.box(f"veth{side}", x + 25, 155, 250, 40, "veth pair → node network stack", "white", size=11)
+        d.box(f"wrap{side}", x + 25, 215, 250, 56, wrap, "orange", size=11)
+    d.box("net", 380, 200, 240, 86, "Node network / VPC\nVPC CNI: no wrapping,\nthe VPC routes pod IPs", "blue", size=11)
+    d.edge("pod1", "veth1")
+    d.edge("veth1", "wrap1")
+    d.edge("wrap1", "net")
+    d.edge("net", "wrap2")
+    d.edge("wrap2", "veth2")
+    d.edge("veth2", "pod2")
+    d.text("caption", 0, 305, 1000, 64,
+           "4 rules: every pod has its own IP · pod → pod without NAT · node agents reach local pods · a pod sees the IP others use.\n"
+           "A CNI plugin makes them true. Pod → internet: the node SNATs to its own IP → NAT Gateway.\n"
+           "Pod → Service: kube-proxy's DNAT rules on the sending node.", size=11)
+    return d
+
+
+def security_layers():
+    d = Diagram("15-security-layers", 1000, 450, "Securing a cluster: 7 layers, say them in this order")
+    layers = [
+        ("1 · API access", "authentication → RBAC → admission (Pod Security, Kyverno, ValidatingAdmissionPolicy)", "purple"),
+        ("2 · Workload identity", "ServiceAccounts, short-lived projected tokens, IRSA / Pod Identity for AWS", "blue"),
+        ("3 · Pod hardening", "Pod Security Standards (restricted), securityContext: non-root, drop ALL, read-only FS", "green"),
+        ("4 · Network", "default-deny NetworkPolicy, private API endpoint, mTLS with a service mesh", "yellow"),
+        ("5 · Supply chain", "scan (Trivy), sign (cosign), verify signatures and trusted registries at admission", "orange"),
+        ("6 · Secrets", "KMS encryption at rest, external secret manager, tight RBAC on secrets", "red"),
+        ("7 · Detection", "audit logs, Falco / GuardDuty runtime alerts, kube-bench (CIS benchmark)", "gray"),
+    ]
+    for i, (name, detail, color) in enumerate(layers):
+        y = 50 + i * 50
+        d.box(f"n{i}", 20, y, 220, 42, name, color, bold=True)
+        d.box(f"d{i}", 250, y, 730, 42, detail, color, align="left")
+    d.text("caption", 0, 405, 1000, 36,
+           "Dangerous RBAC: get/list secrets · create pods · pods/exec · escalate / bind / impersonate · nodes/proxy · wildcards *",
+           size=11)
+    return d
+
+
+def k8s_observability():
+    d = Diagram("16-k8s-observability", 1000, 400, "Where Kubernetes logs and metrics come from")
+    d.group("node", 20, 50, 420, 270, "Node", "gray")
+    d.box("app", 40, 90, 170, 56, "App container\nstdout / stderr", "green")
+    d.box("files", 40, 200, 160, 60, "/var/log/pods/…\nrotated 10 MiB × 5", "yellow", size=11)
+    d.box("kubelet", 260, 90, 165, 56, "kubelet\n+ cAdvisor", "orange")
+    d.box("ship", 260, 200, 165, 60, "Fluent Bit / Alloy\n(DaemonSet)", "purple")
+    d.edge("app", "files", "runtime writes")
+    d.edge("files", "ship", "tails")
+    d.edge("files", "kubelet", "reads", dashed=True)
+    d.box("kl", 480, 70, 220, 50, "kubectl logs\n--previous after a crash", "white", size=11)
+    d.box("ms", 480, 150, 220, 50, "metrics-server\nnow only: top, HPA", "white", size=11)
+    d.box("prom", 760, 100, 220, 56, "Prometheus + Grafana\nhistory, alerts", "blue")
+    d.box("ksm", 760, 185, 220, 50, "kube-state-metrics\nobject state, restarts", "gray", size=11)
+    d.box("loki", 760, 265, 220, 56, "Loki / CloudWatch\nlogs survive the pod", "blue")
+    d.edge("kubelet", "kl")
+    d.edge("kubelet", "ms")
+    d.edge("ksm", "prom")
+    d.edge("ship", "loki")
+    d.text("caption", 0, 335, 1000, 56,
+           "Pod deleted or node gone → its log files are gone too, so ship them. Events last about 1 hour: export them for history.\n"
+           "Prometheus scrapes the kubelet (cAdvisor), kube-state-metrics and node_exporter. Traces: OpenTelemetry → Tempo / X-Ray.",
+           size=11)
+    return d
+
+
+def upgrade_order():
+    d = Diagram("18-upgrade-order", 1000, 300, "Upgrading a cluster: one minor version at a time")
+    steps = [("Prepare", "release notes\ndeprecated APIs (pluto,\nkubent, upgrade insights)\nbackup · check PDBs", "white"),
+             ("Control plane", "API servers, then\ncontroller-manager\n+ scheduler", "purple"),
+             ("Add-ons", "CoreDNS · kube-proxy\nCNI · CSI drivers\n(EKS managed add-ons)", "blue"),
+             ("Nodes, rolling", "cordon → drain →\nupgrade / replace →\nuncordon", "orange"),
+             ("Verify", "nodes Ready\nworkloads healthy\nno deprecated-API errors", "green")]
+    for i, (name, body, color) in enumerate(steps):
+        d.box(f"s{i}", 20 + i * 195, 55, 180, 110, f"{i + 1} · {name}\n{body}", color, size=11)
+        if i:
+            d.edge(f"s{i - 1}", f"s{i}")
+    d.box("skew", 20, 195, 470, 82, "Version skew\n• kubelet: up to 3 minors older than the API server, never newer\n"
+          "• scheduler / controller-manager: at most 1 older\n• kubectl: within ±1", "blue", size=11, valign="top",
+          align="left")
+    d.box("drain", 510, 195, 470, 82, "Drain\n• cordon = no new pods · drain = also evict (respects PDBs)\n"
+          "• hangs? a PDB can't be met (minAvailable 1 with 1 replica)\n"
+          "• EKS: managed node groups drain for you; Karpenter replaces drifted nodes", "yellow", size=11,
+          valign="top", align="left")
+    return d
+
+
+def pod_identity():
+    d = Diagram("20-pod-identity", 1000, 360, "A pod reaches AWS with no access keys (IRSA / Pod Identity)")
+    d.box("pod", 20, 80, 160, 60, "Pod\nAWS SDK", "green")
+    d.box("sa", 250, 80, 190, 60, "ServiceAccount\nshop/app", "blue")
+    d.box("role", 530, 80, 200, 60, "IAM role\none per app, least privilege", "yellow", size=11)
+    d.box("s3", 800, 65, 180, 90, "S3 / Secrets\nManager", "orange", shape="cylinder")
+    d.box("sts", 260, 200, 220, 60, "STS / Pod Identity agent\ntemporary credentials", "purple", size=11)
+    d.box("imds", 560, 200, 420, 60, "Node's own IAM role (instance metadata)\nblocked for pods: IMDSv2 with hop limit 1",
+          "red")
+    d.edge("pod", "sa", "runs as")
+    d.edge("sa", "role", "mapped to")
+    d.edge("role", "sts", "assume role", dashed=True)
+    d.edge("sts", "pod", "temp creds")
+    d.edge("pod", "s3", "call AWS with temp creds", points=[(100, 50), (890, 50)])
+    d.text("caption", 0, 280, 1000, 64,
+           "IRSA: IAM OIDC provider + ServiceAccount annotation eks.amazonaws.com/role-arn → AssumeRoleWithWebIdentity.\n"
+           "Pod Identity (newer): agent add-on + association (cluster, namespace, ServiceAccount → role);\n"
+           "the role trusts pods.eks.amazonaws.com, so one role works for many clusters.", size=11)
+    return d
+
+
+def helm_vs_kustomize():
+    d = Diagram("21-helm-vs-kustomize", 1000, 320, "Helm vs Kustomize: two ways to get final YAML")
+    d.group("h", 20, 50, 470, 200, "Helm: templates + values", "blue")
+    d.box("tpl", 40, 95, 200, 56, "templates/\n{{ .Values.image.tag }}", "white", size=11)
+    d.box("val", 40, 170, 200, 56, "values-prod.yaml\nimage.tag: 4f2a9c1", "yellow", size=11)
+    d.box("o1", 290, 130, 180, 60, "Final YAML\n+ release revision", "green")
+    d.edge("tpl", "o1")
+    d.edge("val", "o1")
+    d.group("k", 510, 50, 470, 200, "Kustomize: base + patches", "purple")
+    d.box("base", 530, 95, 200, 56, "base/\nplain YAML", "white", size=11)
+    d.box("ov", 530, 170, 200, 56, "overlays/prod\nreplicas, image tag", "yellow", size=11)
+    d.box("o2", 780, 130, 180, 60, "Final YAML\nkubectl apply -k", "green")
+    d.edge("base", "o2")
+    d.edge("ov", "o2")
+    d.text("caption", 0, 260, 1000, 50,
+           "Helm: packages, repositories, helm rollback; good for third-party software.\n"
+           "Kustomize: no templating, built into kubectl, rollback = git revert; good for your own apps. Often used together.",
+           size=11)
+    return d
+
+
+ALL = [reconciliation_loop, architecture, node_internals, api_request_pipeline, scheduler_steps, etcd_quorum,
+       controller_internals, ha_control_plane, labels_selectors, apply_flow, pod_anatomy, deployment_rollout,
        service_traffic, ingress_paths, secrets_flow, storage_flow, autoscaling, networkpolicy, rbac,
-       troubleshooting, operator_pattern, eks, gitops]
+       troubleshooting, operator_pattern, eks, gitops, core_ideas, ownership_finalizers, pod_lifecycle,
+       graceful_shutdown, probes, workload_types, service_types, dns_lookup, ingress_errors, config_to_pod,
+       requests_limits, taints_affinity, pod_to_pod, security_layers, k8s_observability, upgrade_order, pod_identity,
+       helm_vs_kustomize]
 
 if __name__ == "__main__":
     force = "--force" in sys.argv

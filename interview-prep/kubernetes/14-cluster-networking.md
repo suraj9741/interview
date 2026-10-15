@@ -1,5 +1,7 @@
 # 14 · Cluster Networking and NetworkPolicy ⭐
 
+![Pod to pod across nodes](diagrams/14-pod-to-pod.drawio.svg)
+
 ## The Kubernetes networking model (4 rules) ⭐
 
 1. **Every pod gets its own IP address.**

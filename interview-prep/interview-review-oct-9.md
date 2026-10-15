@@ -89,6 +89,8 @@ Everything from `10.0.64.0` to `10.0.255.255` stays free for growth.
 
 ## 3 · NAT gateway and internet gateway: where they fit
 
+![Traffic flow and route tables](diagrams/r5-traffic-flows-route-tables.drawio.svg)
+
 The same diagram as section 1 ([r1](diagrams/r1-vpc-subnets-nat-igw.drawio.svg)).
 
 **What was drawn:**
@@ -223,6 +225,8 @@ service:
 ---
 
 ## 6 · The Dockerfile on the same drawing
+
+![Multi-stage build](docker/diagrams/06-multi-stage-build.drawio.svg)
 
 **What was written:** `From reactjs`, `COPY package`, `WORKDIR /dir`, `RUN install pakages`, `COPY copy code`, `EXPOSE 8080`, `USER create user`, `CMD [application run]`, then `docker build .`, `docker tag tagname image`, `docker push repository`.
 

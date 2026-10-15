@@ -1,5 +1,7 @@
 # 04 · What Happens on `kubectl apply` ⭐ (Hemant's favourite kind of question)
 
+![API request pipeline](diagrams/02-api-request-pipeline.drawio.svg)
+
 The Instagram handbook's version skips etcd, the controllers and the network setup. This is the **complete** flow for `kubectl apply -f deployment.yaml` with 3 replicas behind a Service.
 
 ![kubectl apply flow](diagrams/04-kubectl-apply-flow.drawio.svg)

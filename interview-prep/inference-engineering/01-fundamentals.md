@@ -24,6 +24,8 @@ A generative AI (Artificial Intelligence) model has **two phases** in its life:
 
 ## Classic ML inference vs generative AI inference ⭐
 
+![Does a 70B model fit on one 80 GB H100?](diagrams/01-gpu-memory-fit.drawio.svg)
+
 In the last decade's ML (Machine Learning) boom, lots of data scientists and ML engineers learned the full lifecycle, training **and** inference. But inference for those **classic** models was easy. Baseten's early customers ran models built with tools like XGBoost (eXtreme Gradient Boosting) on small CPUs (Central Processing Units) with a simple software stack.
 
 Generative AI inference is **much harder**:
@@ -72,6 +74,8 @@ These three layers must **work together**. Then you get a system that can handle
 - This is the layer closest to my DevOps work (see the DevOps link below).
 
 ### 3. Tooling: the right level of abstraction
+
+![Tooling: pick the right level of abstraction](diagrams/01-abstraction-levels.drawio.svg)
 
 - Focus: the **engineers** who build and run inference.
 - **Abstraction** means hiding detail. Too little and too much are both bad:

@@ -1,5 +1,7 @@
 # 13 · Scheduling: Where Pods Run
 
+![Scheduler: filter, score, bind](diagrams/02-scheduler-steps.drawio.svg)
+
 ## How the scheduler decides
 
 For every pod with no node:
@@ -27,6 +29,8 @@ If no node passes the filter, the pod stays **Pending**, and `kubectl describe p
 "…IgnoredDuringExecution" means the rule is only checked **when the pod is scheduled**. Already-running pods aren't moved if labels change later.
 
 ## Keeping pods away: taints and tolerations
+
+![Taints and affinity](diagrams/13-taints-affinity.drawio.svg)
 
 - A **taint on a node** repels pods: `key=value:Effect`.
 - A **toleration on a pod** lets it **ignore** that taint. A toleration **allows** the pod onto the node; it doesn't **attract** it there.

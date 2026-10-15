@@ -12,6 +12,8 @@ Helm drift is one of the **three scenarios Hemant named** ([A1](../hemant-scenar
 
 ## The one idea: every field has an owner
 
+![Helm 4 server-side apply: every field has an owner](../diagrams/s6-ssa-field-owners.drawio.svg)
+
 Think of a Kubernetes object as a **shared document where every line carries a name tag**: who wrote it last.
 
 - **Helm 3** rewrites its lines without looking at the tags → **silent overwrite**.

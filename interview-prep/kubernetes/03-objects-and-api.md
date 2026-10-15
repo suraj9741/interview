@@ -82,6 +82,8 @@ spec:                        # DESIRED state: you write this
 
 ## Owners, garbage collection and finalizers
 
+![Owners and finalizers](diagrams/03-ownership-finalizers.drawio.svg)
+
 - **Owner references:** a Deployment owns its ReplicaSets, which own their Pods (see `metadata.ownerReferences`).
 - **Garbage collection:** delete the owner and its dependants are deleted too ("cascading"). Modes:
   - **background** (the default);

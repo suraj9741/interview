@@ -266,11 +266,128 @@ def disaggregation():
     return d
 
 
+def gpu_memory_fit():
+    d = Diagram("01-gpu-memory-fit", 1000, 350, "Does a 70B model fit on one 80 GB H100?")
+    d.group("h100", 210, 48, 320, 236, "One H100 = 80 GB", "outline", dashed=True, size=12)
+    rows = [("FP16 / BF16\n2 bytes per weight", 560, "140 GB weights", "red", None, "Does NOT fit: split over 2+ GPUs"),
+            ("FP8 / INT8\n1 byte per weight", 280, "70 GB weights", "yellow", 40, "Fits on 1 GPU · ~10 GB left for KV cache"),
+            ("FP4 / INT4\n0.5 bytes per weight", 140, "35 GB", "green", 180, "Fits · ~45 GB for KV cache = many users")]
+    for i, (label, w, wl, c, kv, note) in enumerate(rows):
+        y = 85 + i * 66
+        d.box(f"l{i}", 20, y, 170, 50, label, "white", size=11)
+        d.box(f"w{i}", 210, y, w, 50, wl, c, size=11, bold=True)
+        if kv:
+            d.box(f"k{i}", 210 + w, y, kv, 50, "KV" if kv < 60 else "KV cache room", "blue", size=10)
+        d.text(f"n{i}", 790 if i == 0 else 560, y, 200 if i == 0 else 420, 50, note, size=11, align="left")
+    d.text("cap", 20, 295, 960, 44,
+           "Weights = parameters × bytes per weight (70B × 2 bytes = 140 GB).  "
+           "Real serving also needs room for the KV cache and working memory.", size=11)
+    return d
+
+
+def abstraction_levels():
+    d = Diagram("01-abstraction-levels", 1000, 300, "Tooling: pick the right level of abstraction")
+    tops = [("Too low\nraw CUDA, hand config per GPU node\nfull control, every change slow and risky", "red"),
+            ("Right level\nsensible defaults + a way to reach in\nproductive AND tunable", "green"),
+            ("Too high\na black box: quick to start\ncan't tune batching, quantization, scaling", "orange")]
+    devops = ["Raw Kubernetes YAML", "Helm chart with values", "Fully managed platform"]
+    for i, ((label, c), dv) in enumerate(zip(tops, devops)):
+        d.box(f"t{i}", 20 + i * 330, 55, 300, 90, label, c, size=11)
+        d.box(f"d{i}", 20 + i * 330, 185, 300, 44, "DevOps version: " + dv, "white", size=11)
+        d.edge(f"t{i}", f"d{i}", dashed=True)
+    d.text("cap", 20, 248, 960, 40,
+           "Good tooling is the Helm level: productive by default, controllable when it matters.", size=12, bold=True)
+    return d
+
+
+def kv_cache():
+    d = Diagram("02-kv-cache", 1100, 430, "KV cache: saves recomputation, costs GPU memory")
+    d.box("w1", 20, 60, 500, 76, "Without a KV cache\ntoken 500 recomputes K and V for all 499 earlier tokens\nmore work at every step",
+          "red", size=11)
+    d.box("w2", 20, 156, 500, 76, "With a KV cache\nK and V computed once per token, kept in GPU memory,\nreused on every later pass",
+          "green", size=11)
+    d.box("w3", 20, 252, 500, 90, "Cost per token (Llama 3 8B, 16-bit)\n32 layers × 8 KV heads × 128 × 2 (K and V) × 2 bytes\n"
+          "≈ 128 KB per token → an 8,000-token chat ≈ 1 GB", "yellow", size=11)
+    d.edge("w1", "w2")
+    d.group("gpu", 560, 50, 520, 300, "One H100 = 80 GB of GPU memory", "gray", size=12)
+    d.box("m1", 580, 90, 480, 50, "Model weights: 16 GB (8B × 2 bytes)", "blue", size=11)
+    d.box("m2", 580, 155, 480, 120, "KV cache of every active request: ~60 GB\n≈ 60 long (8k-token) conversations at once",
+          "green", size=12)
+    d.box("m3", 580, 290, 480, 44, "Working space (activations)", "white", size=11)
+    d.text("cap", 20, 365, 1060, 50,
+           "The KV cache, not the maths, limits how many users one GPU can serve.\n"
+           "Attention looks back at every earlier token: Key = what a token is about (folder label), Value = what it carries (contents).",
+           size=11)
+    return d
+
+
+def memory_bound():
+    d = Diagram("02-memory-bound", 1100, 410, "Why decode is memory-bound")
+    d.box("hbm", 20, 60, 220, 110, "GPU memory (HBM)\n16 GB of weights\n(8B model)", "blue", shape="cylinder", size=11)
+    d.box("comp", 450, 65, 250, 100, "Maths units\n~1,000 TFLOPS (16-bit)\nmostly IDLE for one user", "yellow", size=11)
+    d.box("out", 820, 75, 260, 80, "1 token per pass\n≤ ~200 tokens/s per user", "red", size=12)
+    d.edge("hbm", "comp", "reads ALL weights every pass\n16 GB ÷ 3.35 TB/s ≈ 5 ms")
+    d.edge("comp", "out")
+    d.group("fix", 20, 210, 1060, 130, "Most techniques = fewer or shorter trips to memory", "green", size=12)
+    fixes = ["Batching\none read → next token\nfor 64 users", "Quantization\nsmaller weights\n→ shorter read",
+             "Speculation\none read → check several\nguessed tokens",
+             "Disaggregation\ncompute-heavy prefill\noff the decode GPU"]
+    for i, f in enumerate(fixes):
+        d.box(f"f{i}", 35 + i * 262, 250, 245, 74, f, "white", size=11)
+    d.text("cap", 20, 352, 1060, 44,
+           "Prefill is compute-bound: many prompt tokens use each weight it reads, so lots of maths per byte.\n"
+           "Analogy: a librarian walks to the archive for the whole book for every word; the walk is the slow part.", size=11)
+    return d
+
+
+def flashattention():
+    d = Diagram("02-flashattention", 1100, 330, "FlashAttention: same maths, far fewer memory trips")
+    d.group("plain", 20, 50, 520, 200, "Plain attention", "red", size=13)
+    d.box("c1", 40, 100, 190, 70, "GPU cores\ncompute scores", "yellow", size=11)
+    d.box("h1", 320, 90, 200, 90, "HBM (80 GB, far away)\nfull N × N score table", "white", shape="cylinder", size=11)
+    d.edge("c1", "h1", "write, then\nread back", both=True)
+    d.text("pn", 40, 185, 480, 50, "The table grows with prompt length²\n→ huge memory traffic on long prompts", size=11)
+    d.group("flash", 560, 50, 520, 200, "FlashAttention", "green", size=13)
+    d.box("c2", 580, 100, 190, 70, "GPU cores\ncompute scores", "yellow", size=11)
+    d.box("s2", 860, 90, 200, 90, "SRAM on the chip\n(tens of MB, much faster)\nsmall tiles", "green", size=11)
+    d.edge("c2", "s2", "tile by\ntile", both=True)
+    d.text("fn", 580, 185, 480, 50, "Full table never written to HBM\nEXACT same result · faster · far less memory", size=11)
+    d.text("cap", 20, 262, 1060, 56,
+           "GPU kernel = a function that runs on the GPU across thousands of cores (not the Linux kernel).\n"
+           "Analogy: cook at the counter in small batches instead of walking to the storeroom after every step.", size=11)
+    return d
+
+
+def techniques_map():
+    d = Diagram("03-techniques-map", 1100, 440, "The six techniques: which part each one attacks")
+    d.box("p", 20, 70, 130, 60, "Prompt", "white", size=12)
+    d.box("pre", 200, 60, 320, 80, "Prefill\nread the prompt in 1 pass\ncompute-bound · sets TTFT", "purple", size=11)
+    d.box("dec", 580, 60, 340, 80, "Decode\n1 pass per output token\nmemory-bound · sets TPOT", "blue", size=11)
+    d.box("a", 970, 70, 110, 60, "Answer", "white", size=12)
+    d.edge("p", "pre")
+    d.edge("pre", "dec")
+    d.edge("dec", "a")
+    d.box("cache", 200, 200, 320, 76, "Caching\nreuse a shared prefix's KV cache\n→ faster first token, less work", "green", size=11)
+    d.edge("cache", "pre", dashed=True)
+    for i, (id_, label) in enumerate([("batch", "Batching\nmany users\nper weight read"),
+                                      ("quant", "Quantization\nfewer bits →\nshorter reads"),
+                                      ("spec", "Speculation\nseveral tokens\nper pass")]):
+        d.box(id_, 550 + i * 178, 200, 165, 76, label, "yellow", size=11)
+        d.edge(id_, "dec", dashed=True)
+    d.group("whole", 20, 305, 1060, 115, "Across GPUs", "gray", size=12)
+    d.box("par", 40, 340, 500, 64, "Parallelism\nmodel too big or slow for one GPU → split it (watch GPU-to-GPU traffic)",
+          "orange", size=11)
+    d.box("dis", 560, 340, 500, 64, "Disaggregation\nprefill and decode on separate pools, scaled on their own",
+          "purple", size=11)
+    return d
+
+
 if __name__ == "__main__":
     force = "--force" in sys.argv
     warnings = []
     for build in (training_vs_inference, inference_stack, prefill_vs_decode, continuous_batching,
-                  prefix_caching, speculative_decoding, parallelism, disaggregation):
+                  prefix_caching, speculative_decoding, parallelism, disaggregation, gpu_memory_fit,
+                  abstraction_levels, kv_cache, memory_bound, flashattention, techniques_map):
         diagram = build()
         warnings += diagram.warnings
         path = diagram.save(OUT, force=force)

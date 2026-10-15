@@ -1,5 +1,7 @@
 # 03 · Model Performance Techniques
 
+![The six techniques: which part each one attacks](diagrams/03-techniques-map.drawio.svg)
+
 > **Source:** *Inference Engineering* by Philip Kiely (Baseten), the runtime layer section. Written in my own words, with the "why" added. Read [02](02-runtime-layer.md) first: every technique here builds on **prefill vs decode**, the **KV cache** and **memory-bound decode**.
 
 The book lists **six techniques** the runtime layer uses. Each one takes new research and applies it to a problem that's special to generative AI (Artificial Intelligence) inference.
@@ -65,6 +67,8 @@ The book lists **six techniques** the runtime layer uses. Each one takes new res
 > **DevOps link:** it's a cache like any other: watch the **hit rate**. And like sticky sessions on a load balancer, it only works if related requests land on the same server.
 
 ## 3. Quantization ⭐
+
+![Does a 70B model fit on one 80 GB H100?](diagrams/01-gpu-memory-fit.drawio.svg)
 
 **The problem:** the weights are big. That means (a) you need many GPUs, (b) every decode pass has to read all of them, and (c) less memory is left for the KV cache.
 

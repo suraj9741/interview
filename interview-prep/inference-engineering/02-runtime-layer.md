@@ -35,6 +35,8 @@ A **forward pass** = running input through **all the layers** of the model once,
 
 ### 3. KV cache ⭐
 
+![KV cache: saves recomputation, costs GPU memory](diagrams/02-kv-cache.drawio.svg)
+
 **Attention, in one line:** to pick the next token, the model **looks back at every earlier token** and decides which ones matter right now. (For example, to continue "The cat sat on the mat because it…", it looks back to work out what "it" means.)
 
 To do that, every earlier token has two lists of numbers:
@@ -52,6 +54,8 @@ To do that, every earlier token has two lists of numbers:
 So **GPU memory = model weights + the KV cache of every active request** (+ some working space). An H100 (80 GB) running this 8B model (16 GB of weights) has about 60 GB left, so roughly **60 such long conversations at once**. **The KV cache is what limits how many users one GPU can serve.**
 
 ### 4. Memory-bound vs compute-bound: the big "aha" ⭐
+
+![Why decode is memory-bound](diagrams/02-memory-bound.drawio.svg)
 
 A GPU has **two speed limits**:
 
@@ -96,6 +100,8 @@ Read it bottom to top, like the stack diagram in [01](01-fundamentals.md):
 > ⚠️ **A GPU kernel is not the Linux kernel.** Same word, different thing. A GPU kernel is just **a function that runs on the GPU**, spread over thousands of GPU cores at once. One forward pass launches hundreds of them.
 
 ### Low-level optimization: kernels and FlashAttention
+
+![FlashAttention: same maths, far fewer memory trips](diagrams/02-flashattention.drawio.svg)
 
 **Low-level optimization** = making the kernels faster. Since memory is usually the bottleneck, the trick is mostly **fewer trips to memory**, not less maths.
 

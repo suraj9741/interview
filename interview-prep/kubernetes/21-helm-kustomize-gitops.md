@@ -1,5 +1,7 @@
 # 21 · Helm, Kustomize and GitOps (the CI/CD link)
 
+![Helm vs Kustomize](diagrams/21-helm-vs-kustomize.drawio.svg)
+
 How YAML gets **packaged**, **customised per environment** and **delivered** to clusters. This joins Kubernetes to the CI/CD answers in your model answers (Q35–Q40).
 
 ## Helm: the package manager

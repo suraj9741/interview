@@ -43,6 +43,8 @@ This file joins two of Hemant's focus topics, **AWS and Kubernetes**.
 
 ## Identity ⭐🔥
 
+![Pod Identity / IRSA](diagrams/20-pod-identity.drawio.svg)
+
 ### People → cluster
 IAM users or roles get Kubernetes permissions through **access entries** (the API way) plus access policies or RBAC groups. The older method, the `aws-auth` ConfigMap, is being phased out.
 

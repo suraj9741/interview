@@ -26,6 +26,8 @@ Every flag here was checked against **`helm upgrade --help` in Helm 4.2.3**. ğŸ§
 
 ## ğŸŸ¡ Values
 
+![--reuse-values vs --reset-values vs --reset-then-reuse-values](diagrams/05-values-flags.drawio.svg)
+
 | Flag | Detail |
 |---|---|
 | `-f`, `--set`, `--set-string`, `--set-json`, `--set-file`, `--set-literal` | Ways to pass values; the later one wins. `--set-literal` takes the text exactly (no splitting on commas or dots) |
