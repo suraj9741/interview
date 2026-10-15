@@ -192,7 +192,69 @@ def traffic_flows():
     return d
 
 
-ALL = [vpc_subnets, cidr_explained, three_tier, central_monitoring, traffic_flows]
+def account_per_env():
+    d = Diagram("r6-account-per-environment", 1100, 430, "One AWS account per environment, under AWS Organizations")
+    d.box("mgmt", 380, 55, 340, 70, "Management account\nAWS Organizations · SCPs · Control Tower", "purple", size=12)
+    d.group("sec", 20, 170, 360, 170, "Security OU", "gray", size=12)
+    d.box("log", 40, 205, 320, 64, "Log archive account\norganization CloudTrail from EVERY account\nnobody in a workload account can delete it",
+          "orange", size=11)
+    d.box("audit", 40, 282, 320, 44, "Audit / security tooling account", "white", size=11)
+    d.group("wl", 420, 170, 660, 170, "Workloads OU (SCP guardrails per environment)", "blue", size=12)
+    for i, env in enumerate(["dev", "staging", "prod"]):
+        d.box(f"e{i}", 440 + i * 210, 210, 200, 110, f"{env}\nown VPCs and quotas\nown IAM\nown bill", "white", size=11)
+    d.edge("mgmt", "sec")
+    d.edge("mgmt", "wl")
+    d.text("cap", 20, 355, 1060, 60,
+           "Why: blast radius (the account is AWS's strongest wall) · quotas are per account and region (e.g. 5 VPCs)\n"
+           "· simple IAM plus SCPs per environment · audit logs safe in log-archive · the bill splits per account", size=11)
+    return d
+
+
+def db_access():
+    d = Diagram("r7-private-db-access", 1100, 400, "How a developer reaches a private database (best first)")
+    d.box("lap", 20, 60, 180, 64, "Developer laptop\n(IAM identity)", "white", size=11)
+    d.box("ssm", 260, 60, 220, 64, "SSM Session Manager\nAWS API over HTTPS", "green", size=11)
+    d.box("inst", 540, 55, 220, 74, "Instance in a private\napp subnet (SSM agent)\nno inbound ports", "blue", size=11)
+    d.box("db", 820, 50, 260, 84, "RDS in a private\ndata subnet :5432", "orange", shape="cylinder", size=11)
+    d.edge("lap", "ssm")
+    d.edge("ssm", "inst")
+    d.edge("inst", "db")
+    opts = [("1 · SSM port forwarding ✅\nno SSH port, no public IP\nIAM decides who, every\nsession logged", "green"),
+            ("2 · AWS Client VPN\n= point-to-site\na laptop joins the\nVPC network", "blue"),
+            ("3 · Site-to-Site VPN\n= network-to-network\noffice network ↔ VPC", "yellow"),
+            ("4 · Bastion host (older)\npublic subnet,\nSSH only from office IP", "gray")]
+    for i, (label, c) in enumerate(opts):
+        d.box(f"o{i}", 20 + i * 268, 175, 252, 110, label, c, size=11)
+    d.text("cap", 20, 305, 1060, 70,
+           "SSM document: AWS-StartPortForwardingSessionToRemoteHost (forwards localhost:5432 to the RDS endpoint).\n"
+           "Also: read-only DB users for developers, and no direct production access.", size=11)
+    return d
+
+
+def subnet_block_size():
+    d = Diagram("r8-subnet-block-size", 1100, 390, "Subnetting on paper: which /20 contains 10.0.37.5?")
+    steps = [("1 · /20 = 20 fixed bits\n8 + 8 + 4\n→ boundary in octet 3", "blue"),
+             ("2 · Host bits in octet 3\n8 − 4 = 4\n→ block = 2⁴ = 16", "purple"),
+             ("3 · Subnets start at\n0, 16, 32, 48 …\nin octet 3", "yellow"),
+             ("4 · 37 ÷ 16 = 2 r 5\n2 × 16 = 32\n→ 10.0.32.0/20", "orange"),
+             ("5 · Range\n10.0.32.0 – 10.0.47.255\n4,096 (4,091 on AWS)", "green")]
+    for i, (label, c) in enumerate(steps):
+        d.box(f"s{i}", 20 + i * 215, 60, 200, 90, label, c, size=11)
+        if i:
+            d.edge(f"s{i - 1}", f"s{i}")
+    d.text("bh", 20, 180, 640, 24, "Bit values in one octet (add up the 1s)", size=13, bold=True, align="left")
+    for i, v in enumerate([128, 64, 32, 16, 8, 4, 2, 1]):
+        d.box(f"b{i}", 20 + i * 80, 212, 70, 44, str(v), "white", size=12)
+    d.box("ex", 680, 180, 400, 90, "10 = 00001010 = 8 + 2\n172 = 10101100 = 128 + 32 + 8 + 4\n255 = 11111111 (the maximum)",
+          "gray", size=11, bold_first=False)
+    d.text("cap", 20, 295, 1060, 70,
+           "Addresses = 2^(32 − N).  /24 → block 1 in octet 3: 10.0.1.0, 10.0.2.0 …  /26 → block 64 in octet 4: .0 .64 .128 .192\n"
+           "1 byte = 8 bits · IPv4 = 4 bytes = 32 bits · IPv6 = 128 bits", size=11)
+    return d
+
+
+ALL = [vpc_subnets, cidr_explained, three_tier, central_monitoring, traffic_flows, account_per_env, db_access,
+       subnet_block_size]
 
 if __name__ == "__main__":
     force = "--force" in sys.argv
