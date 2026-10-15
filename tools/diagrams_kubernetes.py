@@ -93,6 +93,125 @@ def node_internals():
     return d
 
 
+def api_request_pipeline():
+    d = Diagram("02-api-request-pipeline", 1000, 430, "kube-apiserver: what happens to every request")
+    d.box("client", 20, 60, 220, 70, "Any client, HTTPS :6443\nkubectl · controllers ·\nscheduler · kubelets", "white")
+    d.box("authn", 265, 60, 220, 70, "1 · Authentication\nwho are you?\ncert · token · OIDC · IAM", "purple")
+    d.box("authz", 510, 60, 220, 70, "2 · Authorization\nmay you do this verb here?\nRBAC · Node authorizer", "purple")
+    d.box("mutate", 755, 60, 225, 70, "3 · Mutating admission\nmay change the object\ndefaults · inject sidecar", "purple")
+    d.box("schema", 755, 190, 225, 70, "4 · Schema validation\nis the object well formed?", "purple")
+    d.box("validate", 510, 190, 220, 70, "5 · Validating admission\nmay reject it\nPod Security · Kyverno · OPA", "purple")
+    d.box("etcd", 300, 180, 160, 90, "6 · etcd\nobject saved", "yellow", shape="cylinder")
+    d.box("watch", 20, 190, 230, 70, "7 · Watchers notified\nADDED · MODIFIED · DELETED\n(no polling)", "green")
+    d.edge("client", "authn")
+    d.edge("authn", "authz")
+    d.edge("authz", "mutate")
+    d.edge("mutate", "schema")
+    d.edge("schema", "validate")
+    d.edge("validate", "etcd")
+    d.edge("etcd", "watch")
+    d.text("fail", 0, 280, 1000, 24,
+           "Fails at 1 → 401 Unauthorized  ·  fails at 2 → 403 Forbidden  ·  fails at 3–5 → request denied, nothing saved",
+           size=12, bold=True)
+    d.box("f1", 20, 320, 230, 86, "Watch cache\nthousands of watchers are\nserved from memory,\nnot from etcd", "gray", size=11)
+    d.box("f2", 265, 320, 230, 86, "resourceVersion\nupdate an old version →\n409 Conflict → re-read\nand retry (no locks)", "gray", size=11)
+    d.box("f3", 510, 320, 220, 86, "logs · exec · port-forward\nkubectl → API server →\nkubelet :10250", "gray", size=11)
+    d.box("f4", 755, 320, 225, 86, "Stateless\nrun several copies behind\na load balancer; the only\ncomponent that talks to etcd", "gray", size=11)
+    return d
+
+
+def scheduler_steps():
+    d = Diagram("02-scheduler-steps", 1000, 340, "kube-scheduler: filter → score → bind (it only decides)")
+    steps = [("pod", "New Pod\nnodeName empty", "yellow"), ("queue", "1 · Queue\nby priority", "gray"),
+             ("filter", "2 · Filter\ncan it run here?", "blue"), ("score", "3 · Score\nwhich is best?", "blue"),
+             ("bind", "4 · Bind\nsets nodeName", "purple"), ("kubelet", "kubelet\nstarts the pod", "orange")]
+    for i, (sid, label, color) in enumerate(steps):
+        d.box(sid, 20 + i * 164, 56, 140, 56, label, color)
+    for (a, *_), (b, *_) in zip(steps, steps[1:]):
+        d.edge(a, b)
+    d.box("fd", 230, 150, 260, 120, "Filter drops a node if:\n• not enough requested CPU / memory\n"
+          "• a taint the pod doesn't tolerate\n• nodeSelector / affinity mismatch\n• host port already taken\n"
+          "• volume is in another zone\n• node is cordoned", "white", size=11, valign="top", align="left")
+    d.box("sd", 510, 150, 220, 120, "Score ranks nodes 0–100:\n• least allocated\n• balanced CPU / memory\n"
+          "• image already on the node\n• pod (anti-)affinity\n• topology spread", "white", size=11,
+          valign="top", align="left")
+    d.box("fail", 750, 150, 230, 120, "No node passes Filter?\npod stays Pending\nevent FailedScheduling:\n"
+          "\"0/3 nodes are available:\n3 Insufficient cpu\"\nhigher priority → may preempt", "red", size=11)
+    d.edge("filter", "fd", dashed=True)
+    d.edge("score", "sd", dashed=True)
+    d.text("caption", 0, 282, 1000, 50,
+           "Filter uses requests, not real usage. Scheduler down → new pods Pending with NO FailedScheduling events.\n"
+           "HA: several copies, one active leader (Lease). Every step is a plugin; a 2nd scheduler via spec.schedulerName.",
+           size=11)
+    return d
+
+
+def etcd_quorum():
+    d = Diagram("02-etcd-quorum", 1000, 380, "etcd: one leader, a majority must agree (Raft)")
+    d.box("api", 20, 65, 170, 60, "kube-apiserver\nthe only etcd client", "purple")
+    d.box("leader", 300, 50, 170, 90, "etcd leader\nall writes go here", "yellow", shape="cylinder")
+    d.box("f1", 220, 210, 160, 90, "etcd follower", "yellow", shape="cylinder")
+    d.box("f2", 400, 210, 160, 90, "etcd follower", "yellow", shape="cylinder")
+    d.edge("api", "leader", "read / write\n:2379")
+    d.edge("leader", "f1", "Raft :2380", both=True)
+    d.edge("leader", "f2", "Raft :2380", both=True)
+    d.box("q", 620, 50, 360, 100, "Quorum = majority of members\n3 members → survives 1 failure\n"
+          "4 members → survives 1 (no gain)\n5 members → survives 2\n→ always run an odd number", "blue",
+          valign="top", align="left")
+    d.box("rem", 620, 170, 360, 120, "Remember\n• slow disk → leader elections → flaky API (use SSD)\n"
+          "• quota 2 GiB default (up to 8 GiB); full → read-only\n  \"mvcc: database space exceeded\"\n"
+          "• backup: etcdctl snapshot save\n• restore: etcdutl snapshot restore → new data dir\n"
+          "• Secrets live here → encryption at rest", "white", size=11, valign="top", align="left")
+    d.text("caption", 0, 330, 1000, 40,
+           "A write is committed only when a majority has it on disk → strong consistency.\n"
+           "Every change gets a revision number → that is Kubernetes' resourceVersion, and watches are built on it.",
+           size=11)
+    return d
+
+
+def controller_internals():
+    d = Diagram("02-controller-internals", 1000, 400, "Inside every controller: informer → work queue → worker")
+    d.box("api", 20, 150, 170, 60, "kube-apiserver", "purple")
+    d.box("inf", 260, 70, 190, 60, "Informer\nlist once, then watch", "blue")
+    d.box("cache", 260, 200, 190, 60, "Local cache\nreads cost no API calls", "yellow")
+    d.box("q", 520, 70, 190, 60, "Work queue\nkeys of changed objects", "gray")
+    d.box("w", 780, 70, 200, 60, "Worker\ncompare desired vs actual", "green")
+    d.edge("api", "inf", "watch")
+    d.edge("inf", "cache", "update")
+    d.edge("inf", "q", "key changed")
+    d.edge("q", "w", "pop key")
+    d.edge("w", "q", "error → retry with backoff", dashed=True, points=[(880, 165), (615, 165)])
+    d.edge("w", "cache", "read state", dashed=True, points=[(880, 230)])
+    d.edge("w", "api", "write the fix (create / update / delete objects)", points=[(880, 300), (105, 300)])
+    d.text("caption", 0, 320, 1000, 70,
+           "Controllers never call each other: the Deployment controller just writes a ReplicaSet;\n"
+           "the ReplicaSet controller sees it on its own watch and creates Pods.\n"
+           "One active copy at a time via leader election (a Lease). Every operator you write uses this same pattern.",
+           size=11)
+    return d
+
+
+def ha_control_plane():
+    d = Diagram("02-ha-control-plane", 1000, 400, "HA control plane: 3 nodes behind a load balancer")
+    d.box("lb", 390, 46, 220, 44, "Load balancer :6443", "orange")
+    roles = [("leader", "leader"), ("standby", "standby"), ("standby", "standby")]
+    for i, (sched, cm) in enumerate(roles):
+        x = 20 + i * 330
+        d.group(f"cp{i}", x, 120, 300, 200, f"Control plane node {i + 1}", "gray")
+        d.box(f"api{i}", x + 15, 155, 270, 34, "kube-apiserver · active", "purple", size=11)
+        d.box(f"s{i}", x + 15, 197, 270, 34, f"kube-scheduler · {sched}", "green" if sched == "leader" else "white",
+              size=11)
+        d.box(f"c{i}", x + 15, 239, 270, 34, f"controller-manager · {cm}", "green" if cm == "leader" else "white",
+              size=11)
+        d.box(f"e{i}", x + 15, 281, 270, 30, "etcd member" + (" (Raft leader)" if i == 1 else ""), "yellow", size=11)
+        d.edge("lb", f"api{i}")
+    d.text("caption", 0, 335, 1000, 56,
+           "API servers are active-active. Scheduler and controller-manager are active-passive: one leader, chosen by a Lease.\n"
+           "etcd needs a majority: 3 nodes survive 1 failure. On EKS AWS runs all of this across 3 AZs; you never see it.",
+           size=11)
+    return d
+
+
 def labels_selectors():
     d = Diagram("03-labels-selectors", 860, 340, "Labels and selectors connect objects")
     d.box("deploy", 30, 70, 230, 60, "Deployment web\nselector: app=web", "blue")
@@ -401,7 +520,8 @@ def gitops():
     return d
 
 
-ALL = [reconciliation_loop, architecture, node_internals, labels_selectors, apply_flow, pod_anatomy, deployment_rollout,
+ALL = [reconciliation_loop, architecture, node_internals, api_request_pipeline, scheduler_steps, etcd_quorum,
+       controller_internals, ha_control_plane, labels_selectors, apply_flow, pod_anatomy, deployment_rollout,
        service_traffic, ingress_paths, secrets_flow, storage_flow, autoscaling, networkpolicy, rbac,
        troubleshooting, operator_pattern, eks, gitops]
 
