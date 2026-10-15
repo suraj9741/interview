@@ -69,7 +69,50 @@ def slo_error_budget():
     return d
 
 
-ALL = [call_flow, answer_frameworks, slo_error_budget]
+def week_plan():
+    d = Diagram("p1-week-plan", 1100, 380, "Mon 5 → Fri 9 Oct: what each slot covers")
+    days = ["Mon 5\n3 h", "Tue 6\n~4.5 h", "Wed 7\n~4.5 h", "Thu 8\n~4.5 h", "Fri 9\n4 h + interview"]
+    for i, t in enumerate(days):
+        d.box(f"d{i}", 140 + i * 190, 50, 175, 50, t, "gray", size=11)
+    slots = ["Morning", "Lunch", "Evening"]
+    for r, t in enumerate(slots):
+        d.text(f"l{r}", 20, 115 + r * 80, 110, 60, t, size=12, bold=True, align="left")
+    cells = {
+        (0, 2): ("🐳 Docker 1\ncontainer = process", "blue"),
+        (1, 0): ("🐳 Docker 2\nnetworks, volumes", "blue"),
+        (1, 1): ("☸️ K8s big picture", "purple"),
+        (1, 2): ("🐳 Docker wrap-up\n☸️ K8s 1: apply flow", "purple"),
+        (2, 0): ("☸️ Pods, probes,\nServices", "purple"),
+        (2, 1): ("☸️ CrashLoop, 5xx,\nOOMKilled", "purple"),
+        (2, 2): ("☸️ Troubleshooting\n☁️ VPC · 🎯 A3", "orange"),
+        (3, 0): ("☁️ IAM, Flow Logs,\nPod Identity", "orange"),
+        (3, 1): ("🔄 CI/CD, GitOps\n🎯 A2 intro", "green"),
+        (3, 2): ("🔄 CI/CD · 🎯 A1\n🔥 Security · 🎯 A2", "red"),
+        (4, 0): ("Recall · mock interview\n🎯 A1–A3 · intro · draw", "yellow"),
+    }
+    for (c, r), (t, col) in cells.items():
+        d.box(f"c{c}{r}", 140 + c * 190, 110 + r * 80, 175, 65, t, col, size=11, bold_first=False)
+    d.box("c41", 140 + 4 * 190, 190, 175, 145, "Rest, set up laptop\n\nInterview 3:00 PM", "white", size=11)
+    return d
+
+
+def learning_loop():
+    d = Diagram("p2-learning-loop", 1100, 200, "How to learn one topic deeply (do this for every topic)")
+    steps = [("1 · Big picture\nshort 2–6 min video,\nno notes", "gray"),
+             ("2 · Main video at 1x\npause, write 3 points\nin your own words", "blue"),
+             ("3 · Read\nthe matching\nnotes section", "purple"),
+             ("4 · Explain out loud\n2 min, no notes;\nre-watch where stuck", "green"),
+             ("5 · Next morning\nsay it again\nfrom memory", "yellow")]
+    for i, (t, c) in enumerate(steps):
+        d.box(f"s{i}", 20 + i * 215, 55, 195, 90, t, c, size=11)
+        if i:
+            d.edge(f"s{i - 1}", f"s{i}")
+    d.text("n", 20, 160, 1060, 24, "Behind? Drop 🔁 videos first, then shorten reading. Never skip step 4 or the 🔥 security videos.",
+           size=11, bold=True)
+    return d
+
+
+ALL = [call_flow, answer_frameworks, slo_error_budget, week_plan, learning_loop]
 
 if __name__ == "__main__":
     force = "--force" in sys.argv
