@@ -1,6 +1,6 @@
 # 🐳 Docker Notes: Interview Edition
 
-My own Docker notes for the interview with Hemant (One2N). **Diagram first, then short bullets.** They cover the same topics as the Instagram "Docker Complete Handbook", with its mistake fixed and the deeper points Hemant usually asks about added.
+My own Docker notes for the interview with Hemant (One2N). They cover the same topics as the Instagram "Docker Complete Handbook", with its mistake fixed and the deeper points Hemant usually asks about added.
 
 ## How to use these notes
 

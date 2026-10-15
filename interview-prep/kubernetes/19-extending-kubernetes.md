@@ -1,12 +1,11 @@
 # 19 · Extending Kubernetes: CRDs, Operators, Webhooks
 
-ArgoCD, Karpenter, cert-manager, External Secrets and Gateway API are all built with these mechanisms.
+Kubernetes is built to be extended. Many tools you'll name in the interview, like **ArgoCD, Karpenter, cert-manager, External Secrets and Gateway API**, are extensions that use exactly these mechanisms.
 
-![The operator pattern](diagrams/19-operator-pattern.drawio.svg)
+## Custom Resource Definitions (CRDs)
 
-- **CRD:** adds a new type (`kind: Backup`); stored in etcd, `kubectl get backups` works. On its own it **only stores data**.
-- **Operator** = CRDs + a controller running the same loop as built-ins ([02](02-architecture.md)), encoding ops know-how (install, upgrade, failover, backup).
-- Build one with **kubebuilder** or **Operator SDK** (Go, controller-runtime).
+- A **CRD** adds a **new object type** to the API, for example `kind: Backup`. The API server then stores and serves it like a built-in type, in etcd, with `kubectl get backups` working.
+- A CRD on its own **only stores data**. Something has to **act** on it, and that's a controller.
 
 ```yaml
 apiVersion: apiextensions.k8s.io/v1
@@ -45,40 +44,49 @@ spec:
   database: orders
 ```
 
-| Operator | Custom resources |
+## Controllers and operators ⭐
+
+![The operator pattern](diagrams/19-operator-pattern.drawio.svg)
+
+- A **custom controller** runs the **same reconciliation loop** as the built-in ones ([01](01-fundamentals.md)): watch the custom resources → compare → act (create pods, call AWS, take a backup) → update `status`.
+- An **operator** = CRDs + a controller that **packages operational know-how** for one piece of software: installing, upgrading, failover, backups.
+- Real examples:
+
+| Operator / controller | Its custom resources |
 |---|---|
 | Prometheus Operator | `Prometheus`, `ServiceMonitor`, `PrometheusRule` |
 | cert-manager | `Certificate`, `Issuer` |
 | ArgoCD | `Application`, `ApplicationSet` |
 | Karpenter | `NodePool`, `EC2NodeClass` |
 | External Secrets | `ExternalSecret`, `SecretStore` |
-| CloudNativePG / Strimzi | `Cluster` / `Kafka` |
+| CloudNativePG / Strimzi | `Cluster` (Postgres) / `Kafka` |
 
-## Admission control
+- Build your own with **kubebuilder** or the **Operator SDK** (Go, using controller-runtime).
 
-- **Mutating webhooks** change objects (Istio sidecar injection). **Validating webhooks** accept or reject (Kyverno, Gatekeeper: "no `:latest`", "only our ECR").
-- **ValidatingAdmissionPolicy** (stable 1.30): CEL rules inside the API server, no webhook to run.
-- ⚠️ A webhook that's down with `failurePolicy: Fail` blocks every matching request. Run it HA.
+## Admission control: policies on every request
+
+- **Mutating webhooks** change objects before they're saved. For example, Istio injects its sidecar, and tools add default labels.
+- **Validating webhooks** accept or reject objects, for example **Kyverno** or **OPA Gatekeeper** policies: "no `:latest` tags", "must set limits", "only images from our ECR".
+- **ValidatingAdmissionPolicy** (stable since **1.30**) writes simple rules in **CEL** that run **inside the API server**, with no webhook service to keep up.
+- ⚠️ A webhook that's **down** with `failurePolicy: Fail` blocks every matching request. Webhooks need high availability too.
 
 ## Other extension points
 
 | Interface | Extends | Examples |
 |---|---|---|
-| **CRI** | Runtime | containerd, CRI-O |
-| **CNI** | Pod networking | Calico, Cilium, VPC CNI ([14](14-cluster-networking.md)) |
-| **CSI** | Volumes | EBS CSI, EFS CSI ([11](11-storage.md)) |
-| Device plugins | Hardware | NVIDIA GPUs |
-| Scheduler plugins | Placement | Custom scoring |
-| **API aggregation** | Whole APIs | metrics-server → `metrics.k8s.io` |
-| kubectl plugins | CLI | **krew** |
+| **CRI** (container runtime) | How containers run | containerd, CRI-O |
+| **CNI** (container network) | Pod networking | Calico, Cilium, AWS VPC CNI ([14](14-cluster-networking.md)) |
+| **CSI** (container storage) | Volumes | EBS CSI, EFS CSI ([11](11-storage.md)) |
+| Device plugins | Special hardware | NVIDIA GPUs |
+| Scheduler plugins | Scheduling decisions | Custom scoring |
+| **API aggregation** | Whole extra APIs | **metrics-server** serves `metrics.k8s.io` this way |
+| kubectl plugins | The CLI | Installed with **krew** |
 
 ## Interview angle
 
-| Question | Answer |
-|---|---|
-| ⭐ CRD vs operator? | New API type vs a controller that reconciles it with ops knowledge. |
-| Block Docker Hub images cluster-wide? | Admission policy (Kyverno, Gatekeeper, ValidatingAdmissionPolicy) on every pod's image. |
-| CRI, CNI, CSI? | Plug-in interfaces for runtime, network, storage: why Kubernetes runs anywhere. |
+- ⭐ "What is a CRD, and what is an operator?" → a CRD adds a new API type; an operator is a controller that reconciles that type, encoding operations knowledge.
+- "How would you enforce 'no images from Docker Hub' across the cluster?" → an admission policy (Kyverno, Gatekeeper, or ValidatingAdmissionPolicy) that checks every pod's image.
+- "What are CRI, CNI and CSI?" → the plug-in interfaces for runtime, networking and storage. This is why Kubernetes works on any cloud.
 
 ## Practice 🖥️
 
@@ -87,7 +95,9 @@ kubectl get crds
 kubectl apply -f practice/backup-crd.yaml
 kubectl wait --for=condition=Established crd/backups.example.com
 kubectl apply -f practice/backup.yaml
-kubectl get backups          # stored, but nothing acts on it: no controller
+kubectl get backups
 kubectl explain backup.spec
 kubectl get apiservices | grep metrics
 ```
+
+Nothing happens to the Backup, because no controller is watching it. That's the point.

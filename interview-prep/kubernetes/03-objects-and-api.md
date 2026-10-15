@@ -28,13 +28,13 @@ spec:                        # DESIRED state: you write this
 # status:                    # ACTUAL state: controllers write this, you never do
 ```
 
-- ⭐ **`spec`** = what you want · **`status`** = what exists now. Controllers work until they match.
+⭐ **`spec` vs `status`:** `spec` is what you want; `status` is what exists right now. Controllers keep working until `status` matches `spec`.
 
-## API groups
+## API groups and versions
 
 | apiVersion | Kinds |
 |---|---|
-| `v1` (core) | Pod, Service, ConfigMap, Secret, Namespace, ServiceAccount, PV, PVC, Node |
+| `v1` (the "core" group) | Pod, Service, ConfigMap, Secret, Namespace, ServiceAccount, PersistentVolume, PersistentVolumeClaim, Node |
 | `apps/v1` | Deployment, ReplicaSet, StatefulSet, DaemonSet |
 | `batch/v1` | Job, CronJob |
 | `networking.k8s.io/v1` | Ingress, IngressClass, NetworkPolicy |
@@ -42,45 +42,70 @@ spec:                        # DESIRED state: you write this
 | `storage.k8s.io/v1` | StorageClass |
 | `autoscaling/v2` | HorizontalPodAutoscaler |
 | `policy/v1` | PodDisruptionBudget |
-| `gateway.networking.k8s.io/v1` | Gateway, HTTPRoute (CRDs, [09](09-ingress-and-gateway-api.md)) |
+| `gateway.networking.k8s.io/v1` | Gateway, HTTPRoute (installed as CRDs, see [09](09-ingress-and-gateway-api.md)) |
 
-- alpha → beta → stable. Old betas get **removed**: check deprecated APIs before upgrades ([18](18-cluster-operations.md)).
-- `kubectl api-resources` lists types; `kubectl explain deployment.spec.strategy` documents any field.
+- Maturity goes **alpha → beta → stable (v1)**. Old beta APIs get **removed** in later versions, so check for deprecated APIs before every upgrade ([18](18-cluster-operations.md)).
+- `kubectl api-resources` lists every type. `kubectl explain deployment.spec.strategy` documents any field, straight from the cluster.
 
 ## Namespaces
 
-- Group objects by team, app or environment; names are unique **per namespace**.
-- Built in: `default` · `kube-system` (components) · `kube-public` · `kube-node-lease` (heartbeats).
-- **Cluster-scoped:** Nodes, PVs, Namespaces, ClusterRoles, StorageClasses, CRDs.
-- ⚠️ Not a security boundary alone: add NetworkPolicy ([14](14-cluster-networking.md)) and RBAC ([15](15-security.md)).
+- A way to **group and isolate** objects in one cluster, by team, app or environment.
+- Names only need to be unique **within** a namespace. RBAC, quotas and NetworkPolicies are usually set **per namespace**.
+- Built-in namespaces:
+  - `default`: where objects go if you don't choose;
+  - `kube-system`: cluster components;
+  - `kube-public`: readable by everyone;
+  - `kube-node-lease`: node heartbeats.
+- **Cluster-scoped** (no namespace): Nodes, PersistentVolumes, Namespaces, ClusterRoles, StorageClasses, CRDs.
+- ⚠️ Namespaces are **not** a network or security boundary on their own. Add NetworkPolicy ([14](14-cluster-networking.md)) and RBAC ([15](15-security.md)).
 
-## Labels and selectors ⭐
+## Labels and selectors ⭐ (the glue)
 
 ![Labels and selectors connect objects](diagrams/03-labels-selectors.drawio.svg)
 
-- Selectors: equality (`app=web`, `env!=dev`) or set-based (`env in (prod,staging)`).
-- Used by Deployments / ReplicaSets, Services, NetworkPolicies and `kubectl get -l`.
-- ⚠️ A Deployment's `selector` **can't change** after creation and must match the template labels.
-- **Labels** = you'd filter by it · **annotations** = data for tools and people (`prometheus.io/scrape`, build commit).
+- **Labels:** key-value pairs on any object (`app: web`, `env: prod`, `tier: backend`).
+- **Selectors:** queries over labels.
+  - **Equality-based:** `app=web`, `env!=dev`
+  - **Set-based:** `env in (prod,staging)`
+- **Who uses them:**
+  - **Deployments and ReplicaSets** count the pods matching `selector.matchLabels`.
+  - **Services** send traffic to the pods matching `selector`.
+  - **NetworkPolicies** pick pods by label.
+  - `kubectl get pods -l app=web`
+- ⚠️ A Deployment's `selector` **can't be changed** after creation, and it must match the pod template's labels.
+- Recommended labels: `app.kubernetes.io/name`, `app.kubernetes.io/version`, `app.kubernetes.io/part-of`.
 
-## Owners, garbage collection, finalizers
+## Annotations
+
+- Also key-value pairs, but **not for selecting**. They store information **for tools and people**: an ingress controller's settings, a build commit, `prometheus.io/scrape`, a team contact.
+- Rule of thumb: if you'd **filter by it**, make it a label; otherwise, an annotation.
+
+## Owners, garbage collection and finalizers
 
 ![Owners and finalizers](diagrams/03-ownership-finalizers.drawio.svg)
 
-## apply vs create
+- **Owner references:** a Deployment owns its ReplicaSets, which own their Pods (see `metadata.ownerReferences`).
+- **Garbage collection:** delete the owner and its dependants are deleted too ("cascading"). Modes:
+  - **background** (the default);
+  - **foreground** (dependants first);
+  - **orphan** (keep the dependants: `--cascade=orphan`).
+- **Finalizers:** keys in `metadata.finalizers` that **block deletion** until a controller has cleaned up. Examples:
+  - `kubernetes.io/pvc-protection` stops a PVC that's still in use from being deleted;
+  - a load balancer controller removes the cloud load balancer first.
+  - ⚠️ A namespace or object stuck in **`Terminating`** usually has a finalizer whose controller is gone.
 
-- `create` fails if the object exists; `apply` creates **or** updates.
-- **Server-side apply** (`--server-side`): the API server tracks which tool owns each field ([Helm 03](../helm-chart/03-server-side-apply.md)).
+## `kubectl apply` vs `create`, client-side vs server-side
+
+- `create` fails if the object exists. `apply` creates **or** updates, by comparing with the last applied version.
+- **Server-side apply** (`kubectl apply --server-side`): the API server tracks which tool owns which field (field managers), so tools can't silently overwrite each other's fields.
 
 ## Interview angle
 
-| Question | Answer |
-|---|---|
-| ⭐ spec vs status? | Desired vs actual; controllers move `status` towards `spec`. |
-| ⭐ How does a Service find its pods? | Label selector → EndpointSlice of ready pod IPs ([08](08-services-and-dns.md)). |
-| Labels vs annotations? | Selecting and grouping vs non-identifying data for tools. |
-| ⭐ Namespace stuck in Terminating? | Finalizers whose controller is gone. `kubectl get ns <ns> -o yaml`. |
-| Delete a Deployment? | GC deletes its ReplicaSets and Pods, unless `--cascade=orphan`. |
+- ⭐ "spec vs status?" → desired vs actual; controllers reconcile `status` towards `spec`.
+- ⭐ "How does a Service know which pods to send traffic to?" → its label selector, which the EndpointSlice controller turns into a list of ready pod IPs ([08](08-services-and-dns.md)).
+- "Labels vs annotations?" → labels are for selecting and grouping; annotations are non-identifying data for tools.
+- ⭐ "A namespace is stuck in Terminating. Why?" → finalizers on it or on objects inside it, often a controller or CRD that has been removed. Find them with `kubectl get ns <ns> -o yaml`.
+- "What happens when you delete a Deployment?" → garbage collection deletes its ReplicaSets and Pods, unless you use `--cascade=orphan`.
 
 ## Practice 🖥️
 

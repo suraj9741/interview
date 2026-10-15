@@ -43,16 +43,34 @@
 
 ![Layer cache](docker/diagrams/06-layer-cache.drawio.svg)
 
-| Topic | Remember |
-|---|---|
-| Container | A Linux process: **namespaces** (what it sees) + **cgroups** (what it uses), host kernel shared |
-| Layers | Cache breaks at the first changed line: copy the dependency file, install, **then** code |
-| Multi-stage | Build in a big image, copy only the result into a small one |
-| CMD vs ENTRYPOINT | ENTRYPOINT = fixed program, CMD = default args; **exec form** so the app is PID 1 |
-| COPY vs ADD | Prefer COPY (ADD also unpacks tars and fetches URLs) |
-| Volumes vs bind mounts | Volumes for data; bind mounts for development |
-| Networks | bridge (default, `-p`) · host (no isolation) · user-defined bridge = DNS by name |
-| Security | Non-root `USER`, slim/distroless, no secrets in `ENV` or layers, `.dockerignore`, Trivy |
+![Kubernetes architecture](kubernetes/diagrams/02-architecture.drawio.svg)
+
+![What happens after kubectl apply](kubernetes/diagrams/04-kubectl-apply-flow.drawio.svg)
+
+![Service types](kubernetes/diagrams/08-service-types.drawio.svg)
+
+![Build once, promote the same image](diagrams/38-build-once-promote.drawio.svg)
+
+![GitOps flow](kubernetes/diagrams/21-gitops-flow.drawio.svg)
+
+![VPC with public, app and data subnets](diagrams/r1-vpc-subnets-nat-igw.drawio.svg)
+
+![Traffic flow and route tables](diagrams/r5-traffic-flows-route-tables.drawio.svg)
+
+- **Container vs VM:** a container is a normal Linux process.
+  - **Namespaces** limit what it can see: processes, network, files, hostname.
+  - **cgroups** limit what it can use: CPU and memory.
+  - It shares the host's kernel, while a VM runs its own kernel. So containers are lighter and faster, but less isolated.
+- **Layers:** each `RUN`, `COPY` or `ADD` line creates a layer. The cache breaks at the first changed line, and everything after it rebuilds. So copy the dependency file (`requirements.txt`, `package.json`) and install first, and copy your code last.
+- **Multi-stage build:** build in a large image that has the compilers, then copy only the result into a small runtime image.
+- **CMD vs ENTRYPOINT:** `ENTRYPOINT` is the fixed program, and `CMD` gives default arguments that are easy to override. Use the exec form `["app"]` so your app is PID 1 and receives stop signals.
+- **COPY vs ADD:** `ADD` can also unpack tar files and download URLs. Prefer `COPY`.
+- **Volumes vs bind mounts:** Docker manages volumes, so use them for data. A bind mount is a folder from the host, which suits development.
+- **Networks:**
+  - **bridge** is the default: a private network plus port mapping with `-p`.
+  - **host** shares the host's network with no isolation.
+  - On a user-defined bridge, containers can find each other by name.
+- **Security:** set `USER` to a non-root user, use slim or distroless base images, keep secrets out of `ENV` and layers, add a `.dockerignore`, and scan images with Trivy.
 
 ### Reading (~1h)
 
@@ -82,19 +100,45 @@
 
 ### Points to learn
 
-![Kubernetes architecture](kubernetes/diagrams/02-architecture.drawio.svg)
-
-![What happens after kubectl apply](kubernetes/diagrams/04-kubectl-apply-flow.drawio.svg)
-
-![Service types](kubernetes/diagrams/08-service-types.drawio.svg)
-
-| Topic | Remember |
-|---|---|
-| Workloads | Deployment (stateless) · StatefulSet (stable name + own disk) · DaemonSet (one per node) · Job/CronJob · ReplicaSet (never directly) |
-| DNS / Ingress | `my-svc.my-ns.svc.cluster.local` via CoreDNS · Ingress routes host/path, needs a controller |
-| ConfigMap vs Secret | Secrets are only base64: RBAC + encryption at rest, or AWS Secrets Manager |
-| Probes | liveness → restart · readiness → out of the Service · startup → time before the others |
-| Requests vs limits | Requests = scheduler reserves · over CPU limit = throttled · over memory limit = OOMKilled |
+- **Control plane:**
+  - **API server:** the front door; it checks who you are, what you're allowed to do, and validates requests.
+  - **etcd:** stores all cluster state.
+  - **scheduler:** chooses a node for each pod.
+  - **controller manager:** runs loops that keep comparing desired state with actual state.
+- **Each node:**
+  - **kubelet:** starts pods using containerd.
+  - **kube-proxy:** routes Service traffic.
+  - **CNI plugin:** gives each pod its IP address.
+- **What happens after `kubectl apply`**, step by step:
+  1. API server checks: authentication → RBAC → admission
+  2. The object is saved in etcd
+  3. Deployment controller creates a ReplicaSet
+  4. ReplicaSet controller creates the Pods
+  5. Scheduler assigns each pod to a node
+  6. kubelet creates the pod sandbox, and the CNI plugin gives the pod its IP
+  7. kubelet pulls the image and starts the containers
+  8. Readiness probe passes, the pod is added to the Service's endpoints, and traffic flows
+- **Workloads:**
+  - **Deployment:** stateless apps.
+  - **StatefulSet:** stable names and its own disk per pod (databases, Kafka).
+  - **DaemonSet:** one pod per node (log or monitoring agents).
+  - **Job / CronJob:** tasks that run to completion.
+  - **ReplicaSet:** never used directly; Deployments manage it.
+- **Services:**
+  - **ClusterIP:** reachable only inside the cluster.
+  - **NodePort:** opens a port from 30000–32767 on every node.
+  - **LoadBalancer:** creates a cloud load balancer.
+  - **DNS:** a Service is reachable at `my-svc.my-ns.svc.cluster.local` via CoreDNS.
+  - **Ingress:** routes HTTP traffic by host or path, and needs an ingress controller.
+- **ConfigMap vs Secret:** Secrets are only base64-encoded. Protect them with RBAC and encryption at rest, or keep them outside the cluster in AWS Secrets Manager.
+- **Probes:**
+  - **liveness:** restarts the container if it fails.
+  - **readiness:** removes the pod from the Service until it's ready.
+  - **startup:** gives slow-starting apps time before the other probes begin.
+- **Requests vs limits:**
+  - **Requests** are what the scheduler reserves for the pod.
+  - Going over the **CPU limit** gets the container slowed down (throttled).
+  - Going over the **memory limit** gets it killed (OOMKilled).
 
 ### Reading (~1.5h)
 
@@ -132,7 +176,13 @@
 
 ![Kubernetes troubleshooting flowchart](kubernetes/diagrams/17-troubleshooting-flowchart.drawio.svg)
 
-`get pods` → `describe pod` (Events) → `logs --previous` → `get events --sort-by=.lastTimestamp` → `get endpoints` → `exec` + `curl`/`nslookup` → `describe node` / `top`.
+1. `kubectl get pods`
+2. `kubectl describe pod` (read the Events at the bottom)
+3. `kubectl logs` / `kubectl logs --previous`
+4. `kubectl get events --sort-by=.lastTimestamp`
+5. `kubectl get endpoints`
+6. `kubectl exec` into a pod and try `curl` / `nslookup`
+7. `kubectl describe node` / `kubectl top`
 
 ### Practice: break it, then fix it
 
@@ -150,12 +200,12 @@
 
 ![Autoscaling](kubernetes/diagrams/12-autoscaling.drawio.svg)
 
-| Topic | Remember |
-|---|---|
-| HPA vs node autoscaling | HPA adds pods (metrics-server, requests set) · Cluster Autoscaler / Karpenter adds nodes |
-| RBAC | Role / ClusterRole grants · RoleBinding / ClusterRoleBinding gives to user, group, ServiceAccount · `kubectl auth can-i` |
-| NetworkPolicy | Default-deny, allow what's needed; needs an enforcing CNI (Calico, Cilium) |
-| Pod Security Standards | privileged · baseline · restricted, via a namespace label |
+- **HPA vs Cluster Autoscaler:**
+  - **HPA** adds pods. It needs metrics-server, and requests must be set.
+  - **Cluster Autoscaler** (or Karpenter on EKS) adds nodes.
+- **RBAC:** a Role (one namespace) or ClusterRole (cluster-wide) grants permissions; a RoleBinding or ClusterRoleBinding gives them to a user, group or ServiceAccount. Test access with `kubectl auth can-i`.
+- **NetworkPolicy:** start with default-deny and allow only what's needed. It only works if the network plugin enforces it, such as Calico or Cilium.
+- **Pod Security Standards:** three levels (privileged, baseline, restricted), turned on with a namespace label.
 
 ### Reading
 
@@ -173,17 +223,31 @@
 
 ### Points to learn
 
-![Build once, promote the same image](diagrams/38-build-once-promote.drawio.svg)
-
-![GitOps flow](kubernetes/diagrams/21-gitops-flow.drawio.svg)
-
-| Topic | Remember |
-|---|---|
-| CI vs CD | CI builds and tests every commit · Delivery = always releasable, manual prod approval · Deployment = automatic to prod |
-| Stages | Test → build (tag = commit SHA) → Trivy (fail HIGH/CRITICAL) → push → update Helm values in Git → Argo CD sync → smoke test |
-| Push vs pull | Push: CI holds cluster creds · Pull (GitOps): Argo CD in cluster, no CI creds, drift fixed, `git revert` = rollback |
-| Strategies | Rolling (`maxSurge`, `maxUnavailable`) · blue/green (instant rollback, double cost) · canary (Argo Rollouts) |
-| Security | GitHub OIDC (no stored keys), minimal `permissions:`, actions pinned to a SHA, branch protection |
+- **CI vs CD:**
+  - **CI** builds and tests every commit.
+  - **Continuous Delivery** means always ready to release, with a manual approval for production.
+  - **Continuous Deployment** releases to production automatically.
+- **Pipeline stages:**
+  1. Test
+  2. Build the image, tagged with the git commit ID (not `latest`)
+  3. Trivy scan; fail on HIGH or CRITICAL findings
+  4. Push to the registry
+  5. Update the Helm values in Git
+  6. ArgoCD syncs the change to the cluster
+  7. Smoke test
+- **Push vs pull (GitOps):**
+  - **Push:** the CI system holds cluster credentials and runs `kubectl` or `helm` itself.
+  - **Pull:** ArgoCD runs inside the cluster and pulls changes from Git. CI needs no cluster credentials, drift is detected and fixed, and `git revert` is your rollback.
+- **Helm:** a chart is templates plus `values.yaml`. Use `helm install`, `helm upgrade` and `helm rollback`.
+- **Deployment strategies:**
+  - **Rolling:** the default, controlled by `maxSurge` and `maxUnavailable`.
+  - **Blue/green:** two full environments; switch traffic over. Rollback is instant, but it costs double.
+  - **Canary:** send a small percentage of traffic first and watch the metrics (Argo Rollouts).
+- **Security:**
+  - **GitHub OIDC:** gets short-lived AWS credentials, so no access keys are stored.
+  - Set a minimal `permissions:` block in the workflow.
+  - Pin actions to a full commit SHA, not a tag (tags can be moved).
+  - Use branch protection.
 
 ### Reading
 
@@ -214,19 +278,28 @@
 
 ### Points to learn
 
-![VPC with public, app and data subnets](diagrams/r1-vpc-subnets-nat-igw.drawio.svg)
-
-![Traffic flow and route tables](diagrams/r5-traffic-flows-route-tables.drawio.svg)
-
-| Topic | Remember |
-|---|---|
-| Subnets | Public: `0.0.0.0/0 → IGW` · private: `→ NAT` (in a public subnet, outbound only, one per AZ) · S3 via a VPC endpoint |
-| SG vs NACL | SG: instance, allow only, **stateful** · NACL: subnet, allow + deny, **stateless** (ephemeral ports), numbered order |
-| Flow Logs | src, dst, port, protocol, ACCEPT/REJECT: "why can't A reach B?" ⚠️ he built a Flow Logs analyzer |
-| Peering vs TGW | Peering: 1-to-1, not transitive, no overlap · TGW: hub for many VPCs + VPN |
-| IAM | Roles (STS, temporary) over users · trust policy = who, permission policy = what · explicit deny wins |
-| Pods | IRSA / Pod Identity, never the node role |
-| Other | ALB (L7, paths, WAF) vs NLB (L4, static IP) · ASG = template + min/max/desired · S3 block public + KMS · VPC CNI IPs can run out |
+- **VPC:**
+  - **Public subnet:** its route table sends `0.0.0.0/0` to the Internet Gateway.
+  - **Private subnet:** sends `0.0.0.0/0` to a NAT Gateway, which sits in a public subnet and allows outbound traffic only.
+  - Use one NAT Gateway per AZ for high availability; mention the cost.
+  - **VPC endpoints** let you reach S3 without going through NAT.
+- **Security Groups vs NACLs:**
+  - **Security Group:** attached to the instance, allow rules only, **stateful** (return traffic is allowed automatically).
+  - **NACL:** attached to the subnet, allow and deny rules, **stateless** (you must open ephemeral ports for return traffic), rules checked in number order.
+- **VPC Flow Logs:** record source, destination, port, protocol and ACCEPT/REJECT for traffic. They answer "why can't A reach B?" ⚠️ Your interviewer built a Flow Logs analyzer, so know the record fields well.
+- **Peering vs Transit Gateway:**
+  - **Peering:** one-to-one, not transitive, and the IP ranges can't overlap.
+  - **Transit Gateway:** a hub that connects many VPCs plus VPN.
+- **IAM:**
+  - **Users vs roles:** users have long-term keys, so avoid them. Roles give temporary credentials through STS.
+  - **Trust policy vs permission policy:** the trust policy says who can assume the role; the permission policy says what it can do.
+  - **Evaluation:** an explicit deny beats an allow, and anything not allowed is denied.
+- **IRSA / EKS Pod Identity:** gives each pod its own IAM role. Never give app permissions through the node's role.
+- **Other services:**
+  - **ALB vs NLB:** ALB works at layer 7 (HTTP, path routing, WAF); NLB works at layer 4 (TCP, static IP, very fast).
+  - **ASG:** a launch template plus min, max and desired counts.
+  - **S3 + KMS:** block public access and encrypt with KMS.
+  - **EKS:** the VPC CNI gives each pod a VPC IP address, which can run out.
 
 ### Reading
 
@@ -256,12 +329,10 @@
 
 ![Kubernetes security layers](kubernetes/diagrams/15-security-layers.drawio.svg)
 
-| Layer | Controls |
-|---|---|
-| CI | Dependency and secret scanning, OIDC, minimal token permissions |
-| Image | Small base, non-root, Trivy, no secrets |
-| Kubernetes | Least-privilege RBAC, default-deny NetworkPolicy, restricted PSS, Secrets outside the cluster |
-| AWS | Least-privilege IAM, no long-lived keys, private subnets, KMS, TLS, CloudTrail, GuardDuty |
+- **CI:** dependency and secret scanning, OIDC, minimal token permissions
+- **Image:** small base image, non-root user, Trivy scan, no secrets
+- **Kubernetes:** least-privilege RBAC, default-deny NetworkPolicy, restricted Pod Security Standards, Secrets kept outside the cluster
+- **AWS:** least-privilege IAM, no long-lived keys, private subnets, KMS encryption, TLS, CloudTrail, GuardDuty
 
 ### Reading
 

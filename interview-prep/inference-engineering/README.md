@@ -1,10 +1,10 @@
 # 🧠 Inference Engineering Notes
 
-**Diagram first, then short bullets.** My notes as I learn **inference engineering**: how to run generative AI (Artificial Intelligence) models in production so they're **fast, cheap and reliable**. The main source is the book *Inference Engineering* by Philip Kiely (Baseten); I add the details as I read, with links back to the DevOps topics I already know.
+My notes as I learn **inference engineering**: how to run generative AI (Artificial Intelligence) models in production so they're **fast, cheap and reliable**. The main source is the book *Inference Engineering* by Philip Kiely (Baseten); I add the details as I read, with links back to the DevOps topics I already know.
 
 ## How to use these notes
 
-- Read one file at a time, then answer its **Check yourself** table **out loud** (teach-back).
+- Read one file at a time, then answer its **Check yourself** questions **out loud** (teach-back).
 - ⭐ = core idea, must be able to explain without notes.
 - **DevOps link** boxes connect each new idea to Kubernetes, AWS or networking, which I already know.
 

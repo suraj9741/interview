@@ -1,6 +1,6 @@
 # ☸️ Kubernetes Notes: Interview Edition
 
-My Kubernetes notes for the interview with Hemant (One2N). **Diagram first, then short bullets.** They cover the official "Concepts" docs and the CKA syllabus, and fix the Instagram "Kubernetes Handbook" mistakes.
+My own Kubernetes notes for the interview with Hemant (One2N), in the same format as the [Docker notes](../docker/README.md). They cover **all the core Kubernetes concepts**, checked against two complete lists: the official Kubernetes "Concepts" documentation and the CKA exam syllabus. They also fix the mistakes in the Instagram "Kubernetes Handbook" and add the depth Hemant asks about.
 
 ## How to use these notes
 
@@ -32,7 +32,7 @@ kubectl config use-context kind-kind
 | # | File | What's inside |
 |---|---|---|
 | 01 ⭐ | [Fundamentals](01-fundamentals.md) | Why Kubernetes, desired state, the reconciliation loop |
-| 02 ⭐ | [Architecture](02-architecture.md) | Every component in one table, then a diagram each: API pipeline, etcd, scheduler, controllers, node, HA |
+| 02 ⭐ | [Architecture](02-architecture.md) | Control plane, node components, add-ons, a deep dive on what each component does, how they talk, high availability |
 | 03 ⭐ | [Objects and the API](03-objects-and-api.md) | YAML structure, API groups, labels, selectors, namespaces, garbage collection, finalizers |
 | 04 ⭐ | [What happens on `kubectl apply`](04-kubectl-apply-flow.md) | The full flow, and where it can get stuck |
 | 05 ⭐ | [Pods](05-pods.md) | Phases, init and sidecar containers, graceful shutdown |

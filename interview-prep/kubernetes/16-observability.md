@@ -1,42 +1,53 @@
 # 16 · Observability: Logs, Metrics, Events
 
-The full stack design is in the model answers (Q45–Q49, [diagram](../diagrams/46-observability-stack.drawio.svg)). This file is the Kubernetes-specific part.
-
 ![Where Kubernetes logs and metrics come from](diagrams/16-k8s-observability.drawio.svg)
+
+The full stack design is in the model answers (Q45–Q49), with a [diagram](../diagrams/46-observability-stack.drawio.svg). This file covers what's **specific to Kubernetes**.
 
 ## Logs
 
-- `kubectl logs <pod> --previous` = the **crashed** container's logs. The #1 CrashLoopBackOff command.
-- **EKS control plane logs:** turn on `api`, `audit`, `authenticator`, `controllerManager`, `scheduler` (→ CloudWatch).
+- Apps write to **stdout and stderr**. The container runtime saves that to files **on the node** (`/var/log/pods/...`). `kubectl logs` reads them **through the kubelet**.
+- The kubelet **rotates** these files (by default about 10 MiB × 5 files per container).
+- ⚠️ When a pod is **deleted** or its node disappears, those logs are **gone**. That's why you **ship** logs: a **DaemonSet** (Fluent Bit, Grafana Alloy) tails every node's log files and sends them to Loki, CloudWatch or Elasticsearch.
+- `kubectl logs <pod> --previous` shows the logs of the **crashed** container. This is the most important CrashLoopBackOff command.
+- **Control plane logs on EKS:** turn on `api`, `audit`, `authenticator`, `controllerManager` and `scheduler` logs (they go to CloudWatch).
 
 ## Metrics
 
-| Tool | Gives | Used for |
+| Tool | Gives you | Used for |
 |---|---|---|
-| **metrics-server** | Current CPU / memory, no history | `kubectl top`, **HPA** |
-| **cAdvisor** (in the kubelet) | Container CPU, memory, network, disk | Prometheus |
-| **kube-state-metrics** | Object state: replicas, phase, restarts | "fewer pods than wanted" alerts |
-| **node_exporter** | Node OS | Disk full, load |
-| **kube-prometheus-stack** | Collect, store, alert, dashboards | Long-term monitoring |
+| **metrics-server** | Current CPU and memory per pod and node (no history) | `kubectl top`, **HPA** |
+| **cAdvisor** (built into the kubelet) | Container CPU, memory, network and disk | Scraped by Prometheus |
+| **kube-state-metrics** | The **state of objects**: desired vs available replicas, pod phase, restart counts | Alerts like "Deployment has fewer pods than wanted" |
+| **node_exporter** | Node OS metrics | Disk full, load, network |
+| **Prometheus + Grafana** (`kube-prometheus-stack`) | Collection, storage, alerting, dashboards | Long-term monitoring |
 
 ## Events
 
-- `Scheduled`, `Pulling`, `Failed`, `BackOff`, `Unhealthy`, `FailedScheduling`, `OOMKilling`…
-- Bottom of `kubectl describe`, or `kubectl get events --sort-by=.lastTimestamp`. Kept **~1 hour**.
+- Objects record **events**: `Scheduled`, `Pulling`, `Failed`, `BackOff`, `Unhealthy`, `FailedScheduling`, `OOMKilling`…
+- `kubectl describe` shows them at the bottom; `kubectl get events --sort-by=.lastTimestamp` lists them all.
+- ⚠️ Events are kept for only about **1 hour** by default. Export them (for example with an event exporter) if you need history.
 
-## Alert on
+## What to alert on (Kubernetes-specific)
 
-- CrashLoopBackOff / rising restarts · Deployment replicas unavailable · pods Pending too long
-- Nodes NotReady or under pressure · PVCs nearly full · API server errors / latency
-- Certificates expiring · HPA stuck at `maxReplicas`
+- Pods in **CrashLoopBackOff**, or restart count rising
+- **Deployment replicas unavailable** (from kube-state-metrics)
+- Pods **Pending** too long
+- Nodes **NotReady**, or under memory/disk pressure
+- **PVCs nearly full**
+- **API server** errors and latency
+- Certificates about to expire
+- HPA stuck at `maxReplicas`
+
+## Traces
+
+Instrument apps with **OpenTelemetry**. Run an OTel Collector (a DaemonSet or a Deployment) → Tempo or X-Ray. Connect logs, metrics and traces with **trace IDs** and shared labels (`namespace`, `pod`, `app`).
 
 ## Interview angle
 
-| Question | Answer |
-|---|---|
-| ⭐ Where do pod logs go; why might `kubectl logs` be empty? | Node files read via the kubelet; pod deleted or node gone = lost unless shipped. |
-| ⭐ metrics-server vs Prometheus? | Current CPU/memory for `top` and HPA vs full history, queries, alerts. |
-| Why did a pod restart? | `describe` (last state, exit code, events), `logs --previous`, restart metric. |
+- ⭐ "Where do pod logs go, and why might `kubectl logs` show nothing?" → the node's files read through the kubelet. If the pod was deleted or its node is gone, the logs are lost unless you ship them.
+- ⭐ "metrics-server vs Prometheus?" → current CPU/memory for `top` and the HPA vs full metrics history, queries and alerts.
+- "How do you see why a pod restarted?" → `describe` (last state, exit code, events), `logs --previous`, and the restart-count metric.
 
 ## Practice 🖥️
 

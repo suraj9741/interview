@@ -1,7 +1,5 @@
 # Study Plan: Mon 5 Oct → Interview Fri 9 Oct, 3:00 PM
 
-> **Past plan:** the interview happened on 9 Oct ([review](interview-review-oct-9.md)). Kept for its checked video list.
-
 **For:** a working professional who learns best from videos, wants deep fundamentals, and is starting from zero.
 
 **Focus (Hemant said):** **Docker · Kubernetes · AWS · CI/CD · Security.** All study time goes to these five.
@@ -21,17 +19,43 @@ The basics Hemant digs into are covered **inside** the topic they belong to:
 
 ---
 
-## The week at a glance
+## Your time (change it if your day is different)
+
+| Day | Time slots | Hours |
+|---|---|---|
+| Mon 5 Oct | Evening 7:00–10:00 PM | 3 h |
+| Tue 6 / Wed 7 / Thu 8 | Morning 6:30–7:30 AM · Lunch 20 min · Evening 7:30–10:30 PM | ~4.5 h each |
+| Fri 9 Oct | Morning 8:00 AM–1:00 PM (take a half day off work if you can) · interview 3:00 PM | 4 h |
+
+## How the hours are split
 
 ![Mon 5 to Fri 9 Oct: what each slot covers](diagrams/p1-week-plan.drawio.svg)
 
-Slots: morning 6:30–7:30 AM · lunch 20 min · evening 7:30–10:30 PM (Mon 7:00–10:00) · Fri 8:00 AM–1:00 PM, interview 3:00 PM.
+| Topic | Hours | When |
+|---|---|---|
+| **Docker** | ~5 h | Mon evening, Tue morning, Tue evening (first part) |
+| **Kubernetes** | ~5 h | Tue evening, Wed morning and lunch, Wed evening (first part) |
+| **AWS** | ~2.5 h | Wed evening (second part), Thu morning |
+| **CI/CD** | ~1.5 h | Thu lunch, Thu evening (first part) |
+| 🔥 **Security** | ~2 h, plus a security part inside each topic | Thu evening (second part) |
+| 🎯 **Scenario deep dives** (Hemant's 3 examples) | ~2.5 h | Wed evening (end), Thu lunch, Thu evening (end), Fri 9:30 |
+| **Revision + practice interview** | ~4 h | Fri morning |
 
 ## How to learn deeply when you learn slowly ⭐
 
 ![How to learn one topic deeply](diagrams/p2-learning-loop.drawio.svg)
 
+Do this for **every topic**:
+
+1. **Big picture first:** watch the short video (2–6 min). No notes; just get the idea.
+2. **Main video at 1x speed.** Pause every few minutes and write **3 short points in your own words**. If something is confusing, rewind once, then move on and ask me later.
+3. **Read** the matching section of your notes (links given each day).
+4. **Explain it out loud in 2 minutes** as if teaching a friend, without looking. Wherever you get stuck, re-watch that part.
+5. **Morning recall:** each morning, spend the first 10 minutes saying yesterday's "explain out loud" answers again from memory.
+
 **Symbols:** ⭐ = must watch · 🔁 = optional, only if you have time · 🔥 = Hemant's feedback topics (never skip)
+
+**If you fall behind:** drop 🔁 videos first, then shorten the reading. **Never skip** "explain out loud" or the 🔥 security videos.
 
 ---
 

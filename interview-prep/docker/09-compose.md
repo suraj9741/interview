@@ -1,10 +1,15 @@
 # 09 · Docker Compose
 
+## What it is
+
+- A tool that defines and runs a **multi-container app from one YAML file** (`compose.yaml`).
+- `docker compose` (v2, built into the Docker CLI) replaced the old Python `docker-compose` (v1).
+- Compose automatically creates a **project network**, so services reach each other **by service name**.
+- Best for **local development and testing**. In production you'd use Kubernetes or ECS.
+
 ![Docker Compose: one network, services found by name](diagrams/09-compose.drawio.svg)
 
-- A **multi-container app from one YAML file** (`compose.yaml`). `docker compose` (v2, in the CLI) replaced Python `docker-compose` (v1).
-- Creates a **project network**: services reach each other **by service name**.
-- For **local dev and testing**; prod uses Kubernetes or ECS.
+## Example: API + Postgres + Redis
 
 ```yaml
 services:
@@ -43,23 +48,39 @@ volumes:
   db-data:
 ```
 
-- Top-level `version:` is **obsolete**; leave it out.
-- `depends_on` alone waits for **start**; `condition: service_healthy` waits for the **health check**.
-- `app` / `app` are dev-only; real secrets go in an uncommitted `.env`.
+Notes:
+- The old top-level `version: "3.8"` key is **obsolete**. Compose v2 ignores it and warns about it, so leave it out.
+- `depends_on` alone only waits for the container to **start**. Adding `condition: service_healthy` waits until the **health check passes**.
+- `app` / `app` are local-development credentials only. Real secrets go in an `.env` file that is **never committed**.
+
+## Commands
 
 | Command | Purpose |
 |---|---|
-| `docker compose up -d [--build]` | Create and start (force rebuild) |
-| `docker compose ps` · `logs -f api` · `exec api sh` · `restart api` | Status · logs · shell · restart |
-| `docker compose down [-v]` | Remove containers + network (⚠️ `-v` deletes volumes) |
-| `docker compose config` | Final merged config |
-| `docker compose pull` | Newer images |
+| `docker compose up -d` | Build if needed, create and start everything in the background |
+| `docker compose up -d --build` | Force a rebuild |
+| `docker compose ps` | Status of the services |
+| `docker compose logs -f api` | Follow one service's logs |
+| `docker compose exec api sh` | Open a shell in a running service |
+| `docker compose restart api` | Restart one service |
+| `docker compose down` | Stop and remove the containers and network |
+| `docker compose down -v` | Also remove the volumes ⚠️ deletes the data |
+| `docker compose config` | Show the final merged config (good for debugging) |
+| `docker compose pull` | Pull newer images |
 
-## Env and multiple files
+## Environment variables
 
-- `${VAR}` in `compose.yaml` comes from your shell or a `.env` **next to the file**; `env_file:` passes vars **into** the container. Commit `.env.example`, never `.env`.
-- `compose.override.yaml` loads **automatically** (dev extras). Pick files: `docker compose -f compose.yaml -f compose.prod.yaml up -d` (later wins).
-- **Profiles:** `profiles: ["debug"]` + `docker compose --profile debug up`.
+- `${VAR}` placeholders in `compose.yaml` are filled from your shell or from a `.env` file **next to the compose file**.
+- `env_file:` passes variables **into the container**.
+- Commit a `.env.example`, never the real `.env`.
+
+## Multiple compose files (dev vs prod)
+
+- `compose.yaml` holds the shared base. `compose.override.yaml` is **loaded automatically** and holds dev extras: bind-mounting the code, debug ports.
+- Choose files explicitly with: `docker compose -f compose.yaml -f compose.prod.yaml up -d`. Later files override earlier ones.
+- **Profiles** turn optional services on or off: `profiles: ["debug"]`, then `docker compose --profile debug up`.
+
+## Project layout
 
 ```text
 myapp/
@@ -72,16 +93,14 @@ myapp/
 └── src/
 ```
 
-> **Kubernetes link:** service ≈ **Deployment + Service** · volume ≈ **PVC** · `env_file` ≈ **ConfigMap / Secret** · `healthcheck` ≈ **probes**. Compose is one host, no self-healing across machines.
+> **Kubernetes link:** a Compose service is roughly a **Deployment + Service**, a Compose volume a **PVC**, `env_file` a **ConfigMap or Secret**, and the `healthcheck` a **readiness/liveness probe**. Compose runs on **one host** with no self-healing across machines.
 
 ## Interview angle
 
-| Question | Answer |
-|---|---|
-| ⭐ Keep local dev in sync with dev env? (Q36) | Same Dockerfile/image, Compose with the **same** DB and cache versions, `make up`, env-var config, `.env.example`. |
-| Does `depends_on` wait for the DB? | Only with `condition: service_healthy`; apps should retry too. |
-| Compose in prod? | OK for one small server; no multi-host scheduling or self-healing. |
+- ⭐ "How do you keep local development in sync with the dev environment?" (Hemant's Q36) → the same Dockerfile and image, Compose with the **same versions** of the database and cache, a one-command setup (`make up`), config through environment variables, `.env.example`.
+- "Does `depends_on` wait for the database to be ready?" → only if you add `condition: service_healthy` with a health check. Apps should also retry their connections.
+- "Compose in production?" → fine for a single small server, but it has no multi-host scheduling or self-healing. Use Kubernetes or ECS.
 
 ## Practice
 
-Put your API, Postgres and Redis in a `compose.yaml`. `up -d` → `ps` → `logs -f api` → `down`, then `down -v` and compare.
+Put your API, Postgres and Redis in a `compose.yaml` like the one above. Run `docker compose up -d`, then `docker compose ps`, then `docker compose logs -f api`. Finally run `docker compose down`, and `docker compose down -v` to see the difference.
