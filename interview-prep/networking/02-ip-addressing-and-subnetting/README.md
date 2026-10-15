@@ -1,12 +1,11 @@
 # Level 2 · IP Addressing and Subnetting
 
-**Goal:** read, split and plan IP address ranges without a calculator, and understand how a host decides where each packet goes and how it gets its address in the first place.
+![Level 2 lessons as a path: 2.1 to 2.4 in a row, then IPv6, VLSM, routes and ARP, and DHCP, with labs and daily drills alongside](../diagrams/level-2-map.drawio.svg)
 
-**Start here if:** you've finished [Level 1](../01-networking-fundamentals/README.md), or you already know what IP addresses, MAC addresses and routers are.
-
-🔥 **Interview feedback topic.** Subnetting was the clearest gap in the [Oct 9 interview review](../../interview-transcript-review-oct-9.md). Reading these lessons is not enough: the skill comes from **15 minutes of paper drills a day** until the answers are automatic.
-
-⏱️ **Estimated time:** about 12 hours (lessons ~10 h, labs ~2 h), plus 15 minutes of drills a day for at least a week. This is an estimate.
+- **Goal:** read, split and plan IP ranges without a calculator; know how a host picks where each packet goes and how it gets its address.
+- **Start here if:** you've finished [Level 1](../01-networking-fundamentals/README.md), or already know what IP addresses, MAC addresses and routers are.
+- 🔥 **Interview feedback topic.** Subnetting was the clearest gap in the [Oct 9 interview review](../../interview-transcript-review-oct-9.md). The skill comes from **15 minutes of paper drills a day** until the answers are automatic, not from reading.
+- ⏱️ About 12 hours (lessons ~10 h, labs ~2 h), plus 15 minutes of drills a day for at least a week (estimate).
 
 ## Lessons (read in this order)
 
@@ -20,14 +19,6 @@
 | 2.6 | [IPv6 fundamentals](06-ipv6-fundamentals.md) | Read and shorten IPv6 addresses; explain /64, SLAAC, NDP and dual stack | 90 min |
 | 2.7 | [Default gateway, routing table and ARP](07-default-gateway-routing-table-and-arp.md) ⭐ | Read a routing table; apply longest prefix match; explain ARP and what changes per hop | 75 min |
 | 2.8 | [DHCP](08-dhcp.md) | Explain DORA, leases, relays, and what `169.254.x.x` means | 45 min |
-
-```mermaid
-flowchart LR
-    A["2.1 Binary"] --> B["2.2 IPv4 ranges"] --> C["2.3 Masks & CIDR"] --> D["2.4 Subnetting"]
-    D --> E["2.5 VLSM & summarisation"]
-    C --> F["2.6 IPv6"]
-    D --> G["2.7 Gateway, routes, ARP"] --> H["2.8 DHCP"]
-```
 
 ## Practice
 

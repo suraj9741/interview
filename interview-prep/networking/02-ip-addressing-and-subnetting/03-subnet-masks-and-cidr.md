@@ -1,134 +1,52 @@
 # 2.3 · Subnet Masks and CIDR ⭐
 
-> **Level 2 · IP addressing and subnetting** · Lesson 3 of 8 · ⏱️ about 75 minutes (estimate)
+> **Level 2 · IP addressing and subnetting** · Lesson 3 of 8 · ⏱️ about 75 minutes (estimate) · 🧪 [Lab 2.1](../13-hands-on-labs/lab-02.1-subnetting-by-hand-then-verify.md)
 > ⬅️ [2.2 IPv4 addresses and ranges](02-ipv4-addresses-and-ranges.md) · ➡️ [2.4 Subnetting step by step](04-subnetting-step-by-step.md)
 
-## What you'll learn
+![192.168.10.70/26 as 32 bits: the mask's 26 ones mark the network bits; AND gives 192.168.10.64, host bits all 1 give broadcast .127; then the local-or-remote check for 192.168.10.130](../diagrams/2.3-mask-and.drawio.svg)
 
-- What a **subnet** is and why networks are split into them.
-- How a **subnet mask** (`255.255.255.0`) and a **prefix length** (`/24`) say the same thing.
-- How a device uses the mask (a bitwise **AND**) to decide "local or remote?".
-- How to calculate, **by hand**, the **network address, broadcast address, first and last host, and host count** of any address.
-- The special cases: **`/31`, `/32`, `/0`**, and the **5 addresses AWS reserves** in every subnet.
-- What **wildcard masks** are, so they don't surprise you in firewall and router configs.
+- A **subnet** is a slice of addresses that forms **one local network**: devices in it reach each other directly, and everything else through a router.
+- The **mask** is 32 bits of **1s then 0s**: 1s = network part, 0s = host part. **CIDR** (Classless Inter-Domain Routing) just counts the 1s: `/24` = `255.255.255.0`.
+- ⭐ **Addresses = 2^(32 − N)** · **usable = 2^(32 − N) − 2** (network and broadcast) · **− 5 on AWS**. `/26`: 6 host bits → 64 addresses → 62 usable.
+- **Network address = address AND mask** (a bit is 1 only if both are 1). To decide **local or remote**, a host ANDs the destination with **its own** mask and compares with its own network: different → send to the **default gateway** ([2.7](07-default-gateway-routing-table-and-arp.md)).
+- **Bigger prefix = smaller network**: `/16` (65,536) is far bigger than `/28` (16). `/24` is the number of network **bits**, not "the 24th address".
+- 🔥 This is the topic interviewers test on paper. Every interface, route, security group rule, VPC, subnet and Kubernetes CIDR is written this way.
 
-## Before you start
+## Mask and prefix: two ways to write the same thing
 
-- [2.1](01-binary-decimal-and-hex.md): octet bit values (128…1), mask values (128, 192, 224, 240, 248, 252, 254, 255), powers of 2.
-- [2.2](02-ipv4-addresses-and-ranges.md): network part vs host part; network and broadcast addresses.
+| Prefix | Mask | Addresses | Usable hosts* | Block size |
+|---|---|---|---|---|
+| `/8` | `255.0.0.0` | 16,777,216 | 16,777,214 | 1 in the 1st octet |
+| `/12` | `255.240.0.0` | 1,048,576 | 1,048,574 | 16 in the 2nd octet |
+| `/16` | `255.255.0.0` | 65,536 | 65,534 | 1 in the 2nd octet |
+| `/19` | `255.255.224.0` | 8,192 | 8,190 | 32 in the 3rd octet |
+| `/20` | `255.255.240.0` | 4,096 | 4,094 | 16 in the 3rd octet |
+| `/21` | `255.255.248.0` | 2,048 | 2,046 | 8 in the 3rd octet |
+| `/22` | `255.255.252.0` | 1,024 | 1,022 | 4 in the 3rd octet |
+| `/23` | `255.255.254.0` | 512 | 510 | 2 in the 3rd octet |
+| `/24` | `255.255.255.0` | 256 | 254 | 1 in the 3rd octet |
+| `/25` | `255.255.255.128` | 128 | 126 | 128 in the 4th octet |
+| `/26` | `255.255.255.192` | 64 | 62 | 64 |
+| `/27` | `255.255.255.224` | 32 | 30 | 32 |
+| `/28` | `255.255.255.240` | 16 | 14 | 16 |
+| `/29` | `255.255.255.248` | 8 | 6 | 8 |
+| `/30` | `255.255.255.252` | 4 | 2 | 4 |
+| `/31` | `255.255.255.254` | 2 | 2 (point-to-point, below) | 2 |
+| `/32` | `255.255.255.255` | 1 | 1 (one host) | 1 |
 
----
+\* Usable = addresses − 2, in a normal subnet. AWS uses 5, below.
 
-## The idea in plain words
+**Build any mask without the table:** `/N` = N ones. Whole octets of 255 first, then one partial octet from [2.1](01-binary-decimal-and-hex.md#the-numbers-youll-see-constantly), then zeros. `/20` = 8 + 8 + **4** → `255.255.240.0`. `/27` = 8 + 8 + 8 + **3** → `255.255.255.224`.
 
-A **subnet** (sub-network) is a slice of an address range that forms **one local network**: devices in it reach each other directly, and reach everything else through a router.
+## Calculating everything about a subnet, by hand
 
-The **mask** is a 32-bit pattern of **1s followed by 0s**:
-
-- the **1s** cover the **network part**;
-- the **0s** cover the **host part**.
-
-**CIDR notation** (Classless Inter-Domain Routing) just **counts the 1s**: `/24` = 24 ones = `255.255.255.0`.
-
-```
-Address  192.168.10.70   11000000.10101000.00001010.01|000110
-Mask     /26             11111111.11111111.11111111.11|000000
-                          ←────── 26 network bits ──────→|← 6 host bits →
-```
-
-## Why it matters
-
-- Every interface, route table entry, security group rule, VPC, subnet and Kubernetes CIDR is written this way.
-- A wrong mask causes the strangest bugs: two machines on the same cable that can't talk, or a machine sending local traffic to the router (or vice versa).
-- 🔥 This is the topic interviewers test on paper.
-
-## How it works
-
-### Mask and prefix: two ways to write the same thing
-
-| Prefix | Mask | Mask in binary (last non-zero octet) | Addresses | Usable hosts* | Block size |
-|---|---|---|---|---|---|
-| `/8` | `255.0.0.0` | `11111111` | 16,777,216 | 16,777,214 | 1 in the 1st octet |
-| `/12` | `255.240.0.0` | `11110000` | 1,048,576 | 1,048,574 | 16 in the 2nd octet |
-| `/16` | `255.255.0.0` | `11111111` | 65,536 | 65,534 | 1 in the 2nd octet |
-| `/19` | `255.255.224.0` | `11100000` | 8,192 | 8,190 | 32 in the 3rd octet |
-| `/20` | `255.255.240.0` | `11110000` | 4,096 | 4,094 | 16 in the 3rd octet |
-| `/21` | `255.255.248.0` | `11111000` | 2,048 | 2,046 | 8 in the 3rd octet |
-| `/22` | `255.255.252.0` | `11111100` | 1,024 | 1,022 | 4 in the 3rd octet |
-| `/23` | `255.255.254.0` | `11111110` | 512 | 510 | 2 in the 3rd octet |
-| `/24` | `255.255.255.0` | `11111111` | 256 | 254 | 1 in the 3rd octet |
-| `/25` | `255.255.255.128` | `10000000` | 128 | 126 | 128 in the 4th octet |
-| `/26` | `255.255.255.192` | `11000000` | 64 | 62 | 64 |
-| `/27` | `255.255.255.224` | `11100000` | 32 | 30 | 32 |
-| `/28` | `255.255.255.240` | `11110000` | 16 | 14 | 16 |
-| `/29` | `255.255.255.248` | `11111000` | 8 | 6 | 8 |
-| `/30` | `255.255.255.252` | `11111100` | 4 | 2 | 4 |
-| `/31` | `255.255.255.254` | `11111110` | 2 | 2 (point-to-point, below) | 2 |
-| `/32` | `255.255.255.255` | `11111111` | 1 | 1 (one host) | 1 |
-
-\* Usable = addresses − 2 (network and broadcast), in a normal subnet. AWS uses 5, below.
-
-**Two formulas:**
-
-> **Addresses = 2^(32 − N)** · **Usable hosts = 2^(32 − N) − 2**
-
-`/26`: 32 − 26 = 6 host bits → 2⁶ = 64 addresses → 62 usable.
-
-**Build any mask without the table:** `/N` = N ones. Fill whole octets of 255 first (8 bits each), then the remaining bits make one partial octet from [2.1](01-binary-decimal-and-hex.md#the-numbers-youll-see-constantly), then zeros.
-
-- `/20` = 8 + 8 + **4** → `255.255.` + 4 ones (`11110000` = 240) + `.0` → `255.255.240.0`.
-- `/27` = 8 + 8 + 8 + **3** → `255.255.255.` + 3 ones (224) → `255.255.255.224`.
-
-### How a device uses the mask: the AND operation
-
-To find the **network address**, the device does a bitwise **AND** of the address and the mask: each result bit is **1 only if both bits are 1**. Where the mask is 1, the address bit is kept; where the mask is 0, it becomes 0.
-
-**Worked example: `192.168.10.70/26`.** Only the 4th octet is "interesting" (the mask is 255 in the first three, so they're copied as-is):
-
-```
-70   = 0 1 0 0 0 1 1 0
-192  = 1 1 0 0 0 0 0 0      (the /26 mask's last octet)
-AND  = 0 1 0 0 0 0 0 0  = 64
-```
-
-Network address = **192.168.10.64**.
-
-**Then "local or remote?"** When the host at `192.168.10.70/26` wants to send to `192.168.10.130`:
-
-1. It ANDs the destination with **its own** mask: 130 AND 192 = `10000010` AND `11000000` = `10000000` = **128** → network `192.168.10.128`.
-2. Compare with its own network, `192.168.10.64`. **Different** → the destination is **remote** → send it to the **default gateway** ([2.7](07-default-gateway-routing-table-and-arp.md)).
-
-Even though both addresses start with `192.168.10.`, they're in **different subnets** under `/26`. This is exactly the kind of bug a wrong mask causes.
-
-### Calculating everything about a subnet, by hand
-
-Four answers for any `address/N`. Use the **block size** (256 − the interesting mask octet):
-
-1. **Find the interesting octet**: the one where the mask isn't 255 or 0.
-2. **Block size** = 256 − mask value in that octet.
-3. **Network address** = the largest **multiple of the block size** ≤ the address's value in that octet. Octets to the right become 0.
-4. **Broadcast** = next network − 1. Octets to the right become 255.
+1. **Interesting octet**: the one where the mask isn't 255 or 0.
+2. **Block size** = 256 − the mask value in that octet.
+3. **Network** = the largest **multiple of the block size** ≤ the address's value in that octet. Octets to the right → 0.
+4. **Broadcast** = next network − 1. Octets to the right → 255.
 5. **First host** = network + 1; **last host** = broadcast − 1.
 
-**Example 1: `192.168.10.70/26`**
-
-| Step | Work | Result |
-|---|---|---|
-| Interesting octet | /26 → the 4th octet (24 < 26 < 32) | 4th |
-| Block size | 256 − 192 | **64** → subnets start at 0, 64, 128, 192 |
-| Network | Largest multiple of 64 ≤ 70 | **192.168.10.64** |
-| Broadcast | Next network (128) − 1 | **192.168.10.127** |
-| Host range | .65 – .126 | **62 hosts** |
-
-**Example 2: `10.0.37.5/20`**
-
-| Step | Work | Result |
-|---|---|---|
-| Interesting octet | /20 → the 3rd octet (16 < 20 < 24) | 3rd |
-| Block size | 256 − 240 | **16** → 0, 16, 32, 48, 64… |
-| Network | Largest multiple of 16 ≤ 37 → 32; 4th octet → 0 | **10.0.32.0** |
-| Broadcast | Next network is 10.0.48.0, minus 1 → 3rd octet 47, 4th octet 255 | **10.0.47.255** |
-| Host range | 10.0.32.1 – 10.0.47.254 | 2¹² − 2 = **4,094 hosts** |
+![Two number lines: the 4th octet in blocks of 64 with 70 in .64 to .127, and the 3rd octet in blocks of 16 with 37 in 32 to 47, each with network, hosts and broadcast](../diagrams/2.3-block-size.drawio.svg)
 
 **Check both with `ipcalc` (tested in the lab container, ipcalc 0.51):**
 
@@ -148,7 +66,7 @@ Broadcast: 192.168.10.127       11000000.10101000.00001010.01 111111
 Hosts/Net: 62                    Class C, Private Internet
 ```
 
-`ipcalc` draws the line between network and host bits (the space in the binary column). Ignore "Class C": classes are historical ([2.2](02-ipv4-addresses-and-ranges.md#address-classes-historical-context)).
+The space in the binary column is the network/host line. Ignore "Class C": classes are historical ([2.2](02-ipv4-addresses-and-ranges.md#address-classes-historical-context)).
 
 ```bash
 ipcalc 10.0.37.5/20
@@ -174,7 +92,7 @@ python3 -c "import ipaddress as i; n=i.ip_interface('192.168.10.70/26').network;
 
 > 🔥 **Do it on paper first, then check.** The tools are for *checking*. In an interview you'll have a whiteboard.
 
-### Special prefix lengths
+## Special prefix lengths
 
 | Prefix | What it is | Where you see it |
 |---|---|---|
@@ -193,78 +111,45 @@ python3 -c "import ipaddress as i; print(list(i.ip_network('10.0.0.0/31').hosts(
 [IPv4Address('10.0.0.0'), IPv4Address('10.0.0.1')]
 ```
 
-### ⭐ AWS reserves 5 addresses in every subnet
+## ⭐ AWS reserves 5 addresses in every subnet
 
-In an AWS VPC subnet, these are not usable by you:
+![10.0.1.0/24 in AWS: .0 network, .1 VPC router, .2 DNS, .3 future use and .255 broadcast are reserved, .4 to .254 are yours; /28, /24, /20 and /16 sizes](../diagrams/2.3-aws-reserved.drawio.svg)
 
-| Address (in `10.0.1.0/24`) | Reserved for |
+- Reserved in `10.0.1.0/24`: `.0` network · `.1` **VPC router** · `.2` **DNS resolver** (strictly the **VPC base + 2**; AWS reserves +2 in every subnet) · `.3` future use · `.255` broadcast (reserved although the VPC doesn't support broadcast).
+- `/28` (16 → **11** usable) is the **smallest** AWS subnet · `/24` → **251** · `/20` → **4,091** (default subnet size in a default VPC) · `/16` (65,536) is the **largest** VPC CIDR block (and Docker's default bridge size).
+- Azure also reserves **5** addresses per subnet; GCP reserves **4** (from each provider's documentation).
+
+## Wildcard masks (inverse masks)
+
+Cisco ACLs and OSPF configs use a **wildcard mask**: the mask with the bits **flipped** (0 = "must match", 1 = "don't care"). **Wildcard = 255.255.255.255 − mask**: `/26` → `0.0.0.63` (the `Wildcard:` line in `ipcalc` above). Used in [Level 4](../04-switching-and-routing/README.md); for now, recognise them.
+
+## Why the mask must match on both ends
+
+A = `10.0.1.10/24`, B = `10.0.1.200/25` (a typo: should be `/24`), same switch:
+
+1. A → B: `10.0.1.200` is in A's `/24` → **local** → ARP for B directly. ✅ B receives it.
+2. B → A: B's network is `10.0.1.128/25` (`.128`–`.255`); `10.0.1.10` is outside → **remote** → the reply goes to B's gateway. No gateway, or no route back: **the reply is lost**.
+3. A's connections hang while B's logs show requests arriving. It looks like a firewall problem. **Check both ends' masks.**
+
+## Where you meet it
+
+| Where | What |
 |---|---|
-| `10.0.1.0` | Network address |
-| `10.0.1.1` | The **VPC router** |
-| `10.0.1.2` | The **DNS resolver** (strictly: the VPC base + 2; AWS reserves +2 in every subnet) |
-| `10.0.1.3` | Reserved for future use |
-| `10.0.1.255` | Broadcast (the VPC doesn't support broadcast, but the address is reserved) |
-
-| CIDR | Addresses | Usable in AWS | Example |
-|---|---|---|---|
-| `/28` | 16 | **11** | The **smallest** AWS subnet |
-| `/24` | 256 | **251** | A typical subnet: `10.0.1.0/24` |
-| `/20` | 4,096 | **4,091** | The default subnet size in a default VPC |
-| `/16` | 65,536 | n/a | The **largest** VPC CIDR block (and Docker's default bridge) |
-
-(Azure also reserves 5 addresses per subnet; GCP reserves 4 **(from each provider's documentation)**.)
-
-### Wildcard masks (inverse masks)
-
-Some systems (Cisco ACLs, OSPF configs) use a **wildcard mask**: the mask with the bits **flipped**. 0 = "must match", 1 = "don't care".
-
-> **Wildcard = 255.255.255.255 − mask.** `/26` → mask `255.255.255.192` → wildcard `0.0.0.63`.
-
-`ipcalc` prints it on the `Wildcard:` line above. You'll use these in [Level 4](../04-switching-and-routing/README.md); for now, recognise them.
-
-## Worked example: why the mask must match on both ends
-
-Two servers on the same switch:
-
-| Server | Configured as |
-|---|---|
-| A | `10.0.1.10/24` |
-| B | `10.0.1.200/25` ← a typo: should be `/24` |
-
-- A → B: A computes "`10.0.1.200` is in my `/24`" → **local** → ARP for B directly. ✅ B receives it.
-- B → A: B's `/25` network is `10.0.1.128/25` (`.128`–`.255`). `10.0.1.10` is **outside** it → **remote** → B sends the reply to its default gateway. If there's no gateway, or the router doesn't route it back, **the reply is lost**.
-
-Result: A's connections to B hang, and B's logs show requests arriving. A **mismatched mask** looks like a firewall problem. Always check **both** ends' masks.
-
-## In the real world
-
-- **VPC and subnet design** is choosing prefix lengths: a `/16` VPC split into `/24` or `/20` subnets ([2.4](04-subnetting-step-by-step.md)).
-- **Security groups and firewall rules** use CIDRs: `10.0.0.0/16` = the whole VPC; `203.0.113.7/32` = one office IP; `0.0.0.0/0` = anyone (dangerous for SSH).
-- **Kubernetes:** `--pod-network-cidr=10.244.0.0/16` and a Service CIDR like `10.96.0.0/12` are prefix choices, and must not overlap the node network.
-- **EKS IP exhaustion:** with the VPC CNI, every pod takes an IP from the subnet. A `/24` subnet (251 usable) runs out fast; that's why bigger subnets, prefix delegation or a secondary CIDR are used ([scenario deep dives](../../hemant-scenario-deep-dives.md), A3).
-
-## Common mistakes
-
-| Mistake | Reality |
-|---|---|
-| "`/24` means the 24th address." | It's the number of **network bits**. |
-| Using 2^(host bits) as usable hosts | Subtract 2 (network, broadcast); on AWS subtract 5. |
-| Bigger prefix = bigger network | **Opposite.** `/16` (65,536) is far bigger than `/28` (16). A bigger number means **fewer** host bits. |
-| Choosing a network address that isn't on a block boundary, e.g. `10.0.5.0/22` | A `/22` must start at a multiple of 4 in the 3rd octet: `10.0.4.0/22`. Tools reject the wrong one **(tested in the lab container)**: `ip route add 10.0.5.0/22 …` → `Error: Invalid prefix for given prefix length.`; Python → `ValueError: 10.0.5.0/22 has host bits set`. |
-| Assuming addresses that "look similar" are in the same subnet | `192.168.10.70` and `192.168.10.130` are in **different** `/26`s. Do the AND. |
+| AWS VPC design | Choosing prefix lengths: a `/16` VPC split into `/24` or `/20` subnets ([2.4](04-subnetting-step-by-step.md)) |
+| Security groups, firewalls | `10.0.0.0/16` = the whole VPC; `203.0.113.7/32` = one office IP; `0.0.0.0/0` = anyone (dangerous for SSH) |
+| Kubernetes | `--pod-network-cidr=10.244.0.0/16` and a Service CIDR like `10.96.0.0/12`: must not overlap the node network |
+| EKS | With the VPC CNI every pod takes a subnet IP. A `/24` (251 usable) runs out fast: bigger subnets, prefix delegation or a secondary CIDR ([scenario deep dives](../../hemant-scenario-deep-dives.md), A3) |
 
 ## Troubleshooting
 
-| Symptom | Mask-related cause | Check |
+| You see | It means | Next step |
 |---|---|---|
 | Two hosts on the same switch can't talk | One has the wrong mask (or they're in different subnets) | `ip -br addr` on both; compute both network addresses |
-| Replies go to the router instead of straight back | A mask mismatch, as in the worked example | `ip route get <peer IP>` on each side: `via` means "through a router" |
-| A route, VPC or subnet CIDR is rejected as invalid | Not aligned to the block size (host bits set) | Use the correct network address (`10.0.4.0/22`, not `10.0.5.0/22`) |
+| Replies go to the router instead of straight back | A mask mismatch (above) | `ip route get <peer IP>` on each side: `via` means "through a router" |
+| `Error: Invalid prefix for given prefix length.` (`ip route add 10.0.5.0/22 …`) or `ValueError: 10.0.5.0/22 has host bits set` (Python) **(tested in the lab container)** | Not on a block boundary: a `/22` starts at a multiple of 4 in the 3rd octet | Use `10.0.4.0/22` |
 | A new subnet can't be created in a VPC | It **overlaps** an existing subnet, or is outside the VPC CIDR | List subnets and compare ranges ([2.4](04-subnetting-step-by-step.md)) |
-
-## Hands-on lab
-
-[Lab 2.1 · Subnetting by hand, then verify](../13-hands-on-labs/lab-02.1-subnetting-by-hand-then-verify.md): calculate 10 subnets on paper, then check yourself with `ipcalc` and Python, and see the "local or remote" decision live with `ip route get`.
+| "A `/26` holds 64 hosts" | Forgot the −2 (−5 on AWS) | 62 usable; 59 on AWS |
+| `192.168.10.70` and `.130` "look" like one subnet | Under `/26` they're in different subnets | Do the AND |
 
 ## Interview angle
 
@@ -293,15 +178,4 @@ Result: A's connections to B hang, and B's logs show requests arriving. A **mism
 
 </details>
 
-## Summary
-
-- **Mask** = 1s for network bits, 0s for host bits. **`/N`** counts the 1s.
-- **Addresses = 2^(32−N)**; usable = −2 normally, **−5 in AWS**.
-- Network address = address **AND** mask. By hand: **block size = 256 − interesting mask octet**; network = the multiple of the block size at or below the address.
-- Broadcast = next network − 1. Hosts = everything in between.
-- `/32` = one host, `/31` = point-to-point, `/0` = everything.
-- **A mask mismatch** between two hosts breaks one direction of traffic.
-
-## Next
-
-➡️ [2.4 · Subnetting step by step](04-subnetting-step-by-step.md): splitting a network into many subnets, sizing subnets for a number of hosts, and planning a real VPC without overlaps.
+➡️ **Next:** [2.4 · Subnetting step by step](04-subnetting-step-by-step.md): split a network into many subnets, size them for a number of hosts, and plan a VPC without overlaps.
