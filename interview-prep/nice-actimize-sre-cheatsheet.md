@@ -304,6 +304,16 @@ server {
   - **Metrics** tell you *that* something is wrong (Prometheus, Grafana, CloudWatch).
   - **Logs** tell you *what* happened (ELK, Splunk, Loki).
   - **Traces** tell you *where* in the call chain (Jaeger, APM tools).
+- **MELT** (the four telemetry types; New Relic popularised the term):
+
+  | | What it is | Answers | Example | Your tool |
+  |---|---|---|---|---|
+  | **Metrics** | Numbers over time, cheap to store and aggregate | *Is* something wrong? | CPU 92%, 5xx rate 2%, p99 800 ms | Prometheus, Grafana |
+  | **Events** | Discrete significant happenings at a point in time | *What changed?* | Deploy, config change, pod restart, scaling, alert fired | `kubectl get events`, ArgoCD sync history |
+  | **Logs** | Detailed timestamped text records | *Why* did it break? | `ERROR Connection refused db:5432` | ELK (trainee), `kubectl logs` |
+  | **Traces** | One request followed across services as spans | *Where* is it slow? | API 2 s = 50 ms auth + 1.9 s payment-db | Jaeger / APM (not on your resume) |
+
+  **Say it:** "A metric alert tells me error rate is up. I check events for a deploy or config change at that time, logs give me the actual error, and traces show which downstream call is slow."
 - **Good alerting:**
   - Alert on symptoms users feel, like error rate or latency SLO burn, not on every CPU spike.
   - Every alert needs an owner and a runbook.
