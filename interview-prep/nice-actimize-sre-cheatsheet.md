@@ -701,6 +701,32 @@ spec:
   - Strict change control, because the customers are regulated banks.
 - **Why it matters for you:** if a job fails at night, the bank's compliance team may miss suspicious activity. So data completeness checks (section 7) and on-time batch SLAs carry as much weight as uptime.
 
+### About the company (from training knowledge; check nice.com for anything marked [Likely])
+
+- **NICE Ltd (parent):**
+  - [Certain] An Israeli company headquartered in Ra'anana and listed on NASDAQ (ticker NICE).
+  - [Certain] It has two businesses: **Customer Engagement** (CXone, a cloud contact-center platform with AI analytics) and **Financial Crime & Compliance** (NICE Actimize).
+  - [Likely] About $2.7B revenue and 8,000+ employees. Scott Russell has been CEO since 2025, after Barak Eilam. Pune is a large R&D and operations centre.
+- **NICE Actimize:** [Certain] software that banks, brokers and insurers use to detect fraud, prevent money laundering and meet regulatory requirements. Many of the world's largest banks use it.
+
+| Product [Likely] | What it does |
+|---|---|
+| **X-Sight** | Cloud platform with AI/analytics that the newer products run on |
+| **IFM-X** (Integrated Fraud Management) | Real-time fraud detection on payments, cards and online banking (millisecond scoring) |
+| **SAM** (Suspicious Activity Monitoring) | Anti-money laundering rules and models over transactions, often nightly batches, which raise alerts |
+| **CDD-X** (Customer Due Diligence) | KYC (Know Your Customer) risk scoring |
+| **WL-X** (Watch List Filtering) | Sanctions screening (OFAC, UN lists) |
+| **SURVEIL-X** | Trade and communications surveillance (insider trading, market abuse) |
+| **ActOne** | Case management for investigators |
+| **Xceed** | AI fraud/AML for mid-size banks and credit unions (from Guardian Analytics) |
+
+- **What it means for the role:**
+  - **Real-time fraud scoring:** a latency or availability failure blocks payments or lets fraud through.
+  - **Batch AML jobs:** a failed or incomplete run means compliance misses suspicious activity, and the bank answers to its regulator.
+  - So reliability = uptime + latency + data completeness + on-time batches. Expect strict CRs, change windows, audit trails and data-security rules.
+- **"Why NiCE Actimize?"** "I've worked on AWS and Kubernetes reliability, and at Perfios I worked in fintech. At Actimize, reliability has real consequences: if fraud detection is slow or an AML batch fails, a bank misses fraud or a regulatory obligation. I want my SRE work to protect something that important, at the scale of the world's largest banks."
+- **Extra question to ask:** "Which Actimize products would this team support: the cloud X-Sight services, or on-prem installations at banks?"
+
 ## 13. Questions to ask them
 
 1. How is work split between your L2/L3 team and NiCE product engineering? What do I own end to end?
