@@ -314,6 +314,174 @@ server {
   | **Traces** | One request followed across services as spans | *Where* is it slow? | API 2 s = 50 ms auth + 1.9 s payment-db | Jaeger / APM (not on your resume) |
 
   **Say it:** "A metric alert tells me error rate is up. I check events for a deploy or config change at that time, logs give me the actual error, and traces show which downstream call is slow."
+- **Prometheus RED metrics: queries, percentiles, alert rules**
+
+  **The two metrics most apps expose** (names vary, e.g. `http_server_requests_seconds_*` for Spring Boot):
+  - `http_requests_total{method, route, code}`: a **counter** of requests. Use it for Rate and Errors.
+  - `http_request_duration_seconds_bucket{le="0.1"|"0.25"|…|"+Inf"}`: a **histogram**. Each bucket counts the requests that took ≤ `le` seconds, cumulatively. It also exposes `_sum` (total seconds) and `_count` (total requests). Use it for Duration.
+
+  **RED queries (PromQL)**
+  ```promql
+  # R: Rate, requests per second over the last 5 min
+  sum(rate(http_requests_total[5m]))
+  sum by (route) (rate(http_requests_total[5m]))
+
+  # E: Errors, the 5xx ratio (0.02 = 2%)
+  sum(rate(http_requests_total{code=~"5.."}[5m]))
+    / sum(rate(http_requests_total[5m]))
+
+  # D: Duration, percentiles from the histogram
+  histogram_quantile(0.50, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))   # p50 (median)
+  histogram_quantile(0.75, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))   # p75
+  histogram_quantile(0.90, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))   # p90
+  histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))   # p99
+  # per route: keep `route` next to `le`
+  histogram_quantile(0.90, sum by (le, route) (rate(http_request_duration_seconds_bucket[5m])))
+
+  # average latency (hides outliers, so always show it next to p90/p99)
+  sum(rate(http_request_duration_seconds_sum[5m])) / sum(rate(http_request_duration_seconds_count[5m]))
+
+  # SLI: % of requests faster than 300 ms (needs a bucket at le="0.3")
+  sum(rate(http_request_duration_seconds_bucket{le="0.3"}[5m])) / sum(rate(http_request_duration_seconds_count[5m]))
+  ```
+
+  **What p50 / p75 / p90 / p99 mean**
+  - **pXX** is the latency that XX% of requests are faster than. If p90 = 400 ms, 90% of requests took ≤ 400 ms and the slowest 10% took longer.
+  - **p50 (median)** is the typical user. **p90/p99 (tail latency)** is where the worst user experience hides, so SLOs and alerts usually use p90/p95/p99, not the average.
+  - **Exact calculation from raw data:** sort all N latencies ascending, then pXX is the value at position ⌈XX/100 × N⌉. For 1,000 requests, p90 is the 900th fastest.
+
+  **How `histogram_quantile` estimates it** (worked example, 1,000 requests in the window):
+
+  | Bucket `le` | Cumulative count |
+  |---|---|
+  | 0.1 s | 600 |
+  | 0.25 s | 850 |
+  | 0.5 s | 950 |
+  | 1 s | 990 |
+  | +Inf | 1000 |
+
+  1. Rank = quantile × total. For p90 that's 0.9 × 1000 = 900.
+  2. Find the first bucket whose cumulative count ≥ rank. 900 falls in the 0.25–0.5 s bucket, which runs from 850 to 950.
+  3. Interpolate linearly inside that bucket: lower + (upper − lower) × (rank − count below) ÷ (count in bucket).
+     - **p90** = 0.25 + 0.25 × (900 − 850) ÷ 100 = **0.375 s**
+     - **p50:** rank 500 is in the 0–0.1 bucket, so 0 + 0.1 × 500 ÷ 600 = **0.083 s**
+     - **p75:** rank 750 is in 0.1–0.25, so 0.1 + 0.15 × (750 − 600) ÷ 250 = **0.19 s**
+     - **p99:** rank 990 is in 0.5–1, so 0.5 + 0.5 × (990 − 950) ÷ 40 = **1.0 s**
+  - **Gotchas:**
+    - It's an **estimate**, and only as accurate as your bucket boundaries, so put buckets near your SLO threshold.
+    - **Never average percentiles** across pods. Sum the buckets `by (le)` first, then take the quantile, as the queries above do.
+    - A **Summary** metric computes quantiles inside the app. It's exact per pod but **can't be aggregated** across pods, which is why histograms are preferred.
+
+  **Getting the numbers from the command line**
+  ```bash
+  # Prometheus HTTP API (instant query)
+  curl -s 'http://prometheus:9090/api/v1/query' \
+    --data-urlencode 'query=histogram_quantile(0.90, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))' | jq '.data.result'
+
+  # Validate rule files before loading them
+  promtool check rules red-alerts.yaml
+  promtool test rules red-alerts-test.yaml
+
+  # p50/p75/p90/p99 from an Nginx access log, when $request_time is the last field
+  awk '{print $NF}' /var/log/nginx/access.log | sort -n | awk '
+    {a[NR]=$1}
+    END {
+      split("50 75 90 99", p, " ")
+      for (i in p) { idx=int((p[i]/100)*NR + 0.999); if (idx<1) idx=1; printf "p%s=%.3fs ", p[i], a[idx] }
+      printf "count=%d\n", NR
+    }'
+
+  # Measure response time yourself: 100 requests, then percentiles
+  for i in $(seq 100); do curl -o /dev/null -s -w '%{time_total}\n' https://app.example.com/health; done \
+    | sort -n | awk '{a[NR]=$1} END {print "p50="a[int(NR*0.5)], "p90="a[int(NR*0.9)], "p99="a[int(NR*0.99)]}'
+  ```
+
+  **Alert rules (`red-alerts.yaml`)**
+  ```yaml
+  groups:
+    - name: red-recording            # precompute heavy queries; alerts and dashboards reuse them
+      interval: 30s
+      rules:
+        - record: job:http_requests:rate5m
+          expr: sum by (job) (rate(http_requests_total[5m]))
+        - record: job:http_errors:ratio5m
+          expr: |
+            sum by (job) (rate(http_requests_total{code=~"5.."}[5m]))
+              / sum by (job) (rate(http_requests_total[5m]))
+        - record: job:http_latency:p90_5m
+          expr: histogram_quantile(0.90, sum by (job, le) (rate(http_request_duration_seconds_bucket[5m])))
+
+    - name: red-alerts
+      rules:
+        - alert: HighErrorRate                     # E
+          expr: job:http_errors:ratio5m > 0.05
+          for: 5m                                  # must stay true 5 min, which avoids flapping on spikes
+          labels:
+            severity: critical
+          annotations:
+            summary: "{{ $labels.job }}: 5xx error rate {{ $value | humanizePercentage }}"
+            description: "More than 5% of requests failing for 5 minutes."
+            runbook_url: "https://wiki.example.com/runbooks/high-error-rate"
+
+        - alert: HighLatencyP90                    # D
+          expr: job:http_latency:p90_5m > 0.5
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.job }}: p90 latency {{ $value | humanizeDuration }} (> 500 ms)"
+
+        - alert: TrafficDrop                       # R: sudden drop often means an upstream/LB/DNS problem
+          expr: job:http_requests:rate5m < 0.5 * (job:http_requests:rate5m offset 1d)
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.job }}: traffic below 50% of the same time yesterday"
+
+        - alert: TargetDown                        # no data at all, as opposed to a bad value
+          expr: up{job="my-app"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "{{ $labels.instance }} is not being scraped (down?)"
+
+        - alert: ErrorBudgetFastBurn               # SLO 99.9%: 14.4× burn = 2% of 30-day budget in 1 h
+          expr: |
+            (sum(rate(http_requests_total{code=~"5.."}[1h])) / sum(rate(http_requests_total[1h]))) > (14.4 * 0.001)
+            and
+            (sum(rate(http_requests_total{code=~"5.."}[5m])) / sum(rate(http_requests_total[5m]))) > (14.4 * 0.001)
+          labels:
+            severity: critical
+          annotations:
+            summary: "Burning the 99.9% error budget 14x faster than allowed"
+  ```
+  - **`for:`** means the condition must hold that long before the alert fires (pending → firing).
+  - **`labels.severity`** is what Alertmanager routes on, for example critical → PagerDuty/phone and warning → Slack/email.
+  - **Burn-rate alert with two windows:** the long 1 h window shows the problem is real, and the short 5 m window shows it's still happening, so the alert clears quickly once it's fixed.
+
+  **Alertmanager routing (`alertmanager.yml`, short version)**
+  ```yaml
+  route:
+    receiver: slack-default
+    group_by: [alertname, job]      # one notification per alert type per service, not one per pod
+    group_wait: 30s
+    group_interval: 5m
+    repeat_interval: 4h
+    routes:
+      - matchers: [severity="critical"]
+        receiver: oncall-pager
+  receivers:
+    - name: slack-default
+      slack_configs: [{ api_url: "https://hooks.slack.com/services/XXX", channel: "#alerts" }]
+    - name: oncall-pager
+      pagerduty_configs: [{ routing_key: "XXX" }]
+  inhibit_rules:                     # if the whole target is down, don't also page for its latency
+    - source_matchers: [alertname="TargetDown"]
+      target_matchers: [severity="warning"]
+      equal: [job]
+  ```
 - **Good alerting:**
   - Alert on symptoms users feel, like error rate or latency SLO burn, not on every CPU spike.
   - Every alert needs an owner and a runbook.
