@@ -15,11 +15,41 @@
   - **Never used.** Use the honest line below.
 - **The honest line:** "I haven't used *Dynatrace* in production. I've used *[your tool]* for the same job: dashboards, alerts and log search. The concepts carry over, and I'd get productive in it quickly."
 - **When you don't know:** "I'm not sure. Here's how I'd find out: logs first, then docs, then a test in a lower environment." NiCE's own instructions say an honest "I don't know" beats a guess.
+### Your resume vs this JD
+
+| JD asks for | On your resume? | How to play it |
+|---|---|---|
+| L2/L3 production support, incidents, RCA | Yes: Koko (incident response, RCA, 99.9% uptime, EKS upgrades, SSL renewals, release coordination), One2N (production support, troubleshooting) | Your main ground. Describe your DevOps work in support terms: detect, triage, mitigate, RCA, prevent |
+| Linux + Shell scripting | Shell yes (BridgeLabz, daily ops) | Type section 5 commands tomorrow; they will test this |
+| Python automation | "Python (Basic)" | Say "basic": you read and change scripts, your automation is mostly Shell, Jenkins, Ansible, Terraform. Don't oversell |
+| SQL | Listed; MySQL, PostgreSQL, RDS | Expect live queries. Practise section 7 |
+| Monitoring tools | Prometheus, Grafana, Nagios; ELK only as trainee (2020–21) | Lead with federated Prometheus + Grafana + alerting. ELK: say it was early-career. **Not** Dynatrace, AppDynamics, Datadog, Splunk, New Relic → honest line |
+| Tomcat / Apache / Nginx / WebLogic / JBoss | **No** | Biggest gap. "My apps ran as containers on EKS behind load balancers, so I didn't run Tomcat directly. I know how it works:" then section 8 at concept level |
+| ITIL, ServiceNow / JIRA / PagerDuty | **No** | Know the concepts (section 3). Describe the process you followed (alert → triage → fix → RCA → change via release coordination) without naming tools you didn't use |
+| Git, deployment / release management | Yes, strong: GitLab CI, Jenkins → ArgoCD (10 → 2 min), Dev/UAT/Prod releases | Strong story |
+| 24x7 / on-call | Not stated | Say what you actually did (on-call rotation? escalation?) and that you're fine with shifts |
+| AWS, Docker, Kubernetes, CI/CD, Terraform, Ansible (good to have) | Yes, your strongest area | This is your differentiator. Bring answers back here when you can |
+| SLI/SLO, error budgets | Partly: 99.9% uptime, MTTD | Know section 4 numbers cold, because you claim 99.9% |
+| Kafka / RabbitMQ / Redis | **No** | Don't claim |
+| Certifications | "AWS Cloud Practitioner **Essentials**" is the free training course, not the AWS Certified Cloud Practitioner exam. KodeKloud Docker is a course certificate | If they read it as the AWS certification, correct them yourself. Being caught later is far worse |
+
+**Claims they will ask you to prove (have the numbers ready):**
+- **99.9% uptime** (Koko and Perfios): measured how, over what period, on which services? What took the remaining 0.1%?
+- **20–30% cost cut during the EKS migration** and **30% EKS cost cut at One2N**: compared with what, and how much from each lever?
+- **Image size −30–40%**, **deploy time 10 → 2 min**, **setup 2 h → 20 min**: what changed exactly?
+- **"Directed incident response and RCA"**: name one incident, its impact, and your role.
+- **Dates:** your Oct 2026 interview notes describe One2N expectations for "1.5–2 years". If anyone asks about your One2N role or the Jan–Mar 2026 gap, answer plainly and consistently with the resume. Background verification will check dates.
+
 - **Questions you should expect on your resume points:** what the 30% EKS saving was measured against and how it splits by lever (gp3, Graviton, cross-AZ), and why telemetry in a single AZ is acceptable. See the FinOps thread notes.
 
 ## 1. Your 60-second introduction (fill it in)
 
 "I'm a ___ with ___ years of experience at ___. Day to day I ___ (support / monitor / deploy / automate) ___ (which apps, on what stack). I handle ___ (incidents, on-call, releases). One thing I'm proud of: ___ (a result with a number). I'm looking for an L2/L3 / SRE role where I own reliability end to end, and the financial-crime domain at Actimize is where reliability matters most."
+
+**Draft from your resume (edit it into your own words):**
+"I'm a Site Reliability Engineer with about five and a half years in production operations on AWS. I'm currently SRE II at One2N, where I support Kubernetes production environments and set up the Prometheus and Grafana stack for monitoring and alerting. Before that, at Koko Networks, I migrated applications from Docker Swarm to EKS, ran the production side (EKS upgrades, SSL renewals, release coordination, incident response and RCA), and held 99.9% uptime. I started at Perfios, building AWS infrastructure with Terraform and Ansible and supporting Dev, UAT and Prod releases. I want to move closer to the application side: owning the reliability of business-critical apps, and Actimize, in the fintech and compliance space I already know from Perfios, is a good fit for that."
+
+- [Likely] Perfios builds financial data and analytics software for banks and lenders. That makes it your banking/financial-services link to the JD's preferred domains. Only use it if it's accurate for your work there.
 
 ## 2. STAR incident stories (prepare 3, 2 minutes each)
 
@@ -34,6 +64,15 @@ Have these three kinds ready:
 1. **A P1 or major incident** that you mitigated under pressure.
 2. **An RCA** where the root cause wasn't obvious and you found it with logs or metrics.
 3. **An automation** that removed toil, such as a script that cut a manual task from X min to Y min.
+
+**Candidates from your resume.** Pick real incidents. Don't invent any details:
+
+| Story type | Resume source | What to have ready |
+|---|---|---|
+| P1 / major incident | Koko: "Directed incident response and RCA" | The worst outage you handled: what alerted, the impact, your first 3 actions, who you pulled in, time to restore |
+| RCA / detection | Koko: federated Prometheus, proactive alerting for infra and third-party services, MTTD reduced | An incident you caught earlier because of an alert you built. Before vs after detection time |
+| Risky change done safely | Koko: Docker Swarm → EKS migration, EKS upgrades, SSL renewals | How you did cutover and rollback, what broke, how you validated. An expired or near-expired certificate story fits "proactive" well |
+| Automation / toil | Perfios: Ansible setup 2 h → 20 min; Koko: Jenkins → ArgoCD (10 → 2 min), RDS backup automation via Jenkins | What was manual before, what the script/pipeline does, how you know it works (and that the backup restores!) |
 
 **Likely follow-ups:** What would you do differently? How did you stop it from happening again? Who did you escalate to, and when?
 
@@ -215,6 +254,8 @@ WHERE status = 'FAILED' AND start_time >= CURRENT_DATE;
 | Deploy | Drop `.war` in `webapps/` (auto-deploy) or Manager app | `nginx -t` then `systemctl reload nginx` (no downtime) |
 | Start/stop | `bin/startup.sh`, `bin/shutdown.sh`, or `systemctl` | `systemctl start/stop/reload` |
 
+> **Not on your resume.** Answer at concept level and say so: "I haven't administered Tomcat directly. Our services ran as containers on EKS behind load balancers. Here's how I'd troubleshoot it…" The 502/504 and thread-dump logic below applies just as much to pods behind an ingress or ALB, which you can speak to from experience.
+
 **Common errors and what they mean**
 - **502 Bad Gateway** (Nginx): the backend (Tomcat) is down or refusing connections. Check that Tomcat is up and listening, and check `proxy_pass`.
 - **504 Gateway Timeout:** the backend is too slow. Look for a slow DB, thread exhaustion or GC pauses. Raise `proxy_read_timeout` only after you know the cause.
@@ -246,6 +287,10 @@ server {
   - Every alert needs an owner and a runbook.
   - Cut noise. Alert fatigue means real alerts get missed.
 - **Proactive monitoring examples:** disk growth trend, certificate expiry (alert 30 days ahead), batch job not finishing by its expected time (an absence alert), queue depth, DB connection-pool usage.
+- **Your tools, in order of strength:**
+  - **Prometheus + Grafana:** federated Prometheus across multiple EKS clusters, dashboards, proactive alerting (Koko). The observability stack setup at One2N. Be ready for: what federation is (a central Prometheus scrapes selected series from per-cluster Prometheus via `/federate`); why (one view across clusters); its limits (the central server is a bottleneck, and long-term storage usually needs Thanos/Mimir); Alertmanager routing and grouping; a PromQL example such as `sum(rate(http_requests_total{status=~"5.."}[5m])) / sum(rate(http_requests_total[5m]))` for error rate.
+  - **Nagios** (Perfios): host and service checks for EC2 health, with OK/WARNING/CRITICAL/UNKNOWN states from check plugins.
+  - **ELK** (BridgeLabz trainee): Filebeat/Logstash → Elasticsearch → Kibana. Present it as early-career exposure.
 - **APM tools** (Dynatrace, AppDynamics, New Relic, Datadog) auto-instrument the JVM and show response time per transaction, slow DB calls and errors. **If they aren't on your resume, use the honest line from section 0.**
 
 ## 10. Deployments, releases, Git
