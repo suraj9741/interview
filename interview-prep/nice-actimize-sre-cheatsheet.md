@@ -507,6 +507,182 @@ server {
 - **Git basics:** `git log --oneline`, `git diff`, `git revert <sha>` (safe on shared branches) vs `git reset` (rewrites history), branches, PR review, tags for releases.
 - **Config changes:** keep them version-controlled, peer-reviewed, and applied through a CR, not edited directly on the server.
 
+### Deployment strategies in detail
+
+| Strategy | How it works | Downtime | Rollback | Extra cost | Risk / when |
+|---|---|---|---|---|---|
+| **Recreate** | Stop all old, start all new | Yes | Redeploy old | None | Dev/test, or apps that can't run two versions at once |
+| **Rolling** | Replace instances a few at a time | No | Roll back gradually (`kubectl rollout undo`) | Small (surge pods) | Default in Kubernetes. Old and new run together for a while, so both must be compatible |
+| **Blue-green** | Full new stack (green) next to old (blue), test it, then switch all traffic at once | No | **Instant**: switch back to blue | **2× capacity** while both exist | Big releases, strict rollback needs, regulated systems |
+| **Canary** | Send a small % of real traffic (1% → 10% → 50% → 100%) to the new version, compare metrics, then promote or abort | No | Fast: set weight back to 0 | Small | Risky changes; needs good metrics (error rate, p90) to judge |
+| **A/B testing** | Route by user attribute (header, cookie, region) to compare *features*, not stability | No | Change routing | Small | Product experiments |
+| **Shadow / mirror** | Copy live traffic to the new version, discard its responses | No | Nothing to roll back | Double load | Testing performance on real traffic without user impact |
+| **Feature flags** | Deploy code switched off, enable it per user or % at runtime (LaunchDarkly, Unleash, config) | No | Flip the flag off | None | Separates *deploy* from *release* |
+
+**1. Rolling update (Kubernetes Deployment)**
+```yaml
+spec:
+  replicas: 4
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1          # at most 1 extra pod above 4 during the update
+      maxUnavailable: 0    # never drop below 4 ready pods
+  template:
+    spec:
+      containers:
+        - name: app
+          image: myrepo/app:1.4.0
+          readinessProbe:  # new pod gets traffic only when this passes. Without it, rolling = outage
+            httpGet: { path: /health, port: 8080 }
+            initialDelaySeconds: 10
+```
+```bash
+kubectl set image deployment/app app=myrepo/app:1.4.1
+kubectl rollout status deployment/app      # watch progress
+kubectl rollout history deployment/app
+kubectl rollout undo deployment/app        # back to previous ReplicaSet
+kubectl rollout undo deployment/app --to-revision=3
+kubectl rollout pause|resume deployment/app
+```
+- **With ArgoCD (your setup):** the Git commit *is* the deployment. Rollback = `git revert` the image-tag change, and ArgoCD syncs it, or use ArgoCD's history/rollback in the UI. Say this, because it's on your resume.
+
+**2. Blue-green**
+- **On Kubernetes:** run two Deployments (`app-blue`, `app-green`) and one Service. Switch by changing the Service selector:
+  ```bash
+  kubectl patch service app -p '{"spec":{"selector":{"app":"myapp","version":"green"}}}'
+  # rollback: same command with "blue"
+  ```
+- **On AWS with an ALB:** use two target groups (blue, green) and change the listener's default action to the green target group. The switch is instant and per request.
+- **With Route 53:** point the record (alias) at the green load balancer. It's simple, but the switch is slow and uneven because of DNS caching (see the caveats below).
+- **AWS CodeDeploy** has a built-in blue/green mode for ECS and EC2 Auto Scaling groups.
+
+**3. Canary: the options, from coarse to precise**
+
+**a) Route 53 weighted routing (DNS level)**
+- Create two records with the same name and type, each with a `SetIdentifier` and a `Weight`. Route 53 answers each DNS query in proportion to weight ÷ total weight. For example, 90 and 10 sends about 10% of DNS answers to the canary.
+```bash
+aws route53 change-resource-record-sets --hosted-zone-id Z123EXAMPLE --change-batch '{
+  "Changes": [
+    {"Action": "UPSERT", "ResourceRecordSet": {
+      "Name": "app.example.com", "Type": "A", "SetIdentifier": "stable", "Weight": 90,
+      "AliasTarget": {"HostedZoneId": "Z35SXDOTRQ7X7K", "DNSName": "stable-alb-123.us-east-1.elb.amazonaws.com", "EvaluateTargetHealth": true}}},
+    {"Action": "UPSERT", "ResourceRecordSet": {
+      "Name": "app.example.com", "Type": "A", "SetIdentifier": "canary", "Weight": 10,
+      "AliasTarget": {"HostedZoneId": "Z35SXDOTRQ7X7K", "DNSName": "canary-alb-456.us-east-1.elb.amazonaws.com", "EvaluateTargetHealth": true}}}
+  ]}'
+# promote: 10 → 25 → 50 → 100 (stable → 0). Abort: canary weight 0
+```
+- **Caveats, which interviewers like to hear:**
+  - **DNS caching.** Resolvers and clients cache answers for the TTL, and some ignore it. So the split is per resolver, not per request, and a rollback takes effect only after caches expire. Keep the TTL low (60 s) *before* the release.
+  - **Big clients skew the split.** One corporate resolver behind many users can send all of them to the canary.
+  - Weight 0 on all records means equal split; weight 0 on one record means it gets no traffic.
+  - Health checks plus `EvaluateTargetHealth` take an unhealthy side out automatically.
+  - **Best fit:** canary between whole environments, regions or clusters (for example the old EKS cluster vs the new one during a migration).
+- **AWS documents the exact zone ID per ALB region.** The `Z35SXDOTRQ7X7K` above is us-east-1's ALB zone. Use `aws elbv2 describe-load-balancers` to get `CanonicalHostedZoneId`.
+
+**b) ALB weighted target groups (request level, preferred on AWS)**
+```bash
+aws elbv2 modify-listener --listener-arn arn:aws:elasticloadbalancing:...:listener/app/my-alb/abc/def \
+  --default-actions '[{"Type":"forward","ForwardConfig":{
+     "TargetGroups":[
+       {"TargetGroupArn":"arn:...:targetgroup/app-stable/111","Weight":90},
+       {"TargetGroupArn":"arn:...:targetgroup/app-canary/222","Weight":10}],
+     "TargetGroupStickinessConfig":{"Enabled":true,"DurationSeconds":300}}}]'
+```
+- It splits **per request** and takes effect instantly, with no DNS caching. Stickiness keeps a user on one version so they don't flip-flop between them.
+
+**c) Inside Kubernetes: ingress-nginx canary annotations**
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: app-canary
+  annotations:
+    nginx.ingress.kubernetes.io/canary: "true"
+    nginx.ingress.kubernetes.io/canary-weight: "10"            # 10% of requests
+    # or by header, for testers only:
+    # nginx.ingress.kubernetes.io/canary-by-header: "X-Canary"  # send "X-Canary: always"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: app.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: app-canary, port: { number: 80 } } }
+```
+- The main Ingress points to `app-stable`. This second Ingress with the same host takes the weighted share.
+
+**d) Automated canary: Argo Rollouts / Flagger** (progressive delivery; **not on your resume**, so present it as concept only)
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata: { name: app }
+spec:
+  replicas: 5
+  strategy:
+    canary:
+      steps:
+        - setWeight: 10
+        - pause: { duration: 10m }
+        - analysis: { templates: [{ templateName: success-rate }] }   # runs a Prometheus query
+        - setWeight: 50
+        - pause: { duration: 10m }
+        - setWeight: 100
+  # selector and template same as a Deployment
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata: { name: success-rate }
+spec:
+  metrics:
+    - name: success-rate
+      interval: 1m
+      failureLimit: 2                       # abort and roll back automatically after 2 failed checks
+      successCondition: result[0] >= 0.99
+      provider:
+        prometheus:
+          address: http://prometheus:9090
+          query: |
+            sum(rate(http_requests_total{app="app",code!~"5.."}[2m])) / sum(rate(http_requests_total{app="app"}[2m]))
+```
+- It's the natural next step after ArgoCD: the same GitOps flow, plus automatic promotion or abort driven by the RED metrics above.
+
+**e) Others to name:**
+- **Istio / service mesh:** a `VirtualService` with route weights, for example 90/10, or routing by header.
+- **AWS CodeDeploy (ECS, Lambda):** predefined configs like `CodeDeployDefault.ECSCanary10Percent5Minutes` (10% for 5 minutes, then 100%) or `ECSLinear10PercentEvery1Minutes`, with automatic rollback on CloudWatch alarms.
+- **AWS API Gateway** stage canary settings and **Lambda alias** weights.
+
+**4. How to decide "promote or roll back" (say this)**
+- **Define the criteria before the release:**
+  - Error rate for the canary vs stable (for example, abort if more than 1% or 2× stable).
+  - p90/p99 latency vs baseline.
+  - Saturation (CPU, memory, DB connections).
+  - Business metrics (logins, transactions processed).
+- **Compare the canary with stable at the same time,** not with yesterday, so traffic patterns are the same.
+- **Watch each step long enough to see real traffic,** for example 10–30 minutes per step.
+
+**5. The part people forget: database and compatibility**
+- During rolling, canary and blue-green deployments, **old and new code run at the same time against the same database**. Schema changes must be backward compatible.
+- **Expand/contract pattern:**
+  1. Add the new column (nullable).
+  2. Deploy code that writes both the old and new columns.
+  3. Backfill the data.
+  4. Switch reads to the new column.
+  5. Remove the old column in a later release.
+- Never rename or drop a column in the same release that stops using it.
+- **Take a DB backup or snapshot before the release.** On your resume, Jenkins automated the RDS backups.
+
+**6. Release checklist for a regulated client (Actimize, banks)**
+- An approved change request (CR) with an implementation plan, a test plan and a **rollback plan with a time limit**.
+- A change window, with stakeholders informed.
+- Pre-checks: health and baseline metrics, plus backups.
+- Deploy using the agreed strategy.
+- Smoke tests and close monitoring for 30–60 minutes.
+- Close the CR or roll back, and record the result.
+
 ## 11. On-call and 24x7
 
 - **Handover notes** at the end of each shift: open incidents, ongoing changes, things to watch.
