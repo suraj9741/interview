@@ -113,6 +113,28 @@ Have these three kinds ready:
 - **SLA** is the contract with the customer, with penalties. It is set looser than the SLO, so you get warned before you breach it.
 - **Error budget** = 100% − SLO. For 99.9% over 30 days, that's about 43 minutes. For 99.95%, about 21.6 minutes. For 99.99%, about 4.3 minutes.
 - **When the budget is burnt:** freeze risky releases and spend the time on reliability work. When budget is left, ship faster.
+- **Formulas:**
+  - Availability SLI = good requests ÷ total valid requests × 100
+  - Error budget (requests) = (1 − SLO) × total requests. Error budget (time) = (1 − SLO) × minutes in the window (30 days = 43,200 min)
+  - Budget consumed % = actual bad ÷ allowed bad × 100
+  - Burn rate = current error rate ÷ (1 − SLO). Google's SRE workbook pages at 14.4× over 1 h, which burns 2% of the 30-day budget in an hour
+  - Availability = MTBF ÷ (MTBF + MTTR)
+  - Serial dependencies: A × B (99.9% × 99.9% = 99.8%). Redundant pair: 1 − (1−A)(1−B) (two 99.9% replicas = 99.9999%)
+- **Worked example:**
+  - 10,000,000 requests in 30 days, 4,000 failed, so SLI = 99.96%.
+  - The 99.9% SLO allows 10,000 failures, so 40% of the budget is used and 60% is left.
+  - An error rate of 0.5% means a burn rate of 5×, so the budget is gone in 6 days.
+- **Downtime allowed:**
+
+  | SLO | Per 30 days | Per year |
+  |---|---|---|
+  | 99% | 7.2 h | 3.65 days |
+  | 99.5% | 3.6 h | 1.83 days |
+  | 99.9% | 43.2 min | 8.76 h |
+  | 99.95% | 21.6 min | 4.38 h |
+  | 99.99% | 4.32 min | 52.6 min |
+- **PromQL availability:** `sum(rate(http_requests_total{code!~"5.."}[30d])) / sum(rate(http_requests_total[30d]))`
+- **"Why not 100%?"** Each extra nine costs far more, users can't tell the difference because their own network fails more often, and a 100% target leaves no room to ship changes.
 - **Golden signals:** latency, traffic, errors, saturation. RED (rate, errors, duration) is for services. USE (utilisation, saturation, errors) is for resources.
 - **Other terms:**
   - **MTTD:** mean time to detect.
