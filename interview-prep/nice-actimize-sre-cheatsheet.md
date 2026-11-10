@@ -108,10 +108,10 @@ Have these three kinds ready:
 
 ![SLI to SLO to error budget](diagrams/c3-slo-error-budget.drawio.svg)
 
-- **SLI** is what you measure, for example the % of requests that succeed in under 500 ms.
-- **SLO** is the internal target, for example 99.9% over 30 days.
-- **SLA** is the contract with the customer, with penalties. It is set looser than the SLO, so you get warned before you breach it.
-- **Error budget** = 100% − SLO. For 99.9% over 30 days, that's about 43 minutes. For 99.95%, about 21.6 minutes. For 99.99%, about 4.3 minutes.
+- **SLI (Service Level Indicator)** is what you measure, for example the % of requests that succeed in under 500 ms.
+- **SLO (Service Level Objective)** is the internal target, for example 99.9% over 30 days.
+- **SLA (Service Level Agreement)** is the contract with the customer, with penalties. It is set looser than the SLO, so you get warned before you breach it.
+- **Error budget** (no abbreviation) = 100% − SLO, the amount of failure the SLO allows. For 99.9% over 30 days, that's about 43 minutes. For 99.95%, about 21.6 minutes. For 99.99%, about 4.3 minutes.
 - **When the budget is burnt:** freeze risky releases and spend the time on reliability work. When budget is left, ship faster.
 - **Formulas:**
   - Availability SLI = good requests ÷ total valid requests × 100
