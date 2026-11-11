@@ -173,6 +173,74 @@ tail -f app.log | grep --line-buffered ERROR
 
 **Permissions and processes:** `chmod 640 f`, `chown app:app f`, `kill -15 <pid>` (graceful) before `kill -9` (forced), `nohup cmd &`, `crontab -l` (`m h dom mon dow`).
 
+### Kubernetes troubleshooting (your home ground: EKS)
+
+**Triage order:** pod status → `describe` (Events at the bottom) → logs → Service/endpoints → node → recent change.
+```bash
+kubectl get pods -n <ns> -o wide                         # status, restarts, node, pod IP
+kubectl describe pod <pod> -n <ns>                       # Events: why it's Pending/failing
+kubectl logs <pod> -n <ns> [-c <container>] --tail=100 -f
+kubectl logs <pod> -n <ns> --previous                    # logs of the crashed container (CrashLoopBackOff)
+kubectl get events -n <ns> --sort-by=.lastTimestamp | tail -20
+kubectl exec -it <pod> -n <ns> -- sh                     # inside the container: env, curl, cat config
+kubectl top pods -n <ns> --sort-by=memory ; kubectl top nodes   # needs metrics-server
+kubectl rollout history deploy/<name> -n <ns>            # what changed recently?
+```
+
+| Symptom (STATUS) | Usual causes | Commands / what to check | Fix |
+|---|---|---|---|
+| **Pending** | Not enough CPU/memory on any node; nodeSelector/affinity/taints don't match; PVC not bound; max pods per node (EKS: limited by ENI IPs) | `describe pod` → Events: `0/3 nodes are available: insufficient cpu` / `didn't match node affinity` / `had untolerated taint`; `kubectl describe node`, `kubectl get pvc` | Lower requests, add nodes (Cluster Autoscaler/Karpenter), fix selector/toleration, fix PVC |
+| **ImagePullBackOff / ErrImagePull** | Wrong image name/tag; private registry without `imagePullSecrets`; node IAM role can't pull from ECR; no NAT/egress | `describe pod` → `manifest unknown` / `unauthorized` / `i/o timeout` | Fix tag, add pull secret or ECR permissions to the node role, check NAT/VPC endpoints |
+| **CrashLoopBackOff** | App exits on start: bad config/env, missing secret, can't reach DB, wrong command; liveness probe too aggressive | `logs --previous`; `describe` → `Last State: Terminated, Exit Code`; check ConfigMap/Secret exist | Fix config/secret/dependency; give the probe `initialDelaySeconds` or a `startupProbe` |
+| **OOMKilled** (exit code 137) | Container used more memory than its `limits.memory`; Java heap bigger than the limit | `describe pod` → `Reason: OOMKilled`; `kubectl top pod`; Grafana memory panel | Raise the limit or fix the leak; for Java set `-XX:MaxRAMPercentage=75` so heap fits the limit |
+| **Exit codes** | 0 = finished normally (wrong for a Deployment: command exits); 1 = app error; 137 = SIGKILL (OOM or killed); 143 = SIGTERM (graceful stop); 126/127 = command not executable / not found | `describe pod` | Depends on code |
+| **Running but 0/1 READY** | Readiness probe failing → pod removed from Service endpoints | `describe pod` → `Readiness probe failed: HTTP 500`; `exec` and `curl localhost:8080/health` | Fix the health endpoint, path/port, or dependency |
+| **CreateContainerConfigError** | Referenced ConfigMap/Secret or key doesn't exist | `describe pod` → `secret "db-pass" not found` | Create it / fix the name (with Secrets Manager: check the sync / CSI driver) |
+| **Evicted** | Node under pressure (disk/memory) | `kubectl get pods -A \| grep Evicted`; `describe node` → `DiskPressure/MemoryPressure` | Free disk (images/logs), set requests/limits, clean up: `kubectl delete pod --field-selector=status.phase=Failed -A` |
+| **Terminating forever** | Finalizers, node gone, app ignores SIGTERM | `kubectl get pod <pod> -o yaml \| grep -A3 finalizers` | Fix the app's shutdown; last resort `kubectl delete pod <pod> --grace-period=0 --force` |
+| **Rollout stuck** | New pods failing (any of the above), `maxUnavailable: 0` with no room | `kubectl rollout status deploy/<name>`; `get rs` (new ReplicaSet not ready) | Fix and redeploy, or `kubectl rollout undo deploy/<name>` (or `git revert` in ArgoCD) |
+
+**Networking: "the service is not reachable"**
+```bash
+kubectl get svc <svc> -n <ns> -o wide                    # type, ClusterIP, ports, selector
+kubectl get endpoints <svc> -n <ns>                      # EMPTY = selector doesn't match pod labels, or pods not Ready
+kubectl get pods -n <ns> --show-labels                   # compare labels with the Service selector
+kubectl port-forward svc/<svc> 8080:80 -n <ns>           # test the Service bypassing Ingress/LB
+kubectl run tmp --rm -it --image=busybox:1.36 -- sh      # throwaway debug pod inside the cluster:
+#   nslookup <svc>.<ns>.svc.cluster.local    → DNS works? (if not: kubectl get pods -n kube-system -l k8s-app=kube-dns)
+#   wget -qO- http://<svc>.<ns>:80/health    → Service works?
+kubectl get ingress -n <ns> ; kubectl describe ingress <name> -n <ns>    # host/path rules, backend service, address
+kubectl get networkpolicy -n <ns>                        # a policy may block the traffic
+```
+- **Order to follow:** Ingress/ALB → Service → endpoints → pod → container port. Each hop must match: the Ingress backend names the Service and port, the Service selector matches the pod labels, and `targetPort` matches the port the container listens on.
+- **502/503 from the ALB or Ingress:** usually no healthy targets (empty endpoints, failing readiness probe) or a wrong `targetPort`. On EKS also check the target group health with `aws elbv2 describe-target-health`, and the AWS Load Balancer Controller logs: `kubectl logs -n kube-system deploy/aws-load-balancer-controller`.
+
+**Node problems**
+```bash
+kubectl get nodes -o wide                                # NotReady?
+kubectl describe node <node>                             # Conditions: MemoryPressure, DiskPressure, PIDPressure, Ready; Allocated resources
+kubectl cordon <node> ; kubectl drain <node> --ignore-daemonsets --delete-emptydir-data   # move workloads off for maintenance
+kubectl uncordon <node>
+# on the node (SSM Session Manager on EKS): systemctl status kubelet ; journalctl -u kubelet -f ; df -h ; crictl ps
+```
+- **NotReady causes:** kubelet stopped, the node is out of disk or memory, network/CNI problems (on EKS, `aws-node` pods failing or subnet IPs exhausted), or the instance itself is unhealthy.
+
+**Storage, config, scaling, permissions**
+```bash
+kubectl get pvc,pv -n <ns> ; kubectl describe pvc <pvc> -n <ns>   # Pending: no StorageClass / EBS CSI driver issue / AZ mismatch (EBS is per-AZ)
+kubectl get configmap,secret -n <ns>
+kubectl get secret <name> -n <ns> -o jsonpath='{.data.password}' | base64 -d    # check the value (only in non-prod / with approval)
+kubectl get hpa -n <ns> ; kubectl describe hpa <name> -n <ns>      # <unknown> targets = metrics-server missing or no CPU requests set
+kubectl auth can-i list pods --as=system:serviceaccount:<ns>:<sa> -n <ns>   # RBAC check
+kubectl get all -n <ns> ; kubectl api-resources
+kubectl get pod <pod> -n <ns> -o yaml                    # the full live spec, to compare with what you expected
+kubectl debug -it <pod> -n <ns> --image=busybox:1.36 --target=<container>   # ephemeral debug container for distroless images
+```
+
+**Say it:** "I start with `kubectl get pods` and `describe`, because the Events tell me *why*: scheduling, image pull, probe or OOM. Then I read the logs with `--previous` for crashes. For connectivity I go hop by hop, Ingress, Service, endpoints, pod, and empty endpoints usually mean a label mismatch or failing readiness. Before deep debugging I check what changed: the rollout history or the last ArgoCD sync. If a deploy caused it, I roll back first and debug after."
+
+More commands: [kubectl commands](kubernetes/23-kubectl-commands.md).
+
 ## 6. Shell and Python automation (show you can write a small one)
 
 ```bash
