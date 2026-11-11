@@ -582,6 +582,27 @@ server {
   | Typical use | Metrics in your own network or Kubernetes cluster | SaaS observability, logs, events, traces |
 
   **Say it:** "Prometheus is pull-based: it scrapes `/metrics` endpoints it discovers, so a failed scrape (`up == 0`) is itself an alert, and the server controls the load. For batch jobs we'd use the Pushgateway. Datadog, Splunk forwarders and APM agents are push-based: agents send data out to a central or SaaS endpoint, which works across NAT and suits short-lived workloads, but then you need heartbeat alerts to tell 'dead' from 'quiet'. Grafana is neither; it only queries the data sources at view time."
+- **Where data is stored, and retention** (these are tool defaults and typical values. **Quote your own team's setting if you know it**, and if you don't, say "typically")
+
+  | Tool | Where data lives | Default retention | Typical setting / how to change it |
+  |---|---|---|---|
+  | **Prometheus** | Local TSDB on disk: `--storage.tsdb.path` (default `data/`), 2-hour blocks plus a WAL. On Kubernetes, a PVC (EBS gp3) | **15 days** (`--storage.tsdb.retention.time`; `--storage.tsdb.retention.size` caps disk) | 7–30 days locally. For long-term storage, `remote_write` or a sidecar to **Thanos/Mimir on S3** for 13 months or more |
+  | **Grafana** | **No metrics or logs.** Only its own config DB: SQLite `grafana.db` in `/var/lib/grafana`, or MySQL/Postgres, holding dashboards, users and alert rules | n/a | Back up the DB, or keep dashboards as code in Git |
+  | **Loki** | Index + compressed chunks in **object storage (S3)** | [Likely] Retention is off by default, so logs are kept forever | Compactor `retention_period`, e.g. 30 days, plus an S3 lifecycle rule |
+  | **Elasticsearch (ELK)** | Indices split into shards on data-node disks (`/var/lib/elasticsearch`), usually one index per day (`logs-2026.11.11`) | Forever unless you set a policy | **ILM policy** moving data hot → warm → cold → delete, e.g. delete after 30 days. Snapshots to S3 for archive. Curator in older setups |
+  | **Splunk** | Indexes on indexers: buckets go **hot → warm → cold → frozen** under `$SPLUNK_HOME/var/lib/splunk` | [Likely] `frozenTimePeriodInSecs` = 188,697,600 s ≈ **6 years**, or until `maxTotalDataSizeMB` (500 GB) is hit, whichever comes first | Set per index in `indexes.conf`, e.g. 90 days searchable, then frozen (deleted or archived). Splunk Cloud: per contract |
+  | **Datadog** | Datadog SaaS | [Likely] Logs: **15 days** indexed by default (plans of 3/7/15/30 days). Metrics: **15 months**. Indexed traces: 15 days | Index retention per index; **Log Archives** to your own S3 for long-term storage, with Rehydrate to search them again |
+  | **CloudWatch Logs** | Log groups / log streams in AWS | **Never expire** by default | Set retention per log group (1 day to 10 years), e.g. 30 days, and export to S3. Metrics: 15 months with rollups (1-min data for 15 days, 5-min for 63 days, 1-hour for 455 days) |
+  | **Kubernetes pod logs** | stdout/stderr written to the node at `/var/log/pods/…` (symlinked from `/var/log/containers/*.log`) | kubelet rotates at **10 MiB × 5 files** (`containerLogMaxSize`, `containerLogMaxFiles`). **Deleted with the pod** | That's why a DaemonSet (Fluent Bit, Promtail, Filebeat) ships them to Loki or ELK |
+  | **Linux** | `/var/log/*` (messages/syslog, secure/auth.log); journald in `/var/log/journal` (persistent) or `/run/log/journal` (lost on reboot) | logrotate: often `weekly`, `rotate 4` | `/etc/logrotate.d/app`: `daily`, `rotate 7`, `compress`, `missingok`. journald: `SystemMaxUse=` in `journald.conf` |
+  | **Tomcat** | `logs/catalina.out`, `localhost_access_log.YYYY-MM-DD.txt` | `catalina.out` is **not rotated by default**, which is a classic disk-full cause | logrotate with `copytruncate` |
+  | **Nagios** | `nagios.log` in its `var/` directory, rotated into `var/archives/` | Rotated daily by default | Clean up old archives with cron |
+
+  - **Compliance angle (banks / Actimize):**
+    - Regulators want audit and security logs kept for **years**. [Certain] PCI DSS requires **1 year of audit logs, with 3 months immediately available**.
+    - The usual design is **hot** (7–30 days, searchable in ELK/Loki/Splunk) → **archive in S3** → S3 lifecycle to **Glacier**, kept for 1–7 years.
+    - Make the archive **immutable**: S3 Object Lock, with write access separated from delete access.
+  - **Say it:** "Hot logs for about 30 days in the search tool for troubleshooting, metrics for 15 days in Prometheus and 13 months or more in long-term storage, and older logs archived to S3 and Glacier for the compliance period. Retention is a cost-versus-compliance decision, so it's set per data type, not one number for everything."
 - **Good alerting:**
   - Alert on symptoms users feel, like error rate or latency SLO burn, not on every CPU spike.
   - Every alert needs an owner and a runbook.
