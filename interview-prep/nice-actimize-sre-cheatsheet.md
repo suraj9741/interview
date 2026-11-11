@@ -550,6 +550,38 @@ server {
       target_matchers: [severity="warning"]
       equal: [job]
   ```
+- **Push vs pull: which tool uses which**
+  - **How to justify it:** ask *who opens the connection* and *where the config lives*.
+    - **Pull:** the server keeps a list of targets and connects to them on a schedule.
+    - **Push:** an agent on the host knows the server's address (and an API key) and sends data to it.
+
+  | Tool | Model | Justification |
+  |---|---|---|
+  | **Prometheus** | **Pull** | The server scrapes `http://target:port/metrics` every `scrape_interval`. Targets are listed in `prometheus.yml` (`scrape_configs`, or Kubernetes service discovery). **Exceptions:** the **Pushgateway** lets short-lived batch jobs push metrics, which Prometheus then pulls from the gateway. `remote_write` pushes *out* to long-term storage (Thanos, Mimir). Federation is also pull: a central Prometheus scrapes `/federate`, which you set up at Koko. |
+  | **Grafana** | **Neither: it's a visualisation layer** | It stores no metrics. It **queries** data sources (Prometheus, Loki, Elasticsearch, CloudWatch) when a dashboard loads or an alert rule evaluates. If you call it pull, say "pull at query time". |
+  | **Datadog** | **Push** | The Datadog Agent on each host or node collects metrics, logs and traces and pushes them over HTTPS to Datadog's SaaS with an API key. Locally the agent can *scrape* Prometheus/OpenMetrics endpoints, but delivery to Datadog is push. |
+  | **Splunk** | **Push** (mostly) | The **Universal Forwarder** tails log files and pushes them to indexers (TCP 9997). The **HTTP Event Collector (HEC)** receives pushed events over HTTPS with a token. Some pull inputs exist: DB Connect polling a database, scripted/modular inputs, cloud API inputs. |
+  | **ELK / Elastic** | **Push** (mostly) | Beats (Filebeat, Metricbeat) and Logstash ship data *to* Elasticsearch. Logstash inputs can also pull, such as the JDBC input or S3/Kafka polling. Metricbeat can poll endpoints locally. |
+  | **Loki** | **Push** | Promtail, Grafana Alloy or Fluent Bit push log lines to Loki's API. |
+  | **Nagios** | **Pull** (active checks) | The Nagios server runs check plugins on a schedule and reaches hosts via NRPE. **Passive checks** (NSCA) are push. You used this at Perfios. |
+  | **Zabbix** | **Both** | A passive agent is polled by the server (pull). An active agent sends data to the server (push). |
+  | **New Relic, Dynatrace, AppDynamics** (APM) | **Push** | Language agents (Java agent, Dynatrace OneAgent) instrument the app and push data to the SaaS or controller. |
+  | **AWS CloudWatch** | **Push** | AWS services and the CloudWatch agent push metrics and logs to CloudWatch (`PutMetricData`). |
+  | **StatsD / Graphite, InfluxDB + Telegraf** | **Push** | The app or agent sends metrics to the server. StatsD uses UDP fire-and-forget. |
+  | **OpenTelemetry Collector** | **Both** | Its receivers can scrape (Prometheus receiver = pull) or accept OTLP (push). Exporters usually push OTLP to the backend. |
+
+  **Trade-offs (this is what "justify" means)**
+
+  | | Pull (Prometheus, Nagios active) | Push (Datadog, Splunk, APM agents) |
+  |---|---|---|
+  | Detecting a dead target | **Easy:** a failed scrape sets `up == 0` | **Hard:** silence could mean dead or idle, so you need absence/heartbeat alerts |
+  | Control of load | The server decides how often it scrapes, so a misbehaving app can't flood it | Many agents can flood the receiver, which needs rate limits and buffering |
+  | Network | The server must reach every target, which needs service discovery and is hard across NAT, firewalls or other accounts | Agents only need outbound access to one endpoint, which works behind NAT and for SaaS |
+  | Short-lived jobs (cron, batch) | Can finish before a scrape, so you need the Pushgateway | Natural fit: push before exiting |
+  | Debugging | `curl target:9100/metrics` shows exactly what's exposed | Check agent status and logs (`datadog-agent status`, `splunk list forward-server`) |
+  | Typical use | Metrics in your own network or Kubernetes cluster | SaaS observability, logs, events, traces |
+
+  **Say it:** "Prometheus is pull-based: it scrapes `/metrics` endpoints it discovers, so a failed scrape (`up == 0`) is itself an alert, and the server controls the load. For batch jobs we'd use the Pushgateway. Datadog, Splunk forwarders and APM agents are push-based: agents send data out to a central or SaaS endpoint, which works across NAT and suits short-lived workloads, but then you need heartbeat alerts to tell 'dead' from 'quiet'. Grafana is neither; it only queries the data sources at view time."
 - **Good alerting:**
   - Alert on symptoms users feel, like error rate or latency SLO burn, not on every CPU spike.
   - Every alert needs an owner and a runbook.
