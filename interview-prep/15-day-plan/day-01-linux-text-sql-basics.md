@@ -24,8 +24,7 @@ mkdir -p ~/practice && cd ~/practice
 # copy labs/make-logs.sh and labs/day01.sql from this repo folder into ~/practice, then:
 docker run -it --rm -v "$PWD":/work -w /work ubuntu:24.04 bash
 # inside the container:
-export DEBIAN_FRONTEND=noninteractive     # never stop to ask questions (e.g. tzdata time zone)
-apt-get update -qq && apt-get install -y sqlite3 less
+# no apt-get needed: grep, sed, awk, find and less are already in the image
 bash make-logs.sh          # creates ./lab with app.log (600 lines), access.log (1000 lines), configs/, old/
 cd lab
 ```
@@ -241,8 +240,10 @@ su - tester -c "cat /work/lab/secret/db.txt"   # Permission denied: correct!
 
 ## Part C: SQL basics (1 hour, in sqlite3)
 
+Run SQL in the **Mac terminal** (macOS has `sqlite3` built in), not in the container:
+
 ```bash
-cd /work
+cd ~/practice
 sqlite3 day01.db < day01.sql
 sqlite3 day01.db
 .headers on
