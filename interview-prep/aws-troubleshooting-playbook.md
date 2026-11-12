@@ -173,7 +173,7 @@ In order: version, account, ENI, **source IP**, **destination IP**, source port,
   - The certificate proves the server's identity: it's signed by a trusted CA, and the name must match.
 - **Status codes:** 2xx success, 3xx redirect, 4xx client error (401 unauthenticated, 403 forbidden, 404 not found, 429 too many requests), 5xx server error (500, 502, 503, 504, as in S3).
 
-## 5. Terraform (working knowledge, 30 min tomorrow morning)
+## 5. Terraform: the short version
 
 - **Workflow:** `init` → `fmt`/`validate` → `plan` (review!) → `apply`; `destroy` only for test environments.
 - **State:** maps your code to real resource IDs. Keep it **remote in S3 with versioning and encryption**, with **DynamoDB locking** (or S3 native locking with `use_lockfile` in newer versions), so two people can't apply at the same time and corrupt it. Never edit it by hand. Use `terraform state list/show/mv/rm`.
@@ -186,6 +186,179 @@ In order: version, account, ENI, **source IP**, **destination IP**, source port,
   - Dependency problems: add a `depends_on`.
   - Set `TF_LOG=DEBUG` for detailed logs.
 - **Your story:** "I provisioned EKS clusters and the AWS infrastructure (VPC, EC2, RDS, Route 53, ELB, ASG) with Terraform modules at Perfios and Koko."
+
+## 5b. Terraform in depth (HR said to prepare it)
+
+### What to explain in your own words
+- **Terraform is declarative.** You describe the *desired* state. `plan` compares it with the **state file** and the real cloud, then shows create/update/destroy. `apply` makes those changes.
+- **Providers** talk to the APIs (aws, kubernetes, helm). **Resources** create things. **Data sources** read existing things (e.g. the latest AMI, an existing VPC).
+- **State** maps each resource in your code to a real ID (e.g. `aws_instance.web` → `i-0abc…`). Without it, Terraform can't know what it already manages.
+
+### Remote backend with locking (write this from memory)
+```hcl
+terraform {
+  required_version = ">= 1.6"
+  required_providers {
+    aws = { source = "hashicorp/aws", version = "~> 5.0" }   # pin versions
+  }
+  backend "s3" {
+    bucket         = "mycompany-tfstate"
+    key            = "prod/network/terraform.tfstate"
+    region         = "ap-south-1"
+    encrypt        = true
+    dynamodb_table = "terraform-locks"   # lock table (newer Terraform also supports use_lockfile = true)
+  }
+}
+```
+- **Why remote:**
+  - The team shares one state.
+  - The S3 bucket is versioned, so you can recover a broken state.
+  - It's encrypted, because **state contains secrets in plain text** (DB passwords, keys).
+- **Why locking:** two people running apply at the same time would corrupt the state and race on resources. The lock lets only one run at a time.
+
+### Commands and what they're for
+
+| Command | Use |
+|---|---|
+| `terraform init` | Download providers and modules, configure the backend (`-upgrade`, `-migrate-state`) |
+| `terraform fmt -recursive` / `validate` | Format / syntax check (run in CI) |
+| `terraform plan -out=tfplan` | Preview, saved so `apply tfplan` applies **exactly** what was reviewed |
+| `terraform apply tfplan` | Apply the reviewed plan |
+| `terraform plan -refresh-only` | Show **drift** (console changes) without changing anything |
+| `terraform apply -replace=aws_instance.web` | Force-recreate one resource (replaces the old `taint`) |
+| `terraform state list` / `state show <addr>` | Inspect the state |
+| `terraform state mv` / `moved {}` block | Rename or move a resource in the code **without destroying it** |
+| `terraform state rm <addr>` | Stop managing a resource (it stays in AWS) |
+| `terraform import` / `import {}` block | Bring an existing resource under Terraform |
+| `terraform output` | Show outputs (e.g. VPC ID, ALB DNS name) |
+| `terraform force-unlock <LOCK_ID>` | Remove a stuck lock, **after** confirming nobody is running |
+| `terraform workspace new/select` | Separate state per workspace (same code) |
+
+### Concepts interviewers ask
+
+| Question | Answer |
+|---|---|
+| `count` vs `for_each` | `count` uses an index: removing item 0 shifts every other item and **recreates** them. `for_each` uses keys (map or set), so removing one item affects only that one. Prefer `for_each` |
+| Module | A reusable folder of `.tf` files with variables (inputs) and outputs. Pin versions: `source = "terraform-aws-modules/vpc/aws"`, `version = "5.8.1"` |
+| Variable precedence (lowest → highest) | `default` in the variable block → environment `TF_VAR_name` → `terraform.tfvars` → `*.auto.tfvars` → `-var` / `-var-file` on the command line (later flags win). Short version: "command-line flags win, defaults lose" |
+| `locals` vs `variables` | Variables are inputs from outside. Locals are computed values inside the module |
+| `lifecycle` | `create_before_destroy` (zero-downtime replace), `prevent_destroy` (protect a prod DB), `ignore_changes = [tags, desired_count]` (ignore values changed by other systems, e.g. ASG scaling) |
+| `depends_on` | Explicit ordering when Terraform can't see the dependency from references |
+| Environments | Separate directories or state per env (`envs/dev`, `envs/prod`, sharing modules), or workspaces. Separate **accounts** per env is best (your 9 Oct answer) |
+| Secrets | Never hard-code them. Use `sensitive = true` on variables and outputs, read them from Secrets Manager/SSM with a data source, keep state encrypted and access-restricted |
+| Drift | Someone changed it in the console → `plan -refresh-only` shows it → either `apply` to revert, or update the code. Prevent it: changes only through the pipeline, read-only console access, AWS Config |
+| Provisioners | `local-exec` / `remote-exec` are a last resort. Prefer user data, cloud-init, Ansible or a baked AMI |
+| Terraform in CI/CD | On a PR: `fmt -check`, `validate`, `tflint`, `tfsec`/`checkov`, `plan`, with the plan posted to the PR. After merge: `apply` the reviewed plan with an IAM role (OIDC), never long-lived keys |
+| Read another stack's outputs | `terraform_remote_state` data source, or better, SSM parameters / data sources |
+| Terraform vs CloudFormation | Terraform is multi-cloud and multi-provider (Kubernetes, Helm, Datadog), and you manage state yourself. CloudFormation is AWS-only, AWS manages its state, and it rolls back automatically |
+
+### Example: a for_each security group (be able to write something like this)
+```hcl
+variable "ingress_ports" {
+  type    = map(string)
+  default = { https = "443", http = "80" }
+}
+
+resource "aws_security_group" "web" {
+  name   = "web-sg"
+  vpc_id = var.vpc_id
+}
+
+resource "aws_vpc_security_group_ingress_rule" "web" {
+  for_each          = var.ingress_ports
+  security_group_id = aws_security_group.web.id
+  cidr_ipv4         = "0.0.0.0/0"
+  from_port         = tonumber(each.value)
+  to_port           = tonumber(each.value)
+  ip_protocol       = "tcp"
+  description       = each.key
+}
+
+output "web_sg_id" { value = aws_security_group.web.id }
+```
+
+### Terraform troubleshooting scenarios
+
+| Problem | What you do |
+|---|---|
+| `Error acquiring the state lock` | Check whether a pipeline or colleague is running. If it's a stale lock from a crash: `terraform force-unlock <ID>` |
+| Plan wants to **destroy and recreate** something important | Read why (`# forces replacement`): e.g. a changed name, AZ or subnet. Use `moved {}` for renames, `ignore_changes`, or `prevent_destroy` on critical resources |
+| Resource exists in AWS but not in state ("already exists") | `import` it, then match the code until `plan` shows no changes |
+| State lost or corrupted | Restore the previous version from the **S3 bucket versioning**. That's why versioning is on |
+| `AccessDenied` / `UnauthorizedOperation` | `aws sts get-caller-identity`: wrong profile or role? Missing IAM permission (decode the message with `aws sts decode-authorization-message`) |
+| Provider version broke something | Pin versions, commit `.terraform.lock.hcl`, upgrade deliberately with `init -upgrade` |
+| Need more detail | `TF_LOG=DEBUG terraform plan` |
+
+**Your story:** "At Perfios I wrote modular Terraform for EC2, RDS, Route 53, ELB, Auto Scaling and VPC across environments. At Koko I provisioned and managed the EKS clusters with Terraform. State was remote in S3 with locking, and changes went through plan review before apply."
+
+---
+
+## 5c. Kubernetes / EKS (HR said to prepare it)
+
+### Must-know 1: architecture
+- **Control plane** (on EKS, managed by AWS across 3 AZs):
+  - **kube-apiserver:** the front door. It handles authentication, authorisation and admission, and is the only component that talks to etcd.
+  - **etcd:** cluster state.
+  - **scheduler:** picks a node for each pod (filter, then score).
+  - **controller-manager:** control loops (Deployment, ReplicaSet, Node, endpoints).
+  - **cloud-controller-manager.**
+- **Worker node:** **kubelet** (runs pods, reports status), **kube-proxy** (Service rules via iptables/IPVS), **containerd** (runtime), **VPC CNI** (`aws-node`, gives pods real VPC IPs).
+
+### Must-know 2: what happens after `kubectl apply` (the 11 Nov question)
+1. The API server authenticates, authorises and runs admission, then saves the object to **etcd**.
+2. The Deployment controller creates a ReplicaSet, which creates the Pods.
+3. The **scheduler** binds each pod to a node.
+4. The **kubelet** asks **containerd** to pull the image and create the sandbox. The **CNI** assigns the IP, and volumes are mounted.
+5. Init containers run, then the app containers.
+6. **Probes** pass, so the pod is **Ready** and gets added to the Service **endpoints**. kube-proxy routes traffic to it.
+
+### EKS-specific (this is what an AWS role will ask)
+
+| Topic | What to say |
+|---|---|
+| **Node options** | Managed node groups (EC2 in an ASG, AWS handles the AMI and draining), **Karpenter** (launches the right-sized instance per pending pod, faster, no ASG), Fargate (serverless pods, no DaemonSets), EKS Auto Mode |
+| **VPC CNI** | Every pod gets a **VPC IP** from the subnet, so **pod density is limited by ENIs/IPs per instance**, and subnets can run out of IPs. Fixes: bigger subnets (/20 or more), **prefix delegation**, custom networking with a secondary CIDR (100.64.0.0/10) |
+| **Exposing apps** | **AWS Load Balancer Controller**: an `Ingress` creates an **ALB**, a `Service type: LoadBalancer` creates an **NLB**. Subnets must be tagged: `kubernetes.io/role/elb=1` (public) and `kubernetes.io/role/internal-elb=1` (private). Target type `ip` sends traffic straight to pod IPs |
+| **Pod access to AWS (no keys)** | **IRSA**: the service account annotation `eks.amazonaws.com/role-arn`, plus an IAM role whose trust policy trusts the cluster's **OIDC provider**. Newer: **EKS Pod Identity** (an agent add-on and an association, no OIDC trust setup) |
+| **Cluster access for people** | Old: the `aws-auth` ConfigMap maps IAM roles to Kubernetes groups. New: **EKS access entries** (API-managed, with access policies). `aws eks update-kubeconfig --name <cluster>` writes your kubeconfig |
+| **Secrets** | Secrets Manager / SSM via the **Secrets Store CSI driver** or External Secrets Operator (your Koko resume: Secrets Manager integrated with Kubernetes) |
+| **Storage** | **EBS CSI driver** (gp3 StorageClass). EBS volumes are **tied to one AZ**, so a pod with an EBS PVC must run in that AZ. EFS for ReadWriteMany |
+| **Upgrades** (on your resume) | **One minor version at a time** (1.29 → 1.30). Order: check deprecated APIs (`kubectl convert`, pluto), upgrade the control plane, then add-ons (VPC CNI, CoreDNS, kube-proxy, EBS CSI), then nodes (managed node group rolling update, or Karpenter drift). Use PodDisruptionBudgets to keep apps up. Test in dev and UAT first |
+| **Logging/monitoring** | Control-plane logs to CloudWatch (api, audit, authenticator); Container Insights; Prometheus + Grafana (your federated setup) |
+
+### EKS troubleshooting scenarios
+
+| Problem | Checks |
+|---|---|
+| **Nodes don't join the cluster** | Node IAM role has `AmazonEKSWorkerNodePolicy`, `AmazonEKS_CNI_Policy` and `AmazonEC2ContainerRegistryReadOnly`; role mapped in `aws-auth` or an access entry; node SG can reach the control plane (443); private subnets have a route to the EKS/ECR/S3 endpoints or a NAT; correct AMI for the version; kubelet logs on the node (`journalctl -u kubelet`) |
+| **Pods Pending** | `kubectl describe pod`: `Insufficient cpu/memory` (scale nodes, Karpenter, lower requests); taints/affinity; **`failed to assign an IP address`** (subnet out of IPs, max pods per node); PVC in another AZ |
+| **ImagePullBackOff from ECR** | Node role has ECR read permission; image tag exists in that region/account; route to ECR (NAT or the ECR API + DKR + S3 endpoints) |
+| **Ingress created but no ALB** | AWS LB Controller logs: `kubectl logs -n kube-system deploy/aws-load-balancer-controller`; controller IAM role (IRSA); subnet tags; `ingressClassName: alb`; annotations (`alb.ingress.kubernetes.io/scheme: internet-facing`) |
+| **ALB 502/503 to pods** | Target group health (pod readiness, health check path), pod SG / node SG allows traffic from the ALB SG, `targetPort` matches the container port (scenarios S3–S4 above) |
+| **Pod gets AccessDenied calling S3** | `kubectl describe sa <sa>` shows the role annotation? Pod restarted after the annotation was added? IAM role trust policy has the right OIDC provider **and** `system:serviceaccount:<ns>:<sa>`? Role policy allows the action? Check with `aws sts get-caller-identity` from inside the pod |
+| **CrashLoopBackOff / OOMKilled** | `kubectl logs --previous`; `describe` shows the exit code (137 = OOM); raise memory limits or fix the leak; check that config and secrets exist |
+| **Service has no endpoints** | Selector doesn't match pod labels, or pods aren't Ready: `kubectl get endpoints <svc>`, `kubectl get pods --show-labels` |
+| **kubectl: "You must be logged in" / Unauthorized** | `aws sts get-caller-identity` (right role?), `aws eks update-kubeconfig`, your IAM principal in `aws-auth` / access entries |
+| **DNS fails inside pods** | CoreDNS pods running (`kubectl get pods -n kube-system -l k8s-app=kube-dns`)? Node SG allows UDP/TCP 53 between nodes? Test with `nslookup kubernetes.default` from a busybox pod |
+
+**Commands to know cold:**
+```bash
+aws eks update-kubeconfig --name prod-eks --region ap-south-1
+kubectl get nodes -o wide ; kubectl get pods -A -o wide
+kubectl describe pod <pod> -n <ns>          # Events explain Pending / pull / probe / OOM
+kubectl logs <pod> -n <ns> --previous
+kubectl get events -n <ns> --sort-by=.lastTimestamp
+kubectl get svc,endpoints,ingress -n <ns>
+kubectl rollout status|history|undo deploy/<name> -n <ns>
+kubectl top pods -n <ns> ; kubectl top nodes
+kubectl auth can-i list pods --as=system:serviceaccount:<ns>:<sa>
+```
+
+**Your stories:**
+- **Docker Swarm → EKS migration** at Koko: the environments (Dev, UAT, Prod-Int, Prod), built with Terraform, right-sizing (20–30% cost cut).
+- **EKS upgrades.**
+- **Federated Prometheus** across clusters.
+- **Secrets Manager integration.**
 
 ## 6. Your answers for this role
 
@@ -217,3 +390,10 @@ In order: version, account, ENI, **source IP**, **destination IP**, source port,
 10. What is DHCP DORA, and what is a DHCP option set in AWS?
 11. Why is Terraform state remote and locked? How do you fix a stuck lock?
 12. How do you monitor memory on EC2?
+13. `count` vs `for_each`: why does it matter?
+14. Your plan says "forces replacement" on a production resource. What do you do?
+15. What happens after `kubectl apply`, in 6 steps?
+16. A pod on EKS gets AccessDenied calling S3. Walk me through it.
+17. An Ingress was created but no ALB appeared. What do you check?
+18. Pods are Pending with "failed to assign an IP address". Why, and how do you fix it?
+19. How do you upgrade an EKS cluster safely?
