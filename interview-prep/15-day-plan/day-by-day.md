@@ -24,7 +24,7 @@ Lesson: [day-01-linux-text-sql-basics.md](day-01-linux-text-sql-basics.md)
 **Study material**
 - 📖 Read: [Linux Journey](https://linuxjourney.com/): the "Text-Fu" and "Permissions" lessons · [The Linux Command Line (free book)](https://linuxcommand.org/tlcl.php): chapters 9 (Permissions), 17 (Searching for Files), 19 (Regular Expressions), 20 (Text Processing: sed)
 - 🎥 Watch (Block 1, first 45 min only): search YouTube for *"grep sed awk tutorial"* by **Abhishek Veeramalla** (Hinglish) or *"Linux Crash Course - The grep Command"* by **Learn Linux TV**
-- 🛠 Practise: [OverTheWire Bandit](https://overthewire.org/wargames/bandit/) levels 0–6 (in the evening, optional)
+- 🛠 Practise: [grep: one example per flag](grep-every-flag.md) · [OverTheWire Bandit](https://overthewire.org/wargames/bandit/) levels 0–6 (in the evening, optional)
 - 🗄 SQL: [SQLBolt](https://sqlbolt.com/) lessons 1–5 · [Day 1 lesson, Part C](day-01-linux-text-sql-basics.md)
 
 - [ ] Setup: Ubuntu container, `bash make-logs.sh`
