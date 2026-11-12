@@ -8,7 +8,7 @@ Nobody gains five years of experience in 15 days. What **is** possible in 15 day
 
 1. **Zero misses on basics.** Every grep/sed/find/awk, INSERT/UPDATE/DELETE/JOIN, pod-startup or VPC question that comes up, you answer from memory.
 2. **Your real five years told well.** An intro, 5 STAR stories and every number on your resume, defended without notes.
-3. **Deep understanding of your 10 topics:** Linux, networking, scripting, Python, Git, Docker, Kubernetes, CI/CD, Terraform, monitoring, plus daily SQL. You'll be able to explain *why*, not only *what*.
+3. **Deep understanding of 12 topics:** Linux, networking, scripting, Python, Git, Docker, Kubernetes, CI/CD, Terraform, monitoring, **SQL** (daily track) and **AWS** (a track across days 4–14). You'll be able to explain *why*, not only *what*.
 
 Interviewers judge "5+ years" by depth on basics and by how clearly you explain real incidents. Both can be trained.
 
@@ -37,7 +37,7 @@ Interviewers judge "5+ years" by depth on basics and by how clearly you explain 
 | 17:30–18:00 | **Own-words summary** | 5–10 lines in your own words: what you learned and what's still unclear |
 | Evening | Rest | Optional 20 min: re-read `misses.md` |
 
-## The 15 days (your 10 topics)
+## The 15 days (your 10 topics + SQL and AWS)
 
 Every day has one **main topic** (Block 1 + Block 2) and the same **4 PM slot**: 45 min of SQL plus 15 min of review on yesterday's topic. SQL stays daily because it was your weakest area on 11 Nov and app-support/SRE interviews keep asking it.
 
@@ -60,6 +60,46 @@ Every day has one **main topic** (Block 1 + Block 2) and the same **4 PM slot**:
 | **15** | Thu 26 Nov | **Mocks + repair** | **Mock 2:** SRE/app-support style. **Mock 3:** DevOps/Kubernetes style (Claude as interviewer) | Repair weak spots from `misses.md`; rehearse intro + stories; rest early | n/a | Score ≥ 8/10 on each mock |
 
 **Why this order:** Linux and networking come first because everything else runs on them. Scripting and Python build on Linux. Git comes before Docker, Kubernetes and CI/CD because pipelines start from Git. Kubernetes gets 3 days because it's your strongest claim on the resume and where you rated yourself highest. Terraform and monitoring come late but are your resume's home ground, so they need recall, not first-time learning.
+
+## SQL track (every day, 16:00–16:45)
+
+| Day | SQL topic | Practice |
+|---|---|---|
+| 1 | Command families (DDL/DML/DQL/DCL/TCL), SELECT, WHERE, ORDER BY, LIMIT, LIKE, IN, BETWEEN, NULL; INSERT/UPDATE/DELETE safely | [Day 1 lesson, Part C](day-01-linux-text-sql-basics.md), SQLBolt 1–5 |
+| 2 | Aggregates: COUNT, SUM, AVG, MIN, MAX, DISTINCT; GROUP BY, HAVING; WHERE vs HAVING | SQLBolt 10–11 |
+| 3 | JOINs: INNER, LEFT, RIGHT, FULL, self join; "rows missing in the other table" | SQLBolt 6–9 |
+| 4 | Subqueries (IN, EXISTS, correlated), CASE, string and date functions | 5 LeetCode SQL 50 |
+| 5 | DDL: CREATE/ALTER/DROP, constraints (PK, FK, UNIQUE, NOT NULL, CHECK), DELETE vs TRUNCATE vs DROP | Build a 3-table schema yourself |
+| 6 | Window functions: ROW_NUMBER, RANK, DENSE_RANK, LAG/LEAD; dedupe and "Nth highest salary" | 5 LeetCode |
+| 7 | **Mock 1 includes SQL**; redo misses | Mock |
+| 8 | Transactions and ACID, isolation levels, locks and deadlocks; COMMIT/ROLLBACK/SAVEPOINT | Run two sqlite sessions and see the lock |
+| 9 | Indexes: how they work, when they help or hurt, `EXPLAIN` / execution plans, slow-query troubleshooting | `EXPLAIN QUERY PLAN` before/after an index |
+| 10 | Data validation for support work: duplicates, NULLs in mandatory columns, source vs target counts, missing rows, daily load checks | NiCE cheat sheet, section 7 queries |
+| 11 | Users and permissions (GRANT/REVOKE), backups (`mysqldump`, `pg_dump`), restore, RDS snapshots and point-in-time recovery | Dump and restore a sqlite/MySQL DB |
+| 12 | MySQL vs PostgreSQL basics, connection pooling, replication (primary/replica), RDS Multi-AZ vs read replicas | Notes in your own words |
+| 13 | 5 LeetCode medium | LeetCode |
+| 14 | 5 LeetCode medium + explain each query out loud | LeetCode |
+| 15 | Rapid-fire SQL in mocks | Mock |
+
+## AWS track (where each service is covered)
+
+| Day | AWS topic | Why it's on that day |
+|---|---|---|
+| 4 | **VPC**: subnets, route tables, IGW, NAT GW, SG vs NACL, VPC endpoints, peering vs Transit Gateway; **ELB**: ALB vs NLB; **Route 53**: record types, routing policies (simple, weighted, latency, failover) | Networking II |
+| 6 | **boto3** basics; **IAM**: users, groups, roles, policies (JSON structure, least privilege), instance profiles, AssumeRole | Python for automation |
+| 8 | **ECR**: push/pull images, lifecycle policies, image scanning | Docker |
+| 10 | **EKS**: managed node groups vs Karpenter, VPC CNI and IP exhaustion, IRSA / Pod Identity, AWS Load Balancer Controller, EBS CSI | Kubernetes II |
+| 12 | **CodePipeline/CodeDeploy** at concept level, Secrets Manager / Parameter Store in pipelines | CI/CD |
+| 13 | **EC2** (instance types, AMI, user data, Auto Scaling groups, launch templates), **S3** (storage classes, lifecycle, versioning, bucket policies, encryption), **RDS** (Multi-AZ, read replicas, backups), **IAM Identity Center**, Terraform for all of it | Terraform + AWS |
+| 14 | **CloudWatch** (metrics, logs, alarms, Logs Insights), **CloudTrail**, Cost Explorer / CUR / QuickSight (your FinOps story), Well-Architected pillars | Monitoring |
+
+**AWS questions to be able to answer by Day 14:**
+- How does a request reach a pod in a private subnet on EKS?
+- How does a private instance reach the internet?
+- What is the difference between a security group and a NACL?
+- How do you give a pod S3 access without keys?
+- What's in your Terraform state, and why is it remote and locked?
+- How did you cut EKS cost by 30%?
 
 ## Resources (use only these, so you don't drift)
 
