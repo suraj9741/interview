@@ -2,6 +2,8 @@
 
 Built after the [11 Nov NiCE interview review](../interview-review-nov-11-nice.md). Full days, for a slow learner.
 
+**Daily checklist (start here every morning):** [day-by-day.md](day-by-day.md)
+
 ## The honest goal
 
 Nobody gains five years of experience in 15 days. What **is** possible in 15 days:
