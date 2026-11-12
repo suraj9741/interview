@@ -24,7 +24,8 @@ mkdir -p ~/practice && cd ~/practice
 # copy labs/make-logs.sh and labs/day01.sql from this repo folder into ~/practice, then:
 docker run -it --rm -v "$PWD":/work -w /work ubuntu:24.04 bash
 # inside the container:
-apt-get update -qq && apt-get install -y -qq sqlite3 less vim >/dev/null
+export DEBIAN_FRONTEND=noninteractive     # never stop to ask questions (e.g. tzdata time zone)
+apt-get update -qq && apt-get install -y sqlite3 less
 bash make-logs.sh          # creates ./lab with app.log (600 lines), access.log (1000 lines), configs/, old/
 cd lab
 ```
