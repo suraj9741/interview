@@ -21,7 +21,7 @@ Interviewers judge "5+ years" by depth on basics and by how clearly you explain 
 - **Explain it in your own words:** first in Hinglish, then in English, out loud, as if teaching a junior. If you get stuck, that's the gap. Go back to it.
 - **Spaced repetition:** every morning starts by re-testing yesterday's material. Each day's topics come back on day +1, +3 and +7.
 - **Write commands by hand or type them, never copy-paste.**
-- **No new topics after Day 12.** Days 13–15 are for stories, mocks and repairing weak spots.
+- **Days 13–14 are recall, not first-time learning.** Terraform and monitoring are on your resume already. Day 15 is only mocks and repair, with no new topics.
 - **Sleep 7+ hours.** Memory gets fixed during sleep, and cutting it undoes the day.
 
 ## Daily timetable (about 8 hours)
