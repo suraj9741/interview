@@ -20,11 +20,13 @@ The Instagram handbook's version skips etcd, the controllers and the network set
 6. **Deployment controller** (in the controller manager) sees the new Deployment and creates a **ReplicaSet**.
 7. **ReplicaSet controller** sees "3 wanted, 0 exist" and creates **3 Pod objects**. They have **no node** yet, so they show as `Pending`.
 8. **Scheduler** sees unscheduled pods. For each one it **filters** nodes (enough requested CPU and memory? taints? affinity? volume zone?), **scores** the rest, and **binds** the pod to the best node by setting `spec.nodeName`.
-9. **kubelet** on that node sees a pod assigned to it, and through the **CRI** asks containerd to:
+9. **kubelet** on that node sees a pod assigned to it, mounts its **volumes** (Secrets, ConfigMaps, PVCs), and through the **CRI** asks containerd to:
    1. create the **pod sandbox** (a tiny "pause" container that holds the pod's network namespace);
    2. call the **CNI plugin**, which **assigns the pod IP** and connects the network;
    3. **pull the image(s)**;
-   4. run the **init containers** in order, then start the **app containers** (and sidecars).
+   4. run the **init containers** in order, then start the **app containers** (and sidecars); the `postStart` hook runs.
+
+   The node-side steps are zoomed in, with the failure status for each, in [05 · What happens when a pod starts](05-pods.md#what-happens-when-a-pod-starts--the-question-missed-on-11-nov).
 10. **kubelet** runs the **startup, liveness and readiness probes**, and reports the pod's status to the API server.
 11. **When the pod is Ready:** the EndpointSlice controller adds its IP to the Service's **EndpointSlice**, and **kube-proxy** on every node updates its rules. **Traffic now reaches the pod.**
 
