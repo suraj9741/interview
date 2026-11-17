@@ -1,4 +1,4 @@
-# Day 1 · Thu 12 Nov · Linux text tools I + files/permissions + SQL basics
+# Day 1 · Tue 17 Nov (restart; first started Thu 12 Nov) · Linux text tools I + files/permissions + SQL basics
 
 ![Pipelines and permissions](diagrams/d1-pipeline-and-permissions.drawio.svg)
 

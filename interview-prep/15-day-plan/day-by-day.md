@@ -13,11 +13,11 @@ Every day has the same shape. Open today's section only, work top to bottom, and
 | 16:00–16:45 | SQL |
 | 16:45–17:00 | AWS slot (on days that have one) or review |
 | 17:00–17:30 | Send "Day N quiz" in the thread |
-| 17:30–18:00 | Own-words summary + add misses to `misses.md` |
+| 17:30–18:00 | Own-words summary + add misses to `misses.md` + record one 60-second spoken answer and count the fillers |
 
 ---
 
-## Day 1 · Thu 12 Nov · Linux I
+## Day 1 · Tue 17 Nov · Linux I
 
 Lesson: [day-01-linux-text-sql-basics.md](day-01-linux-text-sql-basics.md)
 
@@ -27,6 +27,7 @@ Lesson: [day-01-linux-text-sql-basics.md](day-01-linux-text-sql-basics.md)
 - 🛠 Practise: [grep: one example per flag](grep-every-flag.md) · [OverTheWire Bandit](https://overthewire.org/wargames/bandit/) levels 0–6 (in the evening, optional)
 - 🗄 SQL: [SQLBolt](https://sqlbolt.com/) lessons 1–5 · [Day 1 lesson, Part C](day-01-linux-text-sql-basics.md)
 
+- [ ] **Restart (17 Nov):** [restart recall test](restart-recall-test.md), 20 min typed, then write misses into `misses.md`. Part A was done on 12 Nov; redo its labs only if you score under 5 on the Linux section
 - [ ] Setup: Ubuntu container, `bash make-logs.sh`
 - [ ] **Block 1:** grep (all flags, `-E` for OR), pipes and redirects (`|`, `>`, `>>`, `2>`, `&&`), find (`-name`, `-mtime +N`, `-size`, `-exec`, `-delete`), sed (`s///g`, `-i.bak`, `-n 'p'`, `/d`)
 - [ ] **Block 2:** reading `ls -l`, chmod numbers (644/755/600/640), chown, users and groups (`usermod -aG`), the permission break/fix lab
@@ -34,7 +35,7 @@ Lesson: [day-01-linux-text-sql-basics.md](day-01-linux-text-sql-basics.md)
 - [ ] **Quiz** + summary
 - **Done when:** you can write the 25 drill answers from memory
 
-## Day 2 · Fri 13 Nov · Linux II
+## Day 2 · Wed 18 Nov · Linux II
 
 **Study material**
 - 📖 Read: The Linux Command Line, chapters 10 (Processes) and 16 (Storage Media) · `man systemctl`, `man journalctl` (only the EXAMPLES sections) · [Brendan Gregg: USE method](https://www.brendangregg.com/usemethod.html) · [awk in 20 minutes](https://ferd.ca/awk-in-20-minutes.html)
@@ -50,7 +51,7 @@ Lesson: [day-01-linux-text-sql-basics.md](day-01-linux-text-sql-basics.md)
 - [ ] **Quiz** + summary
 - **Done when:** you can talk through "the server is slow" step by step, and write top-IPs and errors-per-hour one-liners
 
-## Day 3 · Sat 14 Nov · Networking I
+## Day 3 · Thu 19 Nov · Networking I
 
 **Study material**
 - 📖 Read: [Cloudflare Learning Center](https://www.cloudflare.com/learning/): "What is DNS?", "What is the OSI model?", "What happens in a TLS handshake?", "What is TCP/IP?" · [MDN: HTTP response status codes](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status) · your repo: `../networking/` levels 1–3
@@ -66,7 +67,7 @@ Lesson: [day-01-linux-text-sql-basics.md](day-01-linux-text-sql-basics.md)
 - [ ] **Quiz** + summary
 - **Done when:** you can split 10.0.0.0/16 into /20s by hand, and explain "what happens when I type a URL" in 3 minutes
 
-## Day 4 · Sun 15 Nov · Networking II + AWS networking
+## Day 4 · Fri 20 Nov · Networking II + AWS networking
 
 **Study material**
 - 📖 Read: [AWS VPC: how Amazon VPC works](https://docs.aws.amazon.com/vpc/latest/userguide/how-it-works.html) · [Security groups vs NACLs (AWS docs)](https://docs.aws.amazon.com/vpc/latest/userguide/infrastructure-security.html) · [Elastic Load Balancing: ALB vs NLB](https://aws.amazon.com/elasticloadbalancing/features/) · [Route 53 routing policies](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy.html) · [NGINX beginner's guide](https://nginx.org/en/docs/beginners_guide.html) · your repo diagrams `../diagrams/r1…r6` (9 Oct review)
@@ -81,7 +82,7 @@ Lesson: [day-01-linux-text-sql-basics.md](day-01-linux-text-sql-basics.md)
 - [ ] **Quiz** + summary
 - **Done when:** you can draw a 3-tier VPC with traffic flow from memory, and explain 502 vs 504
 
-## Day 5 · Mon 16 Nov · Bash scripting & automation
+## Day 5 · Sat 21 Nov · Bash scripting & automation
 
 **Study material**
 - 📖 Read: [BashGuide (Greg's wiki)](https://mywiki.wooledge.org/BashGuide): sections on parameters, tests and conditionals, loops · [Bash pitfalls](https://mywiki.wooledge.org/BashPitfalls) (first 15) · check every script with [ShellCheck](https://www.shellcheck.net/) · [crontab.guru](https://crontab.guru/)
@@ -101,7 +102,7 @@ Lesson: [day-01-linux-text-sql-basics.md](day-01-linux-text-sql-basics.md)
 - [ ] **Quiz** + summary
 - **Done when:** you can explain each script line by line, and write the disk-alert script from a blank file
 
-## Day 6 · Tue 17 Nov · Python for automation
+## Day 6 · Sun 22 Nov · Python for automation
 
 **Study material**
 - 📖 Read: [Automate the Boring Stuff with Python (free)](https://automatetheboringstuff.com/): chapters 1–6, 7 (regex), 9 (files) · [Python `subprocess` docs](https://docs.python.org/3/library/subprocess.html) (examples only) · [boto3 quickstart](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/quickstart.html) · [IAM policy elements](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements.html)
@@ -116,7 +117,7 @@ Lesson: [day-01-linux-text-sql-basics.md](day-01-linux-text-sql-basics.md)
 - [ ] **Quiz** + summary
 - **Done when:** you can write the log parser from a blank file, and read an IAM policy out loud
 
-## Day 7 · Wed 18 Nov · Git + Mock 1
+## Day 7 · Mon 23 Nov · Git + Mock 1
 
 **Study material**
 - 📖 Read: [Pro Git book (free)](https://git-scm.com/book/en/v2): chapters 2 (Basics) and 3 (Branching), plus 7.7 (Reset demystified) · [Atlassian: merging vs rebasing](https://www.atlassian.com/git/tutorials/merging-vs-rebasing)
@@ -132,7 +133,7 @@ Lesson: [day-01-linux-text-sql-basics.md](day-01-linux-text-sql-basics.md)
 - [ ] Summary + update `misses.md`
 - **Done when:** mock score ≥ 7/10, and you can explain when to use revert instead of reset
 
-## Day 8 · Thu 19 Nov · Docker
+## Day 8 · Tue 24 Nov · Docker
 
 **Study material**
 - 📖 Read: [Docker: Dockerfile best practices](https://docs.docker.com/build/building/best-practices/) · [Multi-stage builds](https://docs.docker.com/build/building/multi-stage/) · [Docker networking overview](https://docs.docker.com/engine/network/) · [Julia Evans: what even is a container](https://jvns.ca/blog/2016/10/10/what-even-is-a-container/) · [Amazon ECR getting started](https://docs.aws.amazon.com/AmazonECR/latest/userguide/getting-started-cli.html) · your repo `../docker/`
@@ -147,7 +148,7 @@ Lesson: [day-01-linux-text-sql-basics.md](day-01-linux-text-sql-basics.md)
 - [ ] **Quiz** + summary
 - **Done when:** you can explain how you cut image size by 30–40% (your resume claim) with your own example
 
-## Day 9 · Fri 20 Nov · Kubernetes I
+## Day 9 · Wed 25 Nov · Kubernetes I
 
 **Study material**
 - 📖 Read: [Kubernetes components](https://kubernetes.io/docs/concepts/overview/components/) · [Pod lifecycle](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/) · [Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/) · your repo `../kubernetes/` notes 01–05 and the `04-kubectl-apply-flow` diagram · [kind quick start](https://kind.sigs.k8s.io/docs/user/quick-start/)
@@ -161,7 +162,7 @@ Lesson: [day-01-linux-text-sql-basics.md](day-01-linux-text-sql-basics.md)
 - [ ] **Quiz** + summary
 - **Done when:** you can draw the architecture and explain pod startup in 2 minutes with no notes
 
-## Day 10 · Sat 21 Nov · Kubernetes II
+## Day 10 · Thu 26 Nov · Kubernetes II
 
 **Study material**
 - 📖 Read: [Services](https://kubernetes.io/docs/concepts/services-networking/service/) · [Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/) · [Configure liveness, readiness and startup probes](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/) · [Resource management](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/) · [HPA walkthrough](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/) · [EKS Best Practices Guide](https://docs.aws.amazon.com/eks/latest/best-practices/introduction.html) (networking + security sections)
@@ -176,7 +177,7 @@ Lesson: [day-01-linux-text-sql-basics.md](day-01-linux-text-sql-basics.md)
 - [ ] **Quiz** + summary
 - **Done when:** you can explain why a Service can have empty endpoints, and how a pod gets S3 access without keys
 
-## Day 11 · Sun 22 Nov · Kubernetes III: troubleshooting + Helm
+## Day 11 · Fri 27 Nov · Kubernetes III: troubleshooting + Helm
 
 **Study material**
 - 📖 Read: [learnk8s: A visual guide on troubleshooting Kubernetes deployments](https://learnk8s.io/troubleshooting-deployments) (print the flowchart) · NiCE cheat sheet, the Kubernetes troubleshooting table · [Helm quickstart](https://helm.sh/docs/intro/quickstart/)
@@ -191,7 +192,7 @@ Lesson: [day-01-linux-text-sql-basics.md](day-01-linux-text-sql-basics.md)
 - [ ] **Quiz** + summary
 - **Done when:** you've fixed 10 broken scenarios and can tell the migration story in 3 minutes
 
-## Day 12 · Mon 23 Nov · CI/CD
+## Day 12 · Sat 28 Nov · CI/CD
 
 **Study material**
 - 📖 Read: [GitHub Actions quickstart](https://docs.github.com/en/actions/writing-workflows/quickstart) · [Jenkins pipeline syntax](https://www.jenkins.io/doc/book/pipeline/syntax/) · [GitLab CI quick start](https://docs.gitlab.com/ci/quick_start/) · [Argo CD: core concepts](https://argo-cd.readthedocs.io/en/stable/core_concepts/) · NiCE cheat sheet, section 10 (deployment strategies)
@@ -207,7 +208,7 @@ Lesson: [day-01-linux-text-sql-basics.md](day-01-linux-text-sql-basics.md)
 - [ ] **Quiz** + summary
 - **Done when:** you can draw your Koko pipeline before and after ArgoCD, and explain canary vs blue-green
 
-## Day 13 · Tue 24 Nov · Terraform + AWS
+## Day 13 · Sun 29 Nov · Terraform + AWS
 
 **Study material**
 - 📖 Read: [HashiCorp tutorials: Get started on AWS](https://developer.hashicorp.com/terraform/tutorials/aws-get-started) (all of them) · [State](https://developer.hashicorp.com/terraform/language/state) · [S3 backend](https://developer.hashicorp.com/terraform/language/backend/s3) · [Modules](https://developer.hashicorp.com/terraform/language/modules) · [EC2 Auto Scaling groups](https://docs.aws.amazon.com/autoscaling/ec2/userguide/auto-scaling-groups.html) · [S3 storage classes](https://aws.amazon.com/s3/storage-classes/)
@@ -222,7 +223,7 @@ Lesson: [day-01-linux-text-sql-basics.md](day-01-linux-text-sql-basics.md)
 - [ ] **Quiz** + summary
 - **Done when:** you can explain what happens if two people run apply at once, and how you'd recover a corrupted state file
 
-## Day 14 · Wed 25 Nov · Monitoring & tools + your stories
+## Day 14 · Mon 30 Nov · Monitoring & tools + your stories
 
 **Study material**
 - 📖 Read: [Prometheus overview](https://prometheus.io/docs/introduction/overview/) · [Querying basics](https://prometheus.io/docs/prometheus/latest/querying/basics/) · [Histograms and summaries](https://prometheus.io/docs/practices/histograms/) · [Federation](https://prometheus.io/docs/prometheus/latest/federation/) · [Alertmanager](https://prometheus.io/docs/alerting/latest/alertmanager/) · [Google SRE book](https://sre.google/sre-book/table-of-contents/): chapters 4 (SLOs), 6 (Monitoring), 14 (Managing incidents), 15 (Postmortems) · NiCE cheat sheet sections 3, 4, 9
@@ -238,7 +239,7 @@ Lesson: [day-01-linux-text-sql-basics.md](day-01-linux-text-sql-basics.md)
 - [ ] **Quiz** + summary
 - **Done when:** you can explain your federated Prometheus design, calculate an error budget, and tell 5 stories without notes
 
-## Day 15 · Thu 26 Nov · Mock interviews + repair
+## Day 15 · Tue 1 Dec · Mock interviews + repair
 
 **Study material**
 - No new material. Use `misses.md`, your own-words summaries, the [11 Nov review](../interview-review-nov-11-nice.md) and the [NiCE cheat sheet](../nice-actimize-sre-cheatsheet.md) to repair weak spots.
