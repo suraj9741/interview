@@ -37,6 +37,8 @@ Lesson: [day-01-linux-text-sql-basics.md](day-01-linux-text-sql-basics.md)
 
 ## Day 2 · Wed 18 Nov · Linux II
 
+Lesson: [day-02-linux-processes-resources-sql-groupby.md](day-02-linux-processes-resources-sql-groupby.md)
+
 **Study material**
 - 📖 Read: The Linux Command Line, chapters 10 (Processes) and 16 (Storage Media) · `man systemctl`, `man journalctl` (only the EXAMPLES sections) · [Brendan Gregg: USE method](https://www.brendangregg.com/usemethod.html) · [awk in 20 minutes](https://ferd.ca/awk-in-20-minutes.html)
 - 🎥 Watch: search *"Linux Crash Course - systemd"* and *"Linux Crash Course - Managing Processes"* (**Learn Linux TV**) · *"Linux troubleshooting high CPU memory disk"* (**Abhishek Veeramalla**)

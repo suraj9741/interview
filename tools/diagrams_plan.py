@@ -41,7 +41,43 @@ def d1_pipeline():
     return d
 
 
-ALL = [d1_pipeline]
+def d2_slow_server():
+    d = Diagram("d2-slow-server-triage", 900, 600, "Day 2: \"the server is slow\": check in this order, then signals and systemd")
+    steps = [
+        ("load", "1 · Load\nuptime · nproc\nload > CPU count = queueing", "gray"),
+        ("cpu", "2 · CPU\ntop: us sy wa st\nps --sort=-%cpu", "blue"),
+        ("mem", "3 · Memory\nfree -h → available\ndmesg -T | grep -i oom", "purple"),
+        ("disk", "4 · Disk space\ndf -h · df -i (inodes)\ndu -sh · lsof +L1", "yellow"),
+        ("io", "5 · Disk I/O\ntop wa · vmstat 1\niostat -xz 1 (%util, await)", "orange"),
+        ("logs", "6 · Logs + network\njournalctl -u app --since\nss -tulpn · ss -s", "green"),
+    ]
+    for i, (sid, label, col) in enumerate(steps):
+        x = 20 + (i % 3) * 293
+        y = 55 + (i // 3) * 105
+        d.box(sid, x, y, 275, 85, label, col, size=11)
+    for a, b in [("load", "cpu"), ("cpu", "mem"), ("disk", "io"), ("io", "logs")]:
+        d.edge(a, b)
+    d.edge("mem", "disk", points=[(744, 150), (157, 150)])
+    d.text("hint", 20, 250, 860, 40,
+           "High load + low CPU + high wa = waiting on disk (D state). df full but du small = deleted file still open.\n"
+           "\"No space left\" but df shows space = inodes full (df -i). Process vanished, no app log = OOM killer (dmesg).", size=11)
+    d.group("sig", 20, 305, 420, 275, "Signals: kill -<n> PID", "white", size=12)
+    d.box("s15", 35, 340, 390, 50, "15 SIGTERM (default kill): ask to stop, app cleans up\nexit code 128+15 = 143", "green", size=10)
+    d.box("s9", 35, 398, 390, 50, "9 SIGKILL: kernel kills at once, can't be caught\nexit code 128+9 = 137 (also OOMKilled)", "red", size=10)
+    d.box("s1", 35, 456, 390, 50, "1 SIGHUP: reload config (nginx, rsyslog)\n2 SIGINT = Ctrl+C · Ctrl+Z = SIGTSTP (stop)", "yellow", size=10)
+    d.text("srule", 35, 515, 390, 55, "Always 15 first, wait, then 9.\nA zombie (Z) can't be killed: fix or restart its parent.", size=11)
+    d.group("sysd", 460, 305, 420, 275, "systemd: run and watch a service", "white", size=12)
+    d.box("unit", 475, 340, 390, 50, "/etc/systemd/system/myapp.service\n[Unit] · [Service] ExecStart, Restart · [Install]", "blue", size=10)
+    d.box("reload", 475, 410, 390, 40, "systemctl daemon-reload  (after every edit)", "gray", size=11, bold_first=False)
+    d.box("start", 475, 470, 390, 40, "systemctl enable --now myapp · status · restart", "purple", size=11, bold_first=False)
+    d.box("jctl", 475, 530, 390, 40, "journalctl -u myapp -f --since \"10 min ago\" -p err", "green", size=11, bold_first=False)
+    d.edge("unit", "reload")
+    d.edge("reload", "start")
+    d.edge("start", "jctl")
+    return d
+
+
+ALL = [d1_pipeline, d2_slow_server]
 
 if __name__ == "__main__":
     force = "--force" in sys.argv

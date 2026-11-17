@@ -438,4 +438,4 @@ Answer in 5–10 lines, in your notebook:
 5. Why must I never write `= NULL`?
 6. What do I always do before an UPDATE or DELETE in production?
 
-**Tomorrow (Day 2):** awk, sort, uniq, cut, xargs, a log analysis lab, and SQL GROUP BY/HAVING. Day 1's drill comes back at 9 AM.
+**Tomorrow (Day 2):** processes, signals, systemd, journalctl, cron, logrotate, CPU/memory/disk troubleshooting, awk, sort, uniq, cut, xargs, a log analysis lab, and SQL GROUP BY/HAVING ([Day 2 lesson](day-02-linux-processes-resources-sql-groupby.md)). Day 1's drill comes back at 9 AM.
