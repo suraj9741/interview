@@ -108,13 +108,13 @@ Every day has one **main topic** (Block 1 + Block 2) and the same **4 PM slot**:
 
 ## Resources (use only these, so you don't drift)
 
-- **Linux practice:** your own terminal (Mac Terminal works; use Docker `ubuntu:24.04` for Linux-only commands) and [OverTheWire Bandit](https://overthewire.org/wargames/bandit/) levels 0–15.
-- **SQL:** [SQLBolt](https://sqlbolt.com/) (days 1–3), then [LeetCode SQL 50](https://leetcode.com/studyplan/top-sql-50/). Local practice: `sqlite3`, which comes built into macOS.
+- **Linux practice:** your own Ubuntu terminal (labs run natively; anything that needs `sudo` uses throwaway names like `lab-myapp` and ends with a clean-up block) and [OverTheWire Bandit](https://overthewire.org/wargames/bandit/) levels 0–15. Optional zero-risk sandbox: the Killercoda Ubuntu playground.
+- **SQL:** [SQLBolt](https://sqlbolt.com/) (days 1–3), then [LeetCode SQL 50](https://leetcode.com/studyplan/top-sql-50/). Local practice: `sqlite3` (`sudo apt-get install -y sqlite3` on Ubuntu; it's built into macOS).
 - **Git:** [Learn Git Branching](https://learngitbranching.js.org/) (visual, great for merge/rebase).
 - **Docker:** Docker docs, the "Dockerfile best practices" and "multi-stage builds" pages; your repo notes in `../docker/`.
 - **Terraform:** HashiCorp tutorials "Get Started - AWS" and "State".
 - **Python:** your own scripts. Use only the docs for `re`, `json`, `subprocess`, `argparse`.
-- **Kubernetes:** `kind` on Docker Desktop, [Killercoda](https://killercoda.com/) scenarios, and your own repo notes in `../kubernetes/`.
+- **Kubernetes:** `kind` on Docker Engine (`sudo apt-get install -y docker.io`, or Docker's own apt repo), [Killercoda](https://killercoda.com/) scenarios, and your own repo notes in `../kubernetes/`.
 - **AWS:** your repo notes and diagrams (`../diagrams/r1…r6`) from the 9 Oct review.
 - **SRE:** Google SRE book, chapters 4 (SLOs) and 6 (Monitoring), free at sre.google/books.
 - **This repo:** [NiCE cheat sheet](../nice-actimize-sre-cheatsheet.md) for reference tables. **Don't read it as study material.** Use it to look things up while doing labs.

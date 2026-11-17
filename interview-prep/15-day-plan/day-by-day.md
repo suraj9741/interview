@@ -28,7 +28,7 @@ Lesson: [day-01-linux-text-sql-basics.md](day-01-linux-text-sql-basics.md)
 - 🗄 SQL: [SQLBolt](https://sqlbolt.com/) lessons 1–5 · [Day 1 lesson, Part C](day-01-linux-text-sql-basics.md)
 
 - [ ] **Restart (17 Nov):** [restart recall test](restart-recall-test.md), 20 min typed, then write misses into `misses.md`. Part A was done on 12 Nov; redo its labs only if you score under 5 on the Linux section
-- [ ] Setup: Ubuntu container, `bash make-logs.sh`
+- [ ] Setup on your Ubuntu machine: `sudo apt-get install -y sqlite3`, then `bash make-logs.sh` in `~/practice`
 - [ ] **Block 1:** grep (all flags, `-E` for OR), pipes and redirects (`|`, `>`, `>>`, `2>`, `&&`), find (`-name`, `-mtime +N`, `-size`, `-exec`, `-delete`), sed (`s///g`, `-i.bak`, `-n 'p'`, `/d`)
 - [ ] **Block 2:** reading `ls -l`, chmod numbers (644/755/600/640), chown, users and groups (`usermod -aG`), the permission break/fix lab
 - [ ] **SQL:** command families, SELECT/WHERE/ORDER BY/LIMIT/LIKE/IN/BETWEEN, NULL trap, safe INSERT/UPDATE/DELETE, DELETE vs TRUNCATE vs DROP

@@ -18,24 +18,20 @@
 
 ## Setup (15 min)
 
-Today needs **systemd** and **journalctl**, and a Docker container doesn't run systemd. So use a real Linux VM in the browser:
-
-- **First choice: Killercoda Ubuntu playground** (free, browser-based, you're root, systemd works). Go to killercoda.com → Playgrounds → Ubuntu. A session lasts about an hour, so restart it when it expires; your lab files are lost, so re-run `make-logs.sh`.
-- **Fallback: the Day 1 Docker container.** Everything except Part A4–A7 (systemd, journalctl, cron, logrotate) works there. The `ubuntu:24.04` image may not include `ps`, `top` and `free`. If `ps` says "command not found", install the tools without any prompt:
+You're on **Ubuntu**, and Ubuntu runs **systemd**, so every lab today runs for real on your own machine. No Docker, no VM.
 
 ```bash
-docker run -it --rm -v "$PWD":/work -w /work ubuntu:24.04 bash
-export DEBIAN_FRONTEND=noninteractive
-apt-get update && apt-get install -y --no-install-recommends procps psmisc lsof sysstat
-# if this sits for more than 3 minutes, Ctrl+C and use Killercoda instead
-```
-
-Then create the lab files again (same script as Day 1):
-
-```bash
-bash make-logs.sh      # copy it from labs/ first; creates ./lab with app.log, access.log, configs/, old/
+sudo apt-get update && sudo apt-get install -y sysstat lsof psmisc   # iostat/pidstat, lsof, pstree/killall (ps, top, free, vmstat are already installed)
+cd ~/practice
+ls lab || bash make-logs.sh      # recreate the Day 1 lab files if they're gone
 cd lab
 ```
+
+**Safety rules for your own machine (read them once):**
+- The practice service is called **`lab-myapp`**. Never practise on a real service name (`nginx`, `ssh`, `docker`, `NetworkManager`): stopping one of those can cut your network or your terminal.
+- Commands that touch `/etc`, `/usr/local/bin`, systemd, the kernel log or other users need **`sudo`**. Everything in `~/practice` doesn't.
+- Each lab that changes the system ends with a **clean-up** block. Run it. The end-of-day checklist is after B8.5.
+- Want zero risk? The same labs work in the **Killercoda Ubuntu playground** (killercoda.com → Playgrounds → Ubuntu: free, in the browser, you're root). Sessions last about an hour, then you re-run `make-logs.sh`.
 
 **Warm-up (no notes, 5 minutes).** Predict what each prints, then run it: `uptime` · `nproc` · `free -h` · `df -h /` · `ps -p 1 -o pid,comm`
 
@@ -148,7 +144,7 @@ pkill -f "date; sleep 5" # clean up
 
 For anything that must survive reboots and restart on crash, **don't use nohup: use a systemd service** (next section). Say exactly that in an interview.
 
-### A4. systemd: run a program as a service (Killercoda)
+### A4. systemd: run a program as a service (on your machine, with `sudo`)
 
 **What it is:** systemd is PID 1 on modern Linux. It starts services at boot, restarts them when they crash, and collects their logs in the **journal**. A service is described by a **unit file**.
 
@@ -181,44 +177,57 @@ User=root                       # use a dedicated user on real servers
 WantedBy=multi-user.target      # what "enable" hooks it into (normal boot)
 ```
 
-**Lab A4 (Killercoda; illustrative output):**
+**Lab A4 (your Ubuntu machine; output illustrative). Service name: `lab-myapp`.**
 
 ```bash
-cat > /usr/local/bin/myapp.sh <<'EOF'
+sudo tee /usr/local/bin/lab-myapp.sh > /dev/null <<'EOF'
 #!/usr/bin/env bash
-while true; do echo "myapp alive at $(date +%T)"; sleep 5; done
+while true; do echo "lab-myapp alive at $(date +%T)"; sleep 5; done
 EOF
-chmod +x /usr/local/bin/myapp.sh
+sudo chmod +x /usr/local/bin/lab-myapp.sh
 
-cat > /etc/systemd/system/myapp.service <<'EOF'
+sudo tee /etc/systemd/system/lab-myapp.service > /dev/null <<'EOF'
 [Unit]
-Description=My demo app
+Description=Practice service for Day 2 (safe to delete)
 After=network.target
 
 [Service]
-ExecStart=/usr/local/bin/myapp.sh
+ExecStart=/usr/local/bin/lab-myapp.sh
 Restart=on-failure
 RestartSec=3
+User=nobody
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-systemctl daemon-reload
-systemctl enable --now myapp
-systemctl status myapp                    # active (running), Main PID: 1234
-journalctl -u myapp -f                    # Ctrl+C to stop following
+sudo systemctl daemon-reload
+sudo systemctl enable --now lab-myapp
+systemctl status lab-myapp                    # active (running), Main PID: 1234
+journalctl -u lab-myapp -f                    # Ctrl+C to stop following (add sudo if it shows nothing)
 
 # crash it and watch systemd bring it back
-kill -9 $(systemctl show -p MainPID --value myapp)
-sleep 4; systemctl status myapp           # new Main PID; the log shows "Scheduled restart job"
+sudo kill -9 $(systemctl show -p MainPID --value lab-myapp)
+sleep 4; systemctl status lab-myapp           # new Main PID; the log shows "Scheduled restart job"
 
 # break it on purpose: point ExecStart at a missing file
-sed -i 's#/usr/local/bin/myapp.sh#/usr/local/bin/nope.sh#' /etc/systemd/system/myapp.service
-systemctl daemon-reload && systemctl restart myapp
-systemctl status myapp                    # failed / activating (auto-restart); status=203/EXEC
-journalctl -u myapp -n 20 --no-pager      # read the real reason
-# fix it back, daemon-reload, restart
+sudo sed -i 's#/usr/local/bin/lab-myapp.sh#/usr/local/bin/nope.sh#' /etc/systemd/system/lab-myapp.service
+sudo systemctl daemon-reload && sudo systemctl restart lab-myapp
+systemctl status lab-myapp                    # failed / activating (auto-restart); status=203/EXEC
+journalctl -u lab-myapp -n 20 --no-pager      # read the real reason
+# fix it back: the same sed with the two paths swapped, then daemon-reload and restart
+```
+
+`sudo tee file > /dev/null <<'EOF'` is how you write a root-owned file: `sudo cat > /etc/...` fails, because the `>` redirect runs as you, not as root. `User=nobody` makes the practice service run without any privileges.
+
+**Clean up `lab-myapp` (when Lab A4 and B8.5 are done):**
+
+```bash
+sudo systemctl disable --now lab-myapp
+sudo rm /etc/systemd/system/lab-myapp.service /usr/local/bin/lab-myapp.sh
+sudo systemctl daemon-reload
+sudo systemctl reset-failed lab-myapp 2>/dev/null   # clears it from the "failed" list
+systemctl status lab-myapp                          # "Unit lab-myapp.service could not be found." = clean
 ```
 
 **Interview scenario:** "A service won't start after a deploy." → `systemctl status app` (exit code, the last log lines) → `journalctl -u app -n 100 --no-pager` → check the binary path, permissions (`ls -l`), the user it runs as, the config file, and the port (`ss -tulpn | grep 8080` for "address already in use"). After a unit-file change: `daemon-reload`.
@@ -258,11 +267,24 @@ Plain log files still exist: on Ubuntu/Debian `/var/log/syslog` and `/var/log/au
 | `0 0 1 * *` | Midnight on the 1st of every month |
 
 ```bash
-crontab -e          # edit your crontab
+crontab -e          # edit your crontab (the first time it asks for an editor: pick nano)
 crontab -l          # list it
 # a real entry: full paths, and log both outputs
 0 2 * * * /usr/local/bin/backup.sh >> /var/log/backup.log 2>&1
 ```
+
+**Lab A6 (your machine, 5 minutes).** Add this line with `crontab -e`, save, wait 2 minutes:
+
+```
+* * * * * date >> /tmp/lab-cron.log 2>&1
+```
+
+```bash
+cat /tmp/lab-cron.log                   # one line per minute
+grep CRON /var/log/syslog | tail -3     # cron's own log (add sudo if it's empty)
+```
+
+**Clean up:** `crontab -e`, delete that line, save; `rm /tmp/lab-cron.log`; check with `crontab -l`.
 
 **The 3 classic "my cron job doesn't run" causes:**
 1. **PATH:** cron runs with a tiny PATH (`/usr/bin:/bin`), so `aws`, `kubectl` or `python3` in `/usr/local/bin` aren't found. Use full paths, or set `PATH=` at the top of the crontab.
@@ -289,6 +311,7 @@ Where cron logs: `grep CRON /var/log/syslog` (Ubuntu), `/var/log/cron` (RHEL). S
 
 - **`copytruncate` vs `create` + `postrotate`:** with `copytruncate` the app needs no signal, but a few lines can be lost between copy and truncate. The alternative is `create` plus a `postrotate` script that sends SIGHUP (or `systemctl reload app`) so the app reopens its log file.
 - `logrotate -d /etc/logrotate.d/myapp` = dry run (debug, changes nothing). `logrotate -f` = force a rotation now.
+- **Safe practice on your machine:** don't edit files in `/etc/logrotate.d/`. Read a real one (`cat /etc/logrotate.d/rsyslog`) and dry-run it with `sudo logrotate -d /etc/logrotate.d/rsyslog`. To try your own config, save it as `~/practice/lab-rotate.conf` pointing at `~/practice/lab/*.log`, then run `logrotate -d -s ~/practice/lab-rotate.state ~/practice/lab-rotate.conf` (`-s` keeps the state file in your folder, so no sudo is needed).
 - It runs daily from cron or a systemd timer (`logrotate.timer`).
 
 **Link to Part B:** if you delete a log file instead of rotating it while the app still has it open, the disk space isn't freed. That's lab B8.4.
@@ -348,8 +371,8 @@ ps -eo pid,user,%mem,rss,cmd --sort=-%mem | head     # who uses it (RSS in KB)
 - **OOM killer:** when RAM and swap run out, the kernel kills the process with the highest "badness" score (usually the biggest). The app simply disappears, with nothing in its own log. Prove it:
 
 ```bash
-dmesg -T | grep -i -E "out of memory|killed process"
-journalctl -k | grep -i oom
+sudo dmesg -T | grep -i -E "out of memory|killed process"   # Ubuntu needs sudo for dmesg
+sudo journalctl -k | grep -i oom
 # Out of memory: Killed process 2314 (java) total-vm:8123456kB, anon-rss:3900000kB ...   (illustrative)
 ```
 
@@ -430,7 +453,7 @@ cat hosts.txt | xargs -I{} ping -c1 {}                        # -I{}: put the li
 
 ### B8. Break/fix lab (type every step; predict before you press Enter)
 
-**B8.1 CPU hog (tested in parts)**
+**B8.1 CPU hog (tested)**
 ```bash
 yes > /dev/null & yes > /dev/null &
 uptime                                      # load climbs over a minute
@@ -439,20 +462,20 @@ ps -eo pid,%cpu,cmd --sort=-%cpu | head -3
 pkill yes                                   # SIGTERM to both
 ```
 
-**B8.2 Memory pressure (Killercoda; illustrative)**
+**B8.2 Memory pressure (your machine; illustrative)**
 ```bash
 free -h
 python3 -c "a = bytearray(500*1024*1024); import time; time.sleep(60)" &
 free -h                                     # available drops by about 500 MB
 ps -eo pid,%mem,rss,cmd --sort=-%mem | head -3
 kill %1
-dmesg -T | grep -i -E "out of memory|killed process"   # empty here; on a real OOM you'd see the kill
+sudo dmesg -T | grep -i -E "out of memory|killed process"   # usually empty; on a real OOM you'd see the kill
 ```
-Don't try to trigger a real OOM on the playground; it can freeze the VM. Know what the `dmesg` line looks like (B3).
+Don't try to trigger a real OOM on your laptop; it can freeze the desktop. Know what the `dmesg` line looks like (B3).
 
-**B8.3 Disk full (Killercoda)**
+**B8.3 Disk full (your machine)**
 ```bash
-df -h /
+df -h /                                     # make sure more than 5 GB is free before the next line
 fallocate -l 2G /tmp/bigfile                # instantly reserve 2 GB
 df -h /                                     # Use% jumps
 find / -xdev -type f -size +1G 2>/dev/null  # finds /tmp/bigfile
@@ -472,11 +495,20 @@ ls -l /proc/$!/fd | grep held               # 3 -> /…/held.bin (deleted)
 kill %1                                     # close it: now the space is freed
 ```
 
-**B8.5 Service keeps crashing (Killercoda):** you did it in Lab A4 with the missing `ExecStart`. Repeat it once from memory without looking.
+**B8.5 Service keeps crashing (your machine):** you did it in Lab A4 with the missing `ExecStart`. Repeat it once from memory without looking, then run the `lab-myapp` clean-up block from A4.
+
+**End-of-day clean-up checklist (your machine):**
+
+```bash
+systemctl status lab-myapp                       # must say "could not be found"; if not, run the A4 clean-up
+crontab -l                                       # the lab-cron line must be gone
+ls /tmp/bigfile /tmp/lab-cron.log 2>/dev/null    # nothing printed = clean
+pgrep -a yes ; pgrep -af "sleep 300"             # nothing printed = no leftover processes
+```
 
 ---
 
-## Part C: SQL aggregates, GROUP BY, HAVING (45 min, in sqlite3 on the Mac)
+## Part C: SQL aggregates, GROUP BY, HAVING (45 min, in sqlite3)
 
 Use the Day 1 database (`sqlite3 day01.db < day01.sql`, then `sqlite3 day01.db`, `.headers on`, `.mode column`). Every result below is tested against `labs/day01.sql`.
 
@@ -629,7 +661,7 @@ No. The kernel uses spare RAM as cache and gives it back on demand. Look at `ava
 </details>
 <details><summary>15. A Java process disappeared overnight with nothing in its log. What do you check?</summary>
 
-The OOM killer: `dmesg -T | grep -i -E "out of memory|killed process"` or `journalctl -k | grep -i oom`.
+The OOM killer: `sudo dmesg -T | grep -i -E "out of memory|killed process"` or `sudo journalctl -k | grep -i oom`.
 </details>
 <details><summary>16. df shows / at 100%, but du adds up to 60%. Cause and fix?</summary>
 

@@ -17,17 +17,17 @@
 
 ## Setup (15 min)
 
-You're on a Mac. Some commands (`sed -i`, `find -mtime`, `touch -d`) behave differently on macOS than on Linux, and interviews assume **Linux**. So practise inside an Ubuntu container:
+You're on **Ubuntu**, which is exactly what interviews assume, so practise directly in your own terminal. No Docker needed. (On a Mac, `sed -i`, `find -mtime` and `touch -d` behave differently; on Ubuntu they work as written here.)
 
 ```bash
+sudo apt-get update && sudo apt-get install -y sqlite3   # the only extra package today; grep, sed, awk, find, less are already installed
 mkdir -p ~/practice && cd ~/practice
 # copy labs/make-logs.sh and labs/day01.sql from this repo folder into ~/practice, then:
-docker run -it --rm -v "$PWD":/work -w /work ubuntu:24.04 bash
-# inside the container:
-# no apt-get needed: grep, sed, awk, find and less are already in the image
 bash make-logs.sh          # creates ./lab with app.log (600 lines), access.log (1000 lines), configs/, old/
 cd lab
 ```
+
+**Safety on your own machine:** do every lab inside `~/practice`. Never run `chmod`, `chown` or `rm` on system folders (`/etc`, `/usr`, `/var`) to "try something". Part B creates throwaway users; the clean-up commands are at the end of B3.
 
 **Warm-up (no notes, 5 minutes).** Write down what you think each one does, then run it:
 `wc -l app.log` · `head -5 app.log` · `tail -3 access.log` · `less app.log` (press `q` to quit, `/ERROR` to search) · `ls -la`
@@ -155,7 +155,7 @@ find old -type f -mtime +60 -delete && ls old
 | `sed -i '/^log.level/s/DEBUG/INFO/' f` | change only on lines starting with `log.level` |
 | `sed -n '/10:00:/,/10:15:/p' app.log` | print a time range |
 
-- **macOS warning:** on a Mac, `sed -i` needs an empty backup argument: `sed -i '' 's/a/b/g' f`. That's why you practise in the Ubuntu container.
+- **macOS warning (for later, on a Mac):** BSD sed on a Mac needs an empty backup argument: `sed -i '' 's/a/b/g' f`. On your Ubuntu machine plain `sed -i` works.
 
 ```bash
 cd configs
@@ -208,11 +208,11 @@ cd ..
 
 ```bash
 whoami ; id                              # who am I, my groups
-useradd -m appuser ; passwd appuser      # create a user with a home directory (inside the container as root)
-groupadd dev ; usermod -aG dev appuser   # -aG = APPEND to group (without -a it replaces all groups!)
-chown appuser:dev deploy.sh              # change owner and group
-chown -R appuser:dev /opt/app            # recursively
-su - appuser                             # switch user
+sudo useradd -m appuser ; sudo passwd appuser      # create a user with a home directory (needs sudo on your machine)
+sudo groupadd dev ; sudo usermod -aG dev appuser   # -aG = APPEND to group (without -a it replaces all groups!)
+sudo chown appuser:dev deploy.sh                   # change owner and group
+sudo chown -R appuser:dev /opt/app                 # recursively (example path; don't run it on your machine)
+sudo su - appuser                                  # switch user (exit to come back)
 sudo systemctl restart nginx             # run one command as root (on a real server)
 cat /etc/passwd | tail -3                # user accounts
 cat /etc/group  | grep dev
@@ -221,17 +221,25 @@ cat /etc/group  | grep dev
 ### B3. Lab: permission problems (type, break, fix)
 
 ```bash
-cd /work/lab
+cd ~/practice/lab
 echo 'echo "deploying..."' > deploy.sh
 ./deploy.sh                    # Permission denied: no x bit
 ls -l deploy.sh                # -rw-r--r--
 chmod u+x deploy.sh && ./deploy.sh
 chmod 750 deploy.sh ; ls -l deploy.sh
-mkdir secret && echo pass123 > secret/db.txt
-chmod 600 secret/db.txt ; chmod 700 secret
-ls -ld secret secret/db.txt
-useradd -m tester
-su - tester -c "cat /work/lab/secret/db.txt"   # Permission denied: correct!
+mkdir /tmp/secret && echo pass123 > /tmp/secret/db.txt   # /tmp, so only these permissions decide (your home folder has its own)
+chmod 600 /tmp/secret/db.txt ; chmod 700 /tmp/secret
+ls -ld /tmp/secret /tmp/secret/db.txt
+sudo useradd -m tester
+sudo -u tester cat /tmp/secret/db.txt            # Permission denied: correct!
+chmod 755 /tmp/secret ; chmod 644 /tmp/secret/db.txt
+sudo -u tester cat /tmp/secret/db.txt            # now it works: pass123
+```
+
+**Clean up the throwaway users and group when you're done:**
+
+```bash
+sudo userdel -r tester ; sudo userdel -r appuser ; sudo groupdel dev ; rm -r /tmp/secret
 ```
 
 **Interview scenario to explain out loud:** "The app can't write to its log file after a deployment." Check `ls -l` on the file **and** the directory, then `ps -o user= -p <pid>` to see which user the app runs as. Fix ownership with `chown` (or permissions with `chmod`), not `chmod 777`. **Never say 777 in an interview.** It's an instant red flag.
@@ -240,7 +248,7 @@ su - tester -c "cat /work/lab/secret/db.txt"   # Permission denied: correct!
 
 ## Part C: SQL basics (1 hour, in sqlite3)
 
-Run SQL in the **Mac terminal** (macOS has `sqlite3` built in), not in the container:
+Run SQL in your Ubuntu terminal (`sqlite3` was installed in Setup):
 
 ```bash
 cd ~/practice
