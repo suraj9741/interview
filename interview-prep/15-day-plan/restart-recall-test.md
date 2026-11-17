@@ -170,10 +170,10 @@ An ALB needs **at least two subnets in two different Availability Zones**, so "1
 <details><summary>13. 502 / 503 / 504</summary>
 
 - **502 Bad Gateway:** the target sent a bad response or closed the connection. Causes: app crashed mid-request, the app's keep-alive timeout is shorter than the ALB idle timeout, or HTTP vs HTTPS mismatch on the target port.
-- **503 Service Unavailable:** **no healthy targets** in the target group (all failing health checks, or none registered).
+- **503 Service Unavailable:** the target group has **no registered targets** (empty, or every target deregistered). Precise detail: if targets are registered but **all** fail health checks, the ALB **fails open** and keeps sending traffic to all of them, so you usually see 502/504 from the broken app instead of 503.
 - **504 Gateway Timeout:** the target didn't answer within the ALB **idle timeout** (60 s by default). Usually a slow app or a slow DB query.
 
-Unhealthy targets give **503**, not 502. You said 502 in the interview.
+In the interview you blamed 502 on unhealthy targets. Unhealthy targets mean the ALB stops routing to them (or fails open if all are unhealthy); a 502 is about a **bad response** from a target that did receive the request.
 </details>
 
 <details><summary>14. TCP handshake</summary>
