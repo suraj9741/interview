@@ -2,6 +2,8 @@
 
 Built after the [11 Nov NiCE interview review](../interview-review-nov-11-nice.md). Full days, for a slow learner.
 
+**Paused 18–27 Nov for the AWS Solutions Architect – Associate exam** ([10-day SAA plan](../aws-saa/README.md)). Day 1 (17 Nov) still runs. The plan resumes with Day 2 the day after the exam, and the dates below shift again then.
+
 **Restarted Tue 17 Nov.** The plan first ran from 12 Nov, but stopped after Day 1 Part A for the AWS Admin (13 Nov) and PTC (14 Nov) interviews. Every day keeps its content and moves 5 days later; Day 15 is now Tue 1 Dec. Day 1 restarts with the [restart recall test](restart-recall-test.md), then Parts B and C.
 
 **Daily checklist (start here every morning):** [day-by-day.md](day-by-day.md)
