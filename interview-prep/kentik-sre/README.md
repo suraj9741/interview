@@ -1,6 +1,6 @@
-# Kentik · Sr SRE Engineer · interview Thu 19 Nov, 5:30 PM IST
+# Kentik · Sr SRE Engineer · interview Thu 19 Nov, 2:30 PM IST (moved from 5:30)
 
-**Two interviews in one day.** The AWS Admin L2 is at 10:30 AM ([its pack](../aws-admin-l2-prep.md), in PR #12). **Tonight belongs to that one.** This file is for the gap between the two interviews, 11:30 AM–5:00 PM tomorrow. Don't open it tonight.
+**Two interviews in one day.** The AWS Admin L2 is at 10:30 AM ([its pack](../aws-admin-l2-prep.md), in PR #12). **Tonight belongs to that one.** The gap between the two interviews is now only about 2.5 hours, so Python starts with 40 minutes **before** the AWS warm-up tomorrow morning. Don't open the rest of this file tonight.
 
 **Read the JD carefully.** The title says "Sr SRE", but the text says "entry-level, suitable for fresh graduates". It's probably a copy-pasted template. **Prepare at senior level** (5+ years: you own things, you've handled incidents, you make decisions). If they turn out to be junior-level questions, you'll do well anyway.
 
@@ -29,16 +29,17 @@
 
 | Time | What |
 |---|---|
-| 11:30–11:50 | **L2 debrief:** write down every question they asked and what you answered. Send it in the thread; I'll mark it |
-| 11:50–12:45 | Lunch and a proper break, away from screens |
-| 12:45–2:15 | **Python first, the biggest risk** (the recruiter said to prepare it): section F drills 1–8 from a blank file, then `log_report.py` (section D). Say your approach out loud while typing |
-| 2:15–2:45 | **GitOps:** section A; say the ArgoCD story out loud in 2 minutes |
-| 2:45–3:15 | **Kubernetes:** section B |
-| 3:15–3:45 | **Monitoring:** section C (PromQL, alert rule); say the federated Prometheus story |
-| 3:45–4:00 | **Bash + Terraform:** `disk_alert.sh` (D1) once; the backend block and security group from the L2 pack (E1, E3) |
-| 4:00–4:20 | Python drills 9–12 + concepts F2 if time is left; otherwise Kentik, "why Kentik", your questions |
-| 4:20–5:00 | Rest. Water. Laptop charged, link tested |
-| 5:25 | Join |
+| **8:00–8:40** (before the AWS warm-up) | **Python drills 1–5** (section F) from a blank file, saying the approach out loud. Then breakfast and the AWS warm-up at 9:00 as planned |
+| 11:30–11:40 | **L2 debrief:** jot every question they asked in 5 lines and send it in the thread. I'll mark it later, not now |
+| 11:40–12:10 | Quick lunch, away from screens |
+| 12:10–1:05 | **Python:** drills 6–9, then `log_report.py` (section D2) from a blank file. Say the approach before typing |
+| 1:05–1:25 | **GitOps + Kubernetes:** say the ArgoCD 10 → 2 min story out loud; type A1, A4 and B2 |
+| 1:25–1:45 | **Monitoring:** type C1 (PromQL) and C2 (alert rule); say the federated Prometheus story |
+| 1:45–1:55 | "Why Kentik" out loud once; pick your 2 questions |
+| 1:55–2:25 | Rest. Water. Laptop charged, link tested. **Nothing new** |
+| 2:25 | Join |
+
+Skipped because of the time change (only if they come up, answer from experience): Python drills 10–12 and concepts F2, Kubernetes B3–B7, Bash D1, Terraform (already covered in the morning AWS round), on-call E.
 
 ---
 
