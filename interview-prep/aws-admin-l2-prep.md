@@ -27,7 +27,8 @@ The SAA schedule is paused tonight and tomorrow morning. It resumes tomorrow aft
 
 | Time | What |
 |---|---|
-| 8:30 | Breakfast. No new material today |
+| 8:00–8:40 | **The one exception:** Python drills 1–5 for the 2:30 PM Kentik round (its own pack), typed from a blank file |
+| 8:40 | Breakfast. Nothing else new today |
 | 9:00–9:30 | **Warm-up:** the 10-question morning test at the end of this file, typed, then say your intro and incident story out loud once |
 | 9:30–10:00 | Logistics: laptop charged, earphones, quiet room, test the call link and camera, close every other tab. Have a notepad and pen |
 | 10:00–10:25 | Walk, water, nothing to read. Re-read only your "why this role" and your 3 questions for them |
