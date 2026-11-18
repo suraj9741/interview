@@ -1,6 +1,6 @@
 # AWS Admin Engineer · L2 prep pack (tonight + tomorrow 9:00 warm-up) · interview Thu 19 Nov, 10:30 AM
 
-**What L2 will do:** they've seen round 1, so expect them to **re-ask the weak spots** (private EC2 internet, 502/503/504, TCP, DNS, Terraform code) and to go **deeper**: "walk me through an outage you owned", "debug this live", "write this Terraform", "why this role". Round 1 shows what they liked: SG vs NACL, the slow-app answer, the RDS secret rotation story. Keep those and fix the rest.
+**The invite names the round "AWS DevOps Networking" (60 min, recorded, Teams).** Expect networking first: section G below. **What L2 will do:** they've seen round 1, so expect them to **re-ask the weak spots** (private EC2 internet, 502/503/504, TCP, DNS, Terraform code) and to go **deeper**: "walk me through an outage you owned", "debug this live", "write this Terraform", "why this role". Round 1 shows what they liked: SG vs NACL, the slow-app answer, the RDS secret rotation story. Keep those and fix the rest.
 
 **How to use this file:** for every question, **type** your answer in a blank file first (`l2.txt`), then open the hidden answer and mark it 1 or 0. Every 0 goes into `misses.md` and gets re-typed at 10 PM and again at 9 AM. **Reading the answers without typing first doesn't count.** That's exactly what failed on 11 and 13 Nov.
 
@@ -18,8 +18,8 @@ The SAA schedule is paused tonight and tomorrow morning. It resumes tomorrow aft
 | 6:15–6:45 | **Say** each Part 1 answer out loud and **record** it. Count the "like" / "means like". Target: under 5 per answer. Redo any answer over 5 |
 | 6:45–7:15 | **Part 2:** fill the blanks in your incident story and rehearse it in 2 minutes, out loud, twice |
 | 7:15–8:00 | Dinner, no screens |
-| 8:00–9:00 | **Part 3:** deep dives A–C (outage RCA, VPC/SG/NACL debugging, IAM) |
-| 9:00–9:45 | **Part 3:** deep dives D–F (CloudWatch/logging, Terraform state/drift + **write code**, DNS/TCP/HTTP) |
+| 8:00–8:50 | **Part 3 G first: networking fundamentals** (the invite calls the round "AWS DevOps Networking"): OSI, CIDR maths on paper, URL flow, TLS, DHCP, ports, DNS records, routing |
+| 8:50–9:45 | **Part 3 A–F:** outage RCA, VPC/SG/NACL debugging, IAM, then CloudWatch/logging, Terraform state/drift + **write code**, DNS/TCP/HTTP. If time is short, skim D and E |
 | 9:45–10:15 | **Mock:** send "L2 mock" in the thread. I ask 8 questions the way an L2 interviewer would; you answer without notes |
 | 10:15–10:30 | Re-type every miss from tonight once. Then **stop**. Lay out ID, charger, water. Sleep by 11 |
 
@@ -324,6 +324,92 @@ Alias points to AWS resources (ALB, CloudFront, S3 website, another record), wor
 TCP: connection-oriented, ordered, retransmits (HTTP, SSH, databases). UDP: no connection, no delivery guarantee, low overhead (DNS queries, NTP, streaming). Status codes: **4xx** client side (400 bad request, 401 not authenticated, 403 forbidden, 404 not found, 429 rate limited), **5xx** server side (500 app error, 502/503/504 gateway errors above), **3xx** redirects (301 permanent, 302 temporary).
 </details>
 
+### G. Networking fundamentals (the round is titled "AWS DevOps Networking", so expect these)
+
+<details><summary>G1. The OSI layers, one protocol each, and where ALB, NLB and security groups sit.</summary>
+
+| # | Layer | Example | AWS link |
+|---|---|---|---|
+| 7 | Application | HTTP, DNS, SSH | **ALB** (routes on path, host, headers), WAF |
+| 6 | Presentation | TLS encryption, encoding | TLS termination on ALB/NLB |
+| 5 | Session | session setup | |
+| 4 | Transport | **TCP, UDP** (ports) | **NLB**; SG/NACL rules use ports |
+| 3 | Network | **IP**, ICMP, routing | Route tables, SG/NACL use CIDRs |
+| 2 | Data link | Ethernet, **ARP**, MAC | |
+| 1 | Physical | cables, radio | |
+
+TCP/IP model: Application (5–7) → Transport (4) → Internet (3) → Link (1–2). Memory hook: "**P**lease **D**o **N**ot **T**hrow **S**ausage **P**izza **A**way" (1 → 7).
+</details>
+
+<details><summary>G2. CIDR maths: how many IPs in 10.0.0.0/16, /24, /28? How many usable in an AWS subnet? Split 10.0.0.0/16 into /20 subnets.</summary>
+
+Formula: 2^(32 − prefix).
+- /16 = 2^16 = **65,536** · /24 = **256** · /28 = **16** (the smallest AWS subnet) · /20 = **4,096**.
+- **AWS reserves 5 addresses in every subnet:** the network address (.0), .1 the VPC router, .2 the DNS resolver, .3 reserved for future use, and the last address (broadcast). So a /24 has **251** usable and a /28 has **11**.
+- 10.0.0.0/16 into /20s: 2^(20−16) = **16 subnets** of 4,096: 10.0.0.0/20, 10.0.16.0/20, 10.0.32.0/20 … 10.0.240.0/20 (the third octet jumps by 16).
+- Private ranges (RFC 1918): **10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16**.
+</details>
+
+<details><summary>G3. What happens when you type https://app.example.com in a browser? (2 minutes, layer by layer)</summary>
+
+1. **DNS:** browser cache → OS cache / `/etc/hosts` → resolver (in a VPC the .2 resolver) → root → `.com` TLD → the domain's authoritative servers (Route 53) → returns the ALB's IPs (alias record).
+2. **TCP:** 3-way handshake to port 443 (SYN, SYN-ACK, ACK).
+3. **TLS:** handshake (G4); the certificate is checked for trusted chain, hostname and expiry.
+4. **HTTP:** `GET /` with the Host header; the **ALB** picks a target group by listener rule and forwards to a healthy target in a private subnet.
+5. The **app** answers (maybe calling RDS/cache); the response returns the same way; the browser renders and fetches more assets (often from CloudFront).
+</details>
+
+<details><summary>G4. The TLS handshake in plain words.</summary>
+
+1. **ClientHello:** TLS versions and cipher suites the client supports, a random value, and **SNI** (the hostname, so one IP can serve many certificates).
+2. **ServerHello:** the chosen version and cipher, plus the server's **certificate**.
+3. **Key exchange** (ECDHE): both sides derive the same session key without ever sending it.
+4. **Finished** messages confirm; from here everything is encrypted with the fast **symmetric** session key.
+
+The client verifies the certificate: signed by a trusted CA (full chain), hostname matches, not expired. TLS 1.3 does this in **one round trip**. Asymmetric crypto is used only to agree the key; bulk data uses symmetric encryption.
+</details>
+
+<details><summary>G5. DHCP: the 4 steps, and how it works in AWS.</summary>
+
+**DORA:** **D**iscover (client broadcasts "any DHCP server?") → **O**ffer (server offers an IP) → **R**equest (client asks for that IP) → **A**cknowledge (server confirms, with lease time, gateway, DNS servers). In AWS the VPC's **DHCP option set** controls the domain name and DNS servers (default `AmazonProvidedDNS`); instances get their private IP this way.
+</details>
+
+<details><summary>G6. ARP, NAT, and PAT in one line each.</summary>
+
+**ARP:** finds the MAC address for an IP on the local network ("who has 10.0.1.5?"). **NAT:** rewrites the source or destination IP as packets pass a router. **PAT** (NAT overload): many private hosts share one public IP, told apart by source port. An **AWS NAT gateway** does source NAT for **outbound** traffic only; nothing on the internet can start a connection inbound through it.
+</details>
+
+<details><summary>G7. L4 vs L7 load balancing; ALB vs NLB, when each.</summary>
+
+L4 (**NLB**) routes on IP and port, without reading the request: millions of requests per second, very low latency, **static IP / Elastic IP per AZ**, TCP/UDP/TLS, preserves the client IP. L7 (**ALB**) reads HTTP: routes on path (`/api`), host header, headers, query; supports WAF, redirects, authentication (Cognito/OIDC), gRPC, WebSockets. Choose NLB for non-HTTP, static IPs or extreme throughput; ALB for web apps and microservices routing. (GWLB is for inline firewall appliances.)
+</details>
+
+<details><summary>G8. Ports you must know.</summary>
+
+22 SSH · 25 SMTP · **53 DNS (UDP, and TCP for large answers and zone transfers)** · 80 HTTP · 123 NTP (UDP) · 443 HTTPS · 3306 MySQL · 3389 RDP · 5432 PostgreSQL · 6379 Redis · 27017 MongoDB · 2049 NFS (EFS) · ephemeral client ports 1024–65535 (Linux uses 32768–60999 by default).
+</details>
+
+<details><summary>G9. DNS record types and what each is for.</summary>
+
+**A** name → IPv4 · **AAAA** name → IPv6 · **CNAME** name → another name (not at the zone apex) · **Alias** (Route 53) name → AWS resource, allowed at the apex · **MX** mail servers · **TXT** verification, SPF/DKIM · **NS** the zone's name servers · **SOA** zone authority info · **PTR** reverse lookup (IP → name).
+</details>
+
+<details><summary>G10. Ping works but curl to port 443 fails. And the reverse: ping fails but the site works. Why?</summary>
+
+Ping is **ICMP**, a different protocol from TCP 443. Ping OK, curl fails: the host is reachable, but port 443 is blocked (SG/NACL/firewall) or nothing is listening (`ss -tlnp`; "connection refused" vs "timeout" tells which). Ping fails, site works: ICMP isn't allowed; security groups don't allow ICMP unless you add a rule, so "ping fails" never proves a server is down on AWS.
+</details>
+
+<details><summary>G11. traceroute shows `* * *` for many hops but the site works. Why?</summary>
+
+Those routers (or the destination) don't answer the probes: they drop or rate-limit ICMP "time exceeded" replies, or filter traceroute's default UDP probes. It doesn't mean packets are lost. Use `traceroute -T -p 443` (TCP probes; needs sudo) or `mtr`, and confirm the service itself with `nc -zv host 443` or `curl -I`.
+</details>
+
+<details><summary>G12. What's in a route table, and how does AWS choose a route?</summary>
+
+Each route = destination CIDR → target (`local`, `igw-`, `nat-`, `pcx-`, `tgw-`, `vpce-`, ENI). The **most specific match (longest prefix) wins**: `10.1.0.0/16 → pcx` beats `0.0.0.0/0 → nat` for traffic to 10.1.x.x. Every route table has the `local` route for the VPC CIDR, which can't be removed. A subnet is "public" only because its route table has `0.0.0.0/0 → igw`.
+</details>
+
+
 ---
 
 ## Why this role (say it, don't read it)
@@ -340,7 +426,7 @@ TCP: connection-oriented, ordered, retransmits (HTTP, SSH, databases). UDP: no c
 
 ---
 
-## Morning warm-up (Thu 9:00, 10 questions, typed, 20 minutes)
+## Morning warm-up (Thu 9:00, 12 questions, typed, 20 minutes)
 
 1. Private EC2, no internet: 5 checks in order.
 2. 502 vs 503 vs 504 on an ALB, one cause each (including the 503 fail-open detail).
@@ -352,5 +438,7 @@ TCP: connection-oriented, ordered, retransmits (HTTP, SSH, databases). UDP: no c
 8. Terraform: S3 backend block with locking, from memory.
 9. Drift: how you detect it and the two ways to resolve it.
 10. Your incident story's first sentence and last sentence.
+11. How many usable IPs in an AWS /24 and /28, and which 5 are reserved?
+12. What happens when you type a URL: the 5 steps.
 
 Then say your intro (60 seconds) and the incident story (2 minutes) out loud once. Then close the laptop.
