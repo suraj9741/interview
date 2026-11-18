@@ -47,7 +47,7 @@ The role: **AWS Admin Engineer, 4–8 years**. Troubleshooting AWS services, loa
 | Code | Meaning on an ALB | Check |
 |---|---|---|
 | **502 Bad Gateway** | Target sent an invalid response or closed the connection | App crashing/restarting, wrong target port, TLS mismatch (ALB → target on HTTPS but app speaks HTTP), target keep-alive timeout shorter than the ALB idle timeout |
-| **503 Service Unavailable** | **No healthy targets** registered | Target group → Targets → health status and **reason** (`Target.FailedHealthChecks`, `Target.Timeout`); health check path/port/expected code (e.g. `/health` returns 200?); SG of targets must allow traffic **from the ALB's SG** |
+| **503 Service Unavailable** | **No registered targets** in the target group. If targets are registered but **all** are unhealthy, the ALB fails open and keeps routing to them (then you see 502/504 instead) | Target group → Targets → health status and **reason** (`Target.FailedHealthChecks`, `Target.Timeout`); health check path/port/expected code (e.g. `/health` returns 200?); SG of targets must allow traffic **from the ALB's SG** |
 | **504 Gateway Timeout** | Target didn't answer within the idle timeout (default 60 s) | Slow app/DB, target SG/NACL silently dropping, app overloaded |
 | **4xx from the ALB itself** | 403 = WAF rule or listener rule; 460 = client closed early; 463 = too many IPs in X-Forwarded-For | WAF logs, listener rules |
 
