@@ -62,10 +62,10 @@ Do this for **every topic**:
 - [ ] ⭐ [Containers From Scratch](https://www.youtube.com/watch?v=8fi7uSYlOdc) · Liz Rice, GOTO · 43 min. **The most important deep-fundamentals video:** she builds a container live from Linux namespaces and cgroups. Watch slowly.
 - [ ] ⭐ [Docker Crash Course for Absolute Beginners](https://www.youtube.com/watch?v=pg19Z8LL06w) · TechWorld with Nana · 67 min: images, containers, Dockerfile, Compose
 
-### Read (~40 min), from your [Docker notes](../../docker/README.md)
-- [ ] [01 Fundamentals](../../docker/01-fundamentals.md): container vs VM
-- [ ] [02 Architecture & internals](../../docker/02-architecture-internals.md): dockerd, containerd, runc, namespaces, cgroups
-- [ ] [04 Containers](../../docker/04-containers.md): lifecycle, PID 1 and signals, exit codes
+### Read (~40 min), from your [Docker notes](https://github.com/suraj9741/interview/blob/main/interview-prep/docker/README.md)
+- [ ] [01 Fundamentals](https://github.com/suraj9741/interview/blob/main/interview-prep/docker/01-fundamentals.md): container vs VM
+- [ ] [02 Architecture & internals](https://github.com/suraj9741/interview/blob/main/interview-prep/docker/02-architecture-internals.md): dockerd, containerd, runc, namespaces, cgroups
+- [ ] [04 Containers](https://github.com/suraj9741/interview/blob/main/interview-prep/docker/04-containers.md): lifecycle, PID 1 and signals, exit codes
 
 ### Explain out loud ✔
 - [ ] What is a container, really? (a Linux process + namespaces + cgroups + layered filesystem)
@@ -81,7 +81,7 @@ Do this for **every topic**:
 - [ ] 10 min: say Monday's answers from memory
 - [ ] ⭐ [Docker Volumes explained in 6 minutes](https://www.youtube.com/watch?v=p2PH_YPCsis) · TechWorld with Nana · 6 min
 - [ ] ⭐ [Docker networking is CRAZY!!](https://www.youtube.com/watch?v=bKFMS5C4CG0) · NetworkChuck · 39 min: bridge, host, user-defined networks
-- [ ] Read [08 Networking](../../docker/08-networking.md): the **default-bridge DNS trap** and how `-p` really works
+- [ ] Read [08 Networking](https://github.com/suraj9741/interview/blob/main/interview-prep/docker/08-networking.md): the **default-bridge DNS trap** and how `-p` really works
 
 ## Lunch (21 min): Kubernetes big picture
 - [ ] ⭐ [Kubernetes Explained in 100 Seconds](https://www.youtube.com/watch?v=PziYflu8cB8) · Fireship · 2 min
@@ -90,13 +90,13 @@ Do this for **every topic**:
 
 ## Evening (7:30–10:30)
 ### Docker wrap-up (45 min)
-- [ ] Read [05 Dockerfile](../../docker/05-dockerfile.md) (CMD vs ENTRYPOINT, ARG vs ENV, multi-stage) and [10 Security](../../docker/10-security.md)
-- [ ] **Try it** (start Docker Desktop first; the commands are in [14 Docker command list](../../docker/14-docker-commands.md)): `docker run -d --name web -p 8080:80 nginx` · `curl -I localhost:8080` · `docker exec -it web sh` · `docker inspect web` · `docker stop web`
+- [ ] Read [05 Dockerfile](https://github.com/suraj9741/interview/blob/main/interview-prep/docker/05-dockerfile.md) (CMD vs ENTRYPOINT, ARG vs ENV, multi-stage) and [10 Security](https://github.com/suraj9741/interview/blob/main/interview-prep/docker/10-security.md)
+- [ ] **Try it** (start Docker Desktop first; the commands are in [14 Docker command list](https://github.com/suraj9741/interview/blob/main/interview-prep/docker/14-docker-commands.md)): `docker run -d --name web -p 8080:80 nginx` · `curl -I localhost:8080` · `docker exec -it web sh` · `docker inspect web` · `docker stop web`
 
 ### Kubernetes part 1 (⭐ 98 min)
 - [ ] ⭐ [What ACTUALLY Happens When You Run kubectl apply](https://www.youtube.com/watch?v=iRWya4yh5Y8) · Thetips4you · 26 min
 - [ ] ⭐ [Kubernetes Crash Course for Absolute Beginners](https://www.youtube.com/watch?v=s_o8dwzRlu4) · TechWorld with Nana · 72 min
-- [ ] Read Kubernetes notes ⭐ [01 Fundamentals](../../kubernetes/01-fundamentals.md) · [02 Architecture](../../kubernetes/02-architecture.md) · [03 Objects & labels](../../kubernetes/03-objects-and-api.md) · [04 kubectl apply flow](../../kubernetes/04-kubectl-apply-flow.md). Short on time? Read each file's **Interview angle** first.
+- [ ] Read Kubernetes notes ⭐ [01 Fundamentals](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/01-fundamentals.md) · [02 Architecture](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/02-architecture.md) · [03 Objects & labels](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/03-objects-and-api.md) · [04 kubectl apply flow](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/04-kubectl-apply-flow.md). Short on time? Read each file's **Interview angle** first.
 
 ### Optional 🔁 (Docker deep dive)
 - [ ] 🔁 [Cgroups, namespaces, and beyond](https://www.youtube.com/watch?v=sK5i-N34im8) · Jérôme Petazzoni · 54 min
@@ -117,7 +117,7 @@ Do this for **every topic**:
 - [ ] ⭐ [Liveness vs Readiness Probes Explained](https://www.youtube.com/watch?v=dO97BlKaLog) · CodeLucky · 4 min
 - [ ] ⭐ [Pods' Requests and Limits in 12 Minutes](https://www.youtube.com/watch?v=lKH1K5R3kqg) · The Good Guy · 12 min
 - [ ] ⭐ [Kubernetes Services explained: ClusterIP vs NodePort vs LoadBalancer](https://www.youtube.com/watch?v=T4Z7visMM4E) · TechWorld with Nana · 24 min
-- [ ] Read ⭐ [05 Pods](../../kubernetes/05-pods.md) (graceful shutdown) and [06 Probes](../../kubernetes/06-probes.md)
+- [ ] Read ⭐ [05 Pods](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/05-pods.md) (graceful shutdown) and [06 Probes](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/06-probes.md)
 
 ## Lunch (20 min)
 - [ ] ⭐ [Kubernetes CrashLoopBackOff explained in 3 minutes](https://www.youtube.com/watch?v=gKuu1toptm8) · Raghav Dua · 2 min
@@ -128,7 +128,7 @@ Do this for **every topic**:
 ### Kubernetes part 2: troubleshooting and Ingress (⭐ 52 min)
 - [ ] ⭐ [Troubleshooting Pods in CrashLoopBackOff, Pending and ImagePullBackOff](https://www.youtube.com/watch?v=ULitVDnqy8Y) · TechyWithLorna · 29 min
 - [ ] ⭐ [Kubernetes Ingress Tutorial for Beginners](https://www.youtube.com/watch?v=80Ew_fsV4rM) · TechWorld with Nana · 23 min
-- [ ] Read ⭐ [07 Workloads](../../kubernetes/07-workloads.md) · [08 Services & DNS](../../kubernetes/08-services-and-dns.md) · [12 Resources & autoscaling](../../kubernetes/12-resources-and-autoscaling.md) · [17 Troubleshooting](../../kubernetes/17-troubleshooting.md), plus [model answers](hemant-model-answers.md) **Q28–Q29** (502 vs 503 vs 504)
+- [ ] Read ⭐ [07 Workloads](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/07-workloads.md) · [08 Services & DNS](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/08-services-and-dns.md) · [12 Resources & autoscaling](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/12-resources-and-autoscaling.md) · [17 Troubleshooting](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/17-troubleshooting.md), plus [model answers](hemant-model-answers.md) **Q28–Q29** (502 vs 503 vs 504)
 - [ ] 🔁 [Life of a Packet](https://www.youtube.com/watch?v=0Omvgd7Hg1I) · Michael Rubin, Google (KubeCon) · 34 min, deep Kubernetes networking
 
 ### AWS part 1: VPC networking (⭐ 43 min)
@@ -163,7 +163,7 @@ Do this right after the VPC videos, while subnets are fresh in your head.
 - [ ] ⭐ [AWS IAM Core Concepts You NEED to Know](https://www.youtube.com/watch?v=_ZCTvmaPgao) · Be A Better Dev · 21 min
 - [ ] ⭐ [A Beginner's Guide to VPC Flow Logs](https://www.youtube.com/watch?v=P-RFSaMLfH4) · Whizlabs · 6 min. Hemant built a Flow Logs analyzer.
 - [ ] ⭐ [Comparing Pod Identity and IRSA in EKS](https://www.youtube.com/watch?v=OW2OWgu5tfU) · DevOps World · 6 min: how pods get AWS access without keys
-- [ ] Read the old plan's [Day 3 AWS](devops-interview-prep-plan.md) "Points to learn" (IAM, ALB vs NLB) and ⭐ [20 EKS on AWS](../../kubernetes/20-eks.md)
+- [ ] Read the old plan's [Day 3 AWS](devops-interview-prep-plan.md) "Points to learn" (IAM, ALB vs NLB) and ⭐ [20 EKS on AWS](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/20-eks.md)
 
 ## Lunch (22 min)
 - [ ] ⭐ [CI/CD in 5 Minutes](https://www.youtube.com/watch?v=42UP1fxi2SY) · ByteByteGo · 5 min
@@ -177,7 +177,7 @@ Do this right after the VPC videos, while subnets are fresh in your head.
 - [ ] ⭐ [Top 5 Most-Used Deployment Strategies](https://www.youtube.com/watch?v=AWVTKBUnoIg) · ByteByteGo · 10 min
 - [ ] ⭐ [What is Helm in Kubernetes?](https://www.youtube.com/watch?v=-ykwb1d0DXU) · TechWorld with Nana · 14 min
 - [ ] Read [model answers](hemant-model-answers.md) **Q35–Q40** (build once, promote; GitOps; CI/CD security)
-- [ ] ⭐ [21 Helm, Kustomize & GitOps](../../kubernetes/21-helm-kustomize-gitops.md), then 🎯 ⭐ [Scenario A1: Helm drift](hemant-scenario-deep-dives.md#a1--helm-drift-someone-edited-the-cluster-then-we-run-helm-upgrade-again-) (20 min). If you have a local cluster, do its 5-minute "Try it yourself".
+- [ ] ⭐ [21 Helm, Kustomize & GitOps](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/21-helm-kustomize-gitops.md), then 🎯 ⭐ [Scenario A1: Helm drift](hemant-scenario-deep-dives.md#a1--helm-drift-someone-edited-the-cluster-then-we-run-helm-upgrade-again-) (20 min). If you have a local cluster, do its 5-minute "Try it yourself".
 - [ ] 🔁 [ArgoCD Tutorial for Beginners](https://www.youtube.com/watch?v=MeU5_k9ssrs) · TechWorld with Nana · 47 min
 
 ### 🔥 Security (⭐ 85 min, never skip)
@@ -188,7 +188,7 @@ Do this right after the VPC videos, while subnets are fresh in your head.
 - [ ] ⭐ [Authenticate GitHub Actions to AWS using OIDC (no access keys)](https://www.youtube.com/watch?v=_0VQ-FpqbBc) · Tech IT Up · 5 min
 - [ ] ⭐ [Kubernetes Security Best Practices](https://www.youtube.com/watch?v=oBf5lrmquYI) · TechWorld with Nana · 29 min
 - [ ] Read [model answers](hemant-model-answers.md) 🔥 **Q55–Q57** (shift-left, OWASP CI/CD, secret leaks)
-- [ ] Read ⭐🔥 [15 Kubernetes security](../../kubernetes/15-security.md) and ⭐ [14 NetworkPolicy](../../kubernetes/14-cluster-networking.md)
+- [ ] Read ⭐🔥 [15 Kubernetes security](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/15-security.md) and ⭐ [14 NetworkPolicy](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/14-cluster-networking.md)
 - [ ] 🔁 [Secret Scanning in CI: Stop AWS Keys Leaking to GitHub](https://www.youtube.com/watch?v=lZp_FJ07lT8) · DevOps Interview Cloud · 28 min
 
 ### 🎯 Scenario A2: overlapping VPC CIDRs (⭐ 15 min + 20 min reading)
@@ -219,7 +219,7 @@ Do this right after the VPC videos, while subnets are fresh in your head.
 | 10:30–11:15 | **Introduction:** 60–90 seconds, practise it 3 times out loud. Prepare **2 project stories** (Situation, Task, Action, Result) that use Docker, Kubernetes, AWS or CI/CD. |
 | 11:15–11:45 | Draw 2 diagrams from memory: Docker architecture, and a VPC with public/private subnets. He may ask you to share your screen. |
 | 11:45–1:00 | Lunch and rest. Don't study. |
-| 1:00–1:45 | Light skim only: the ⭐ questions in [scenario deep dives Part B](hemant-scenario-deep-dives.md#part-b-more-scenarios-hemant-style), [Kubernetes interview questions](../../kubernetes/22-interview-questions.md), the [20 must-know Docker commands](../../docker/14-docker-commands.md) and your "explain out loud" lists |
+| 1:00–1:45 | Light skim only: the ⭐ questions in [scenario deep dives Part B](hemant-scenario-deep-dives.md#part-b-more-scenarios-hemant-style), [Kubernetes interview questions](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/22-interview-questions.md), the [20 must-know Docker commands](https://github.com/suraj9741/interview/blob/main/interview-prep/docker/14-docker-commands.md) and your "explain out loud" lists |
 | 1:45–2:15 | **Set up your laptop:** Docker Desktop running, terminal open, screen sharing tested |
 | 2:15–2:50 | Rest, water, a short walk. Join at **2:50 PM**. |
 

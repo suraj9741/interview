@@ -47,7 +47,7 @@ kubectl describe svc web                     # events from the controller
 |---|---|---|
 | Pod | Not Ready (readiness probe wrong path/port, app slow to start) | Fix probe, add `startupProbe`, check logs |
 | Pod | App binds `127.0.0.1` | Bind `0.0.0.0` |
-| Pod | CrashLoopBackOff / ImagePullBackOff | Fix the pod first ([pod startup](../../../kubernetes/05-pods.md)) |
+| Pod | CrashLoopBackOff / ImagePullBackOff | Fix the pod first ([pod startup](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/05-pods.md)) |
 | Service | Selector doesn't match labels (typo, `app: web` vs `app: web-app`) | Align labels/selector |
 | Service | `targetPort` ≠ `containerPort` (or named port mismatch) | Fix ports |
 | Service | Type ClusterIP used from outside | NodePort/LoadBalancer/Ingress |
@@ -61,7 +61,7 @@ kubectl describe svc web                     # events from the controller
 
 ## Deeper notes
 
-[kubernetes/08-services-and-dns.md](../../../kubernetes/08-services-and-dns.md) · [kubernetes/09-ingress-and-gateway-api.md](../../../kubernetes/09-ingress-and-gateway-api.md) · [Service traffic diagram](../diagrams/08-service-traffic.drawio.svg) · [ingress errors diagram](../diagrams/09-ingress-errors.drawio.svg) · [kubernetes/17-troubleshooting.md](../../../kubernetes/17-troubleshooting.md) · [R2 Q10: pods running but 503](10-pods-running-users-get-503.md)
+[kubernetes/08-services-and-dns.md](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/08-services-and-dns.md) · [kubernetes/09-ingress-and-gateway-api.md](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/09-ingress-and-gateway-api.md) · [Service traffic diagram](../diagrams/08-service-traffic.drawio.svg) · [ingress errors diagram](../diagrams/09-ingress-errors.drawio.svg) · [kubernetes/17-troubleshooting.md](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/17-troubleshooting.md) · [R2 Q10: pods running but 503](10-pods-running-users-get-503.md)
 
 ## 🎯 Drill: type the commands from memory, then check
 

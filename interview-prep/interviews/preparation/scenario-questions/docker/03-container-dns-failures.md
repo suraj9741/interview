@@ -61,7 +61,7 @@ kubectl get networkpolicy -A                                  # egress to UDP/TC
 - CoreDNS **CPU-throttled or too few replicas** under load → scale it (or the cluster-proportional autoscaler).
 - A default-deny **NetworkPolicy** without an egress rule to `kube-dns` port 53 breaks every lookup in that namespace.
 
-More background: [Docker networking](../../../../docker/08-networking.md), [Kubernetes services and DNS](../../../../kubernetes/08-services-and-dns.md).
+More background: [Docker networking](https://github.com/suraj9741/interview/blob/main/interview-prep/docker/08-networking.md), [Kubernetes services and DNS](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/08-services-and-dns.md).
 
 ## Resume check
 

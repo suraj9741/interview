@@ -64,7 +64,7 @@ terraform {
 
 ## Deeper notes
 
-Terraform Q&A (10 notes: import vs taint, secrets, count vs for_each, drift, remote backend, environments, provisioners, rollback, refresh vs plan, modules): [terraform/](../../../terraform/README.md). Scenario versions: [scenario-questions/terraform/](../../preparation/scenario-questions/terraform/). [Playbook section 5b](../../2026-11-13-aws-admin/aws-troubleshooting-playbook.md).
+Terraform Q&A (10 notes: import vs taint, secrets, count vs for_each, drift, remote backend, environments, provisioners, rollback, refresh vs plan, modules): [terraform/](https://github.com/suraj9741/interview/blob/main/interview-prep/terraform/README.md). Scenario versions: [scenario-questions/terraform/](https://github.com/suraj9741/interview/tree/main/interview-prep/interviews/preparation/scenario-questions/terraform). [Playbook section 5b](https://github.com/suraj9741/interview/blob/main/interview-prep/interviews/2026-11-13-aws-admin/aws-troubleshooting-playbook.md).
 
 ## 🎯 Drill: type from memory, then check
 

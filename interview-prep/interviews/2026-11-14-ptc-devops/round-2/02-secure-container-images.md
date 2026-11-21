@@ -84,7 +84,7 @@ SonarCloud is on your resume (code quality/SAST); image scanning, cosign and Kyv
 
 ## Deeper notes
 
-[docker/10-security.md](../../../docker/10-security.md) · [kubernetes/15-security.md](../../../kubernetes/15-security.md) · [hemant-model-answers.md Q55–Q56 (shift left, CI/CD security)](../../2026-10-09-one2n-hemant/hemant-model-answers.md#q55--what-do-shift-left-principles-actually-mean-in-a-pipeline) · policy-as-code scenario: [04-policy-as-code-docker-security.md](../../preparation/scenario-questions/docker/04-policy-as-code-docker-security.md)
+[docker/10-security.md](https://github.com/suraj9741/interview/blob/main/interview-prep/docker/10-security.md) · [kubernetes/15-security.md](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/15-security.md) · [hemant-model-answers.md Q55–Q56 (shift left, CI/CD security)](https://github.com/suraj9741/interview/blob/main/interview-prep/interviews/2026-10-09-one2n-hemant/hemant-model-answers.md#q55--what-do-shift-left-principles-actually-mean-in-a-pipeline) · policy-as-code scenario: [04-policy-as-code-docker-security.md](https://github.com/suraj9741/interview/blob/main/interview-prep/interviews/preparation/scenario-questions/docker/04-policy-as-code-docker-security.md)
 
 ## 🎯 Drill: say it from memory, then check
 

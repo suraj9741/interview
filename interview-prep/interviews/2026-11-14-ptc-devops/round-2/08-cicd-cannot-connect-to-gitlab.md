@@ -63,7 +63,7 @@ GitLab CI is on your resume. If you have a real story (runner registration expir
 
 ## Deeper notes
 
-[AWS connectivity check-order idea](../round-1/07-public-vs-private-subnets.md) · CI/CD security: [hemant-model-answers.md Q40](../../2026-10-09-one2n-hemant/hemant-model-answers.md#q40-what-security-would-you-put-around-cicd-and-the-network-footprint) · Terraform in CI/CD scenario: [02-terraform-in-ci-cd.md](../../preparation/scenario-questions/terraform/02-terraform-in-ci-cd.md)
+[AWS connectivity check-order idea](../round-1/07-public-vs-private-subnets.md) · CI/CD security: [hemant-model-answers.md Q40](https://github.com/suraj9741/interview/blob/main/interview-prep/interviews/2026-10-09-one2n-hemant/hemant-model-answers.md#q40-what-security-would-you-put-around-cicd-and-the-network-footprint) · Terraform in CI/CD scenario: [02-terraform-in-ci-cd.md](https://github.com/suraj9741/interview/blob/main/interview-prep/interviews/preparation/scenario-questions/terraform/02-terraform-in-ci-cd.md)
 
 ## 🎯 Drill: say it from memory, then check
 

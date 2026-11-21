@@ -1,6 +1,6 @@
 # Kentik · Sr SRE Engineer · interview Thu 19 Nov, 2:30 PM IST (moved from 5:30)
 
-**Two interviews in one day.** The AWS Admin L2 is at 10:30 AM ([its pack](../2026-11-13-aws-admin/aws-admin-l2-prep.md)). **Tonight belongs to that one.** The gap between the two interviews is now only about 2.5 hours, so Python starts with 40 minutes **before** the AWS warm-up tomorrow morning. Don't open the rest of this file tonight.
+**Two interviews in one day.** The AWS Admin L2 is at 10:30 AM ([its pack](https://github.com/suraj9741/interview/blob/main/interview-prep/interviews/2026-11-13-aws-admin/aws-admin-l2-prep.md)). **Tonight belongs to that one.** The gap between the two interviews is now only about 2.5 hours, so Python starts with 40 minutes **before** the AWS warm-up tomorrow morning. Don't open the rest of this file tonight.
 
 **Read the JD carefully.** The title says "Sr SRE", but the text says "entry-level, suitable for fresh graduates". It's probably a copy-pasted template. **Prepare at senior level** (5+ years: you own things, you've handled incidents, you make decisions). If they turn out to be junior-level questions, you'll do well anyway.
 
@@ -8,7 +8,7 @@
 
 | JD line | What they'll ask | Your real story (from your resume) |
 |---|---|---|
-| GitOps for continuous deployment | What GitOps is, how ArgoCD works, rollback, drift, secrets | **Jenkins → ArgoCD at Koko: deploy time 10 → 2 min** ([story 2](../2026-11-13-aws-admin/aws-interview-stories.md), PR #12) |
+| GitOps for continuous deployment | What GitOps is, how ArgoCD works, rollback, drift, secrets | **Jenkins → ArgoCD at Koko: deploy time 10 → 2 min** ([story 2](https://github.com/suraj9741/interview/blob/main/interview-prep/interviews/2026-11-13-aws-admin/aws-interview-stories.md), PR #12) |
 | Kubernetes | Pod startup, troubleshooting statuses, Deployments, Services, HPA, probes | **Docker Swarm → EKS migration; EKS upgrades** (stories 1 and 5) |
 | Terraform on AWS | State, locking, drift, modules, writing a resource | EKS and VPC with Terraform at Koko/Perfios |
 | Grafana and monitoring | PromQL, RED/USE, alert rules, dashboards, what you'd recommend from the data | **Federated Prometheus + Grafana at Koko, lower MTTD** (story 3) |
@@ -77,7 +77,7 @@ Typical: one repo (or folder) per environment with Kustomize overlays or Helm va
 
 <details><summary>B1. What happens when a pod starts? (control plane 3 steps + node 8 steps)</summary>
 
-API server saves the Pod in etcd (Pending, no node) → scheduler filters, scores, binds → kubelet on that node: volumes/Secrets/ConfigMaps → pod sandbox (pause container) → CNI assigns the IP → image pull → init containers → app containers + postStart → probes → Ready → EndpointSlice + kube-proxy → traffic. Diagram: [05-pods.md](../../kubernetes/05-pods.md) (PR #13).
+API server saves the Pod in etcd (Pending, no node) → scheduler filters, scores, binds → kubelet on that node: volumes/Secrets/ConfigMaps → pod sandbox (pause container) → CNI assigns the IP → image pull → init containers → app containers + postStart → probes → Ready → EndpointSlice + kube-proxy → traffic. Diagram: [05-pods.md](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/05-pods.md) (PR #13).
 </details>
 
 <details><summary>B2. Pending, ImagePullBackOff, CrashLoopBackOff, OOMKilled, Running 0/1: cause and first command for each.</summary>

@@ -227,7 +227,7 @@ State lives in a **versioned, encrypted S3 bucket**, not on a laptop. **Locking*
 
 **On the node:** (1) volumes, Secrets, ConfigMaps mounted. (2) Pod sandbox ("pause" container) through containerd/CRI. (3) CNI gives the pod IP. (4) Image pulled. (5) Init containers, one by one. (6) App containers start, then the postStart hook. (7) Probes: startup → liveness/readiness. (8) Ready → EndpointSlice → kube-proxy → traffic.
 
-Diagram: [05-pods.md, "What happens when a pod starts"](../../../kubernetes/05-pods.md#what-happens-when-a-pod-starts--the-question-missed-on-11-nov) (in PR #13 until it's merged).
+Diagram: [05-pods.md, "What happens when a pod starts"](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/05-pods.md#what-happens-when-a-pod-starts--the-question-missed-on-11-nov) (in PR #13 until it's merged).
 </details>
 
 <details><summary>19. Status → step</summary>

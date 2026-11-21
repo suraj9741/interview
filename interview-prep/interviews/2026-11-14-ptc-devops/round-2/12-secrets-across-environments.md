@@ -54,11 +54,11 @@ The only difference between environments is the path (via Kustomize overlay or H
 
 Secrets in Git (even "private" repos; history keeps them), in Dockerfile `ENV`/build args (visible in `docker history`), in Helm values files, in Terraform tfvars committed to Git, printed in CI logs, shared across environments, never rotated, one IAM user key used by everyone.
 
-**If a secret leaks:** rotate/revoke it first, then remove it from history (git filter-repo) and invalidate caches, check CloudTrail for misuse, and add a detection rule. See [hemant-model-answers.md Q57](../../2026-10-09-one2n-hemant/hemant-model-answers.md#q57--os-security-how-secrets-leak-and-how-to-prevent-a-repeat-of-the-key-incident).
+**If a secret leaks:** rotate/revoke it first, then remove it from history (git filter-repo) and invalidate caches, check CloudTrail for misuse, and add a detection rule. See [hemant-model-answers.md Q57](https://github.com/suraj9741/interview/blob/main/interview-prep/interviews/2026-10-09-one2n-hemant/hemant-model-answers.md#q57--os-security-how-secrets-leak-and-how-to-prevent-a-repeat-of-the-key-incident).
 
 ## Deeper notes
 
-[kubernetes/10-configmaps-and-secrets.md](../../../kubernetes/10-configmaps-and-secrets.md) · [secrets flow diagram](../diagrams/10-secrets-flow.drawio.svg) · [secret leak diagram](../diagrams/57-secret-leak.drawio.svg) · Terraform secrets note [02-secrets.md](../../../terraform/02-secrets.md) · Lambda multi-env scenario `aws/10-lambda-multi-environment.md`
+[kubernetes/10-configmaps-and-secrets.md](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/10-configmaps-and-secrets.md) · [secrets flow diagram](../diagrams/10-secrets-flow.drawio.svg) · [secret leak diagram](../diagrams/57-secret-leak.drawio.svg) · Terraform secrets note [02-secrets.md](https://github.com/suraj9741/interview/blob/main/interview-prep/terraform/02-secrets.md) · Lambda multi-env scenario `aws/10-lambda-multi-environment.md`
 
 ## 🎯 Drill: say it from memory, then check
 

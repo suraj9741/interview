@@ -82,7 +82,7 @@ You did GitOps with ArgoCD; deployments were ⟨fill: rolling updates via ArgoCD
 
 ## Deeper notes
 
-[kubernetes/07-workloads.md, Deployments and rolling updates](../../../kubernetes/07-workloads.md#deployments-and-rolling-updates-) · [kubernetes/21-helm-kustomize-gitops.md](../../../kubernetes/21-helm-kustomize-gitops.md)
+[kubernetes/07-workloads.md, Deployments and rolling updates](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/07-workloads.md#deployments-and-rolling-updates-) · [kubernetes/21-helm-kustomize-gitops.md](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/21-helm-kustomize-gitops.md)
 
 ## 🎯 Drill: say it from memory, then check
 

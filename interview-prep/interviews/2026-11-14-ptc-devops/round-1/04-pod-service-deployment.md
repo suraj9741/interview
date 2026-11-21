@@ -77,7 +77,7 @@ spec:
 
 ## Deeper notes
 
-[kubernetes/05-pods.md](../../../kubernetes/05-pods.md) · [kubernetes/07-workloads.md](../../../kubernetes/07-workloads.md) · [kubernetes/08-services-and-dns.md](../../../kubernetes/08-services-and-dns.md)
+[kubernetes/05-pods.md](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/05-pods.md) · [kubernetes/07-workloads.md](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/07-workloads.md) · [kubernetes/08-services-and-dns.md](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/08-services-and-dns.md)
 
 ## 🎯 Drill: type the YAML above from memory (Deployment + Service), then check
 

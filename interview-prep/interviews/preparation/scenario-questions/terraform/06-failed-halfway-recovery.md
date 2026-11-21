@@ -4,7 +4,7 @@
 
 > **Say this first:** "Terraform isn't transactional, so a failed apply leaves exactly what succeeded, and **state records each success as it goes**. That's good news: I don't clean up by hand. First I make sure the state is healthy: if the job was **killed**, release the **lock** (`force-unlock`, after confirming nothing is running), and if Terraform couldn't save state it writes an **`errored.tfstate`** that I push back with `terraform state push`. Then I run **`terraform plan`** to see the real situation: resources that failed mid-creation are **tainted** and will be replaced; resources created in AWS but **missing from state** (crash between the API call and the state write) show up as duplicates or name conflicts, and I **import** them. Then I either **fix forward** (correct the error and apply again; Terraform only does the remaining work) or **`git revert`** and apply the old config. I never restore an old state file to 'roll back'."
 
-This is the scenario version of [Rollback after a failed deployment](../../../../terraform/08-rollback.md) in the Terraform notes; that note covers the roll-forward procedure, why not to restore old state, and what can't be undone. This one focuses on **repairing the half-finished apply**.
+This is the scenario version of [Rollback after a failed deployment](https://github.com/suraj9741/interview/blob/main/interview-prep/terraform/08-rollback.md) in the Terraform notes; that note covers the roll-forward procedure, why not to restore old state, and what can't be undone. This one focuses on **repairing the half-finished apply**.
 
 ## Step 1: make sure state is healthy
 
@@ -53,7 +53,7 @@ terraform untaint aws_instance.web                # only if you've verified the 
 ## Step 3: fix forward or revert
 
 - **Fix forward** (most common): the error was a missing IAM permission, a quota, a wrong value, a dependency timing issue. Fix the code/permission/quota in an MR, plan, apply. Terraform does only what's left.
-- **Revert**: the change itself was wrong. `git revert` the merge, plan (Terraform calculates how to remove/undo what was created), apply. See [08-rollback](../../../../terraform/08-rollback.md).
+- **Revert**: the change itself was wrong. `git revert` the merge, plan (Terraform calculates how to remove/undo what was created), apply. See [08-rollback](https://github.com/suraj9741/interview/blob/main/interview-prep/terraform/08-rollback.md).
 - **Stabilise users first** if production is affected (shift traffic, scale the old node group back up) before doing either.
 
 ## Typical causes of a half-way failure (and how to avoid them)

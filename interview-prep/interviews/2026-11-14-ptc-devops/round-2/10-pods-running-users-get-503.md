@@ -61,7 +61,7 @@ kubectl get targetgroupbindings -A
 
 ## Deeper notes
 
-[R1 Q9 load balancer and the 5xx table](../round-1/09-load-balancer.md) · [R2 Q9 can't expose a pod](09-cannot-expose-pod.md) · [kubernetes/06-probes.md](../../../kubernetes/06-probes.md) · [kubernetes/05-pods.md graceful shutdown](../../../kubernetes/05-pods.md) · [hemant-model-answers.md Q28–Q30](../../2026-10-09-one2n-hemant/hemant-model-answers.md#q28-it-returns-502-what-do-501-502-and-503-each-mean) · namespace readiness scenario `kubernetes/03-namespace-readiness-failures.md` · playbook S3/S4
+[R1 Q9 load balancer and the 5xx table](../round-1/09-load-balancer.md) · [R2 Q9 can't expose a pod](09-cannot-expose-pod.md) · [kubernetes/06-probes.md](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/06-probes.md) · [kubernetes/05-pods.md graceful shutdown](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/05-pods.md) · [hemant-model-answers.md Q28–Q30](https://github.com/suraj9741/interview/blob/main/interview-prep/interviews/2026-10-09-one2n-hemant/hemant-model-answers.md#q28-it-returns-502-what-do-501-502-and-503-each-mean) · namespace readiness scenario `kubernetes/03-namespace-readiness-failures.md` · playbook S3/S4
 
 ## 🎯 Drill: say it from memory, then check
 

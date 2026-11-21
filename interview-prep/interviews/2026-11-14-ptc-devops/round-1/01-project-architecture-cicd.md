@@ -91,10 +91,10 @@ update-gitops:
 
 ## Where this is covered in more depth
 
-- Full STAR stories with blanks for the Swarm → EKS migration, Jenkins → ArgoCD and federated Prometheus: [aws-interview-stories.md](../../2026-11-13-aws-admin/aws-interview-stories.md) (stories 1–3).
-- Build once, promote: [hemant-model-answers.md Q37–Q39](../../2026-10-09-one2n-hemant/hemant-model-answers.md#q37-every-branch-merge-means-a-rebuild-how-do-you-reduce-lead-time-to-production) and the diagram [38-build-once-promote](../diagrams/38-build-once-promote.drawio.svg).
-- GitOps flow: [kubernetes/21-helm-kustomize-gitops.md](../../../kubernetes/21-helm-kustomize-gitops.md).
-- EKS: [kubernetes/20-eks.md](../../../kubernetes/20-eks.md).
+- Full STAR stories with blanks for the Swarm → EKS migration, Jenkins → ArgoCD and federated Prometheus: [aws-interview-stories.md](https://github.com/suraj9741/interview/blob/main/interview-prep/interviews/2026-11-13-aws-admin/aws-interview-stories.md) (stories 1–3).
+- Build once, promote: [hemant-model-answers.md Q37–Q39](https://github.com/suraj9741/interview/blob/main/interview-prep/interviews/2026-10-09-one2n-hemant/hemant-model-answers.md#q37-every-branch-merge-means-a-rebuild-how-do-you-reduce-lead-time-to-production) and the diagram [38-build-once-promote](../diagrams/38-build-once-promote.drawio.svg).
+- GitOps flow: [kubernetes/21-helm-kustomize-gitops.md](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/21-helm-kustomize-gitops.md).
+- EKS: [kubernetes/20-eks.md](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/20-eks.md).
 
 ## 🎯 Drill: say it from memory, then check
 

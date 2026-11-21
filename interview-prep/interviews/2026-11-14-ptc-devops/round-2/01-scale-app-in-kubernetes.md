@@ -67,7 +67,7 @@ HPA formula: `desired = ceil(current × currentMetric / target)`. Example: 4 pod
 
 ## Deeper notes
 
-[kubernetes/12-resources-and-autoscaling.md, Autoscaling](../../../kubernetes/12-resources-and-autoscaling.md#autoscaling-) · HPA too slow scenario: [04-hpa-too-slow.md](../../preparation/scenario-questions/kubernetes/04-hpa-too-slow.md) · [requests vs limits diagram](../diagrams/12-requests-limits.drawio.svg)
+[kubernetes/12-resources-and-autoscaling.md, Autoscaling](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/12-resources-and-autoscaling.md#autoscaling-) · HPA too slow scenario: [04-hpa-too-slow.md](https://github.com/suraj9741/interview/blob/main/interview-prep/interviews/preparation/scenario-questions/kubernetes/04-hpa-too-slow.md) · [requests vs limits diagram](../diagrams/12-requests-limits.drawio.svg)
 
 ## 🎯 Drill: type from memory, then check
 

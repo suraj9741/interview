@@ -27,7 +27,7 @@ It has two parts. The **control plane** decides: the **API server** is the front
 
 ## How they work together (the reconciliation loop)
 
-`kubectl apply` a Deployment → API server stores it in etcd → Deployment controller creates a ReplicaSet → ReplicaSet controller creates Pod objects → scheduler binds each Pod to a node → that node's kubelet sees it, asks containerd to pull and start the containers, runs probes → status goes back to the API server → when the pod is Ready, the EndpointSlice controller adds its IP behind the Service. Every component **watches** the API server; none of them talk to each other directly. Full flow: [04-kubectl-apply-flow.md](../../../kubernetes/04-kubectl-apply-flow.md).
+`kubectl apply` a Deployment → API server stores it in etcd → Deployment controller creates a ReplicaSet → ReplicaSet controller creates Pod objects → scheduler binds each Pod to a node → that node's kubelet sees it, asks containerd to pull and start the containers, runs probes → status goes back to the API server → when the pod is Ready, the EndpointSlice controller adds its IP behind the Service. Every component **watches** the API server; none of them talk to each other directly. Full flow: [04-kubectl-apply-flow.md](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/04-kubectl-apply-flow.md).
 
 ## Follow-up questions
 
@@ -39,7 +39,7 @@ It has two parts. The **control plane** decides: the **API server** is the front
 
 ## Deeper notes
 
-[kubernetes/02-architecture.md](../../../kubernetes/02-architecture.md) (every component in depth) · [kubernetes/01-fundamentals.md](../../../kubernetes/01-fundamentals.md) · [kubernetes/20-eks.md](../../../kubernetes/20-eks.md)
+[kubernetes/02-architecture.md](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/02-architecture.md) (every component in depth) · [kubernetes/01-fundamentals.md](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/01-fundamentals.md) · [kubernetes/20-eks.md](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/20-eks.md)
 
 ## 🎯 Drill: draw it from memory, then check
 
