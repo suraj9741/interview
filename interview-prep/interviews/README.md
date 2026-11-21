@@ -31,6 +31,6 @@ Everything from real interviews in one place: what they asked, the answers, the 
 
 ## Diagrams
 
-**Every interview folder is self-contained:** its notes only use diagrams from its own `diagrams/` folder, so you can share one folder (zip it, or copy it to a friend) and every picture still shows. Links from an interview folder to any note outside it (a Kubernetes topic page, another interview) are full GitHub links to `main`, so they open for anyone you share the folder with (the repo is public). Links inside a folder stay relative.
+**Every interview folder is self-contained:** its notes only use diagrams from its own `diagrams/` folder, so you can share one folder (zip it, or copy it to a friend) and every picture still shows. Links to *other notes* (for example a Kubernetes topic page) still point outside the folder; the pictures don't.
 
 Some diagrams are **copies** of the ones in the topic folders (networking, Kubernetes, Docker) or of another interview's (the VPC diagrams r1/r5 are in both the One2N and AWS Admin folders). The original lives where its generator writes it: `tools/diagrams_review.py`, `diagrams_model_answers.py`, `diagrams_scenarios.py` and `diagrams_guides.py` write to `2026-10-09-one2n-hemant/diagrams/`; `diagrams_nice.py`, `diagrams_aws_admin.py`, `diagrams_ptc.py`, `diagrams_plan.py` and `diagrams_scenario_qa.py` write to their own folders; topic generators write to the topic folders. If you edit an original, copy it over the copies too (same file name).

@@ -1,6 +1,6 @@
 # 🎯 Scenario Questions: AWS, Docker, Kubernetes, Terraform, Prometheus
 
-A real first-round question list someone else was asked (shared 12 Nov 2026), answered one question per file in the same format as the [Terraform](https://github.com/suraj9741/interview/blob/main/interview-prep/terraform/README.md), [Kubernetes](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/README.md) and [Docker](https://github.com/suraj9741/interview/blob/main/interview-prep/docker/README.md) notes. These are **scenario** questions: "X broke / you need Y, what do you do?" The interviewer wants a **structured method**, not a definition.
+A real first-round question list someone else was asked (shared 12 Nov 2026), answered one question per file in the same format as the [Terraform](../../../terraform/README.md), [Kubernetes](../../../kubernetes/README.md) and [Docker](../../../docker/README.md) notes. These are **scenario** questions: "X broke / you need Y, what do you do?" The interviewer wants a **structured method**, not a definition.
 
 ## How to use these notes (read this first)
 
@@ -55,7 +55,7 @@ On 11 Nov the basics were known but **couldn't be typed or said under pressure**
 
 ### Terraform
 
-These sit next to the 10 concept notes in [`../terraform/`](https://github.com/suraj9741/interview/blob/main/interview-prep/terraform/README.md). Terraform 06 builds on [08 · Rollback](https://github.com/suraj9741/interview/blob/main/interview-prep/terraform/08-rollback.md) instead of repeating it.
+These sit next to the 10 concept notes in [`../terraform/`](../../../terraform/README.md). Terraform 06 builds on [08 · Rollback](../../../terraform/08-rollback.md) instead of repeating it.
 
 | # | File | Question |
 |---|---|---|
@@ -83,4 +83,4 @@ These sit next to the 10 concept notes in [`../terraform/`](https://github.com/s
 
 ## Diagrams
 
-The 27 diagrams are in [diagrams/](diagrams/) as editable **`.drawio.svg`** files: open one in VS Code (Draw.io Integration) or [app.diagrams.net](https://app.diagrams.net) to edit it. They were generated once by [`tools/diagrams_scenario_qa.py`](https://github.com/suraj9741/interview/blob/main/tools/diagrams_scenario_qa.py), which skips files that already exist (so your edits in draw.io are safe); `--force` regenerates them.
+The 27 diagrams are in [diagrams/](diagrams/) as editable **`.drawio.svg`** files: open one in VS Code (Draw.io Integration) or [app.diagrams.net](https://app.diagrams.net) to edit it. They were generated once by [`tools/diagrams_scenario_qa.py`](../../../../tools/diagrams_scenario_qa.py), which skips files that already exist (so your edits in draw.io are safe); `--force` regenerates them.

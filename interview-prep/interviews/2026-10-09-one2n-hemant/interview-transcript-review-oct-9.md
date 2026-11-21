@@ -310,7 +310,7 @@ Know these, and say **why** each one matters:
 - **`.dockerignore`**, pinned base image versions, and tags = **git commit ID** (never reuse `latest`).
 - **Push to ECR:** `aws ecr get-login-password | docker login …`, then `docker push`.
 
-Your notes: [Docker 05 Dockerfile](https://github.com/suraj9741/interview/blob/main/interview-prep/docker/05-dockerfile.md) and [06 Build optimisation](https://github.com/suraj9741/interview/blob/main/interview-prep/docker/06-build-optimization.md). Practice: create a React app (`npm create vite@latest`), write the multi-stage Dockerfile, build it, and run it on port 8080.
+Your notes: [Docker 05 Dockerfile](../../docker/05-dockerfile.md) and [06 Build optimisation](../../docker/06-build-optimization.md). Practice: create a React app (`npm create vite@latest`), write the multi-stage Dockerfile, build it, and run it on port 8080.
 
 ---
 
@@ -320,7 +320,7 @@ Your notes: [Docker 05 Dockerfile](https://github.com/suraj9741/interview/blob/m
 
 Browser → Route 53 (alias) → ALB (created by an Ingress) → `/` → frontend Service (ClusterIP) → frontend pods. The browser also calls `/api` → backend Service (ClusterIP) → backend pods → database (StatefulSet + headless Service + PVC (PersistentVolumeClaim), or RDS).
 
-**Hemant's direct advice: run it yourself.** Use the [practice cluster recipe](https://github.com/suraj9741/interview/blob/main/interview-prep/helm-chart/README.md#your-own-practice-cluster-no-kind-needed-) (k3s in Docker, with its own kubeconfig) and build:
+**Hemant's direct advice: run it yourself.** Use the [practice cluster recipe](../../helm-chart/README.md#your-own-practice-cluster-no-kind-needed-) (k3s in Docker, with its own kubeconfig) and build:
 1. a frontend Deployment + ClusterIP Service;
 2. a backend Deployment + ClusterIP Service;
 3. a Postgres StatefulSet + headless Service + PVC;
@@ -329,7 +329,7 @@ Browser → Route 53 (alias) → ALB (created by an Ingress) → `/` → fronten
 
 **Done when:** `curl` through the Ingress returns data that came from Postgres, and you can explain each object.
 
-Your notes: [Kubernetes 08 Services and DNS](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/08-services-and-dns.md), [09 Ingress](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/09-ingress-and-gateway-api.md), [12 Autoscaling](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/12-resources-and-autoscaling.md), [20 EKS](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/20-eks.md).
+Your notes: [Kubernetes 08 Services and DNS](../../kubernetes/08-services-and-dns.md), [09 Ingress](../../kubernetes/09-ingress-and-gateway-api.md), [12 Autoscaling](../../kubernetes/12-resources-and-autoscaling.md), [20 EKS](../../kubernetes/20-eks.md).
 
 Video: [Kubernetes Services explained: ClusterIP vs NodePort vs LoadBalancer](https://www.youtube.com/watch?v=T4Z7visMM4E) · TechWorld with Nana · 24 min.
 
@@ -368,8 +368,8 @@ About **1 hour on weekdays** and **2–3 hours at weekends**. Videos first, then
 
 | Week | Focus | Do | Done when |
 |---|---|---|---|
-| **1** | IP and subnetting | The 3 videos in section 3; the worksheet by hand **every day**; [Networking Level 2: IP addressing and subnetting](https://github.com/suraj9741/interview/blob/main/interview-prep/networking/02-ip-addressing-and-subnetting/README.md) | All 12 worksheet answers right in under 15 minutes, with no calculator |
-| **2** | VPC design and traffic flow | The [Server Gyan VPC video](https://www.youtube.com/watch?v=TuBA5maXFgc) (7 min); drawing exercises 1–4 in section 4; [Networking 3.8: NAT](https://github.com/suraj9741/interview/blob/main/interview-prep/networking/03-core-networking-protocols/08-nat-pat-and-port-forwarding.md) | You draw r1 + r5 from memory in 10 minutes and explain flows ①②③ |
+| **1** | IP and subnetting | The 3 videos in section 3; the worksheet by hand **every day**; [Networking Level 2: IP addressing and subnetting](../../networking/02-ip-addressing-and-subnetting/README.md) | All 12 worksheet answers right in under 15 minutes, with no calculator |
+| **2** | VPC design and traffic flow | The [Server Gyan VPC video](https://www.youtube.com/watch?v=TuBA5maXFgc) (7 min); drawing exercises 1–4 in section 4; [Networking 3.8: NAT](../../networking/03-core-networking-protocols/08-nat-pat-and-port-forwarding.md) | You draw r1 + r5 from memory in 10 minutes and explain flows ①②③ |
 | **3** | Kubernetes 3-tier, hands-on | The Nana Services video; the 5-step lab in section 6 on the practice cluster | The `curl` through the Ingress returns data from Postgres |
 | **4** | Docker depth, EKS exposure, scaling, observability | The React multi-stage Dockerfile; AWS Load Balancer Controller and Ingress; Karpenter vs Cluster Autoscaler; diagram r4 | A **mock interview** replaying Q1–Q16 above (ask me to "act as Hemant") |
 

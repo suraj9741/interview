@@ -54,7 +54,7 @@ cat /etc/resolv.conf                # which resolver, search domains, ndots
 
 ## Deeper notes
 
-[networking/03-core-networking-protocols/04-dns.md](https://github.com/suraj9741/interview/blob/main/interview-prep/networking/03-core-networking-protocols/04-dns.md) · [DNS journey diagram](../diagrams/04-dns-journey.drawio.svg) · [hemant-model-answers.md Q1–Q9](https://github.com/suraj9741/interview/blob/main/interview-prep/interviews/2026-10-09-one2n-hemant/hemant-model-answers.md#1-dns-and-name-resolution) · [lab: trace DNS resolution](https://github.com/suraj9741/interview/blob/main/interview-prep/networking/13-hands-on-labs/lab-03.2-trace-dns-resolution.md)
+[networking/03-core-networking-protocols/04-dns.md](../../../networking/03-core-networking-protocols/04-dns.md) · [DNS journey diagram](../diagrams/04-dns-journey.drawio.svg) · [hemant-model-answers.md Q1–Q9](../../2026-10-09-one2n-hemant/hemant-model-answers.md#1-dns-and-name-resolution) · [lab: trace DNS resolution](../../../networking/13-hands-on-labs/lab-03.2-trace-dns-resolution.md)
 
 ## 🎯 Drill: say it from memory, then check
 

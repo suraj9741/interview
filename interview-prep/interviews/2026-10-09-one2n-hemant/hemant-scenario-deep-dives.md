@@ -38,7 +38,7 @@ When something "keeps changing back" or "can't be reached," ask: **who else owns
 
 ## A1 · Helm drift: someone edited the cluster, then we run `helm upgrade` again ⭐🔥
 
-> Everything about Helm, in study order, is also in the [Helm notes](https://github.com/suraj9741/interview/blob/main/interview-prep/helm-chart/README.md). The short practise-out-loud version of this scenario is [Helm 04](https://github.com/suraj9741/interview/blob/main/interview-prep/helm-chart/04-drift-scenario.md).
+> Everything about Helm, in study order, is also in the [Helm notes](../../helm-chart/README.md). The short practise-out-loud version of this scenario is [Helm 04](../../helm-chart/04-drift-scenario.md).
 
 ![Helm 3-way merge](diagrams/s1-helm-three-way-merge.drawio.svg)
 
@@ -768,7 +768,7 @@ Each one: **Say** (the core answer) and **He'll push** (the follow-up). ⭐ = mo
   - The app never got SIGTERM, or ignored it: a shell-form `CMD` makes `sh` PID 1, and sh doesn't pass signals on.
   - After 10 seconds Docker sends SIGKILL, which gives exit code 128 + 9 = **137**.
   - Fix: exec-form `CMD`, `exec "$@"` in entrypoint scripts, `--init` (tini), and handle SIGTERM in the app.
-- **He'll push:** "And in Kubernetes?" → the same, with a 30-second `terminationGracePeriodSeconds` (see [05 Pods](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/05-pods.md)).
+- **He'll push:** "And in Kubernetes?" → the same, with a 30-second `terminationGracePeriodSeconds` (see [05 Pods](../../kubernetes/05-pods.md)).
 
 ## ☸️ Kubernetes
 

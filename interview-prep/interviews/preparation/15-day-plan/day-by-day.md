@@ -244,7 +244,7 @@ Lesson: [day-02-linux-processes-resources-sql-groupby.md](day-02-linux-processes
 ## Day 15 · Tue 1 Dec · Mock interviews + repair
 
 **Study material**
-- No new material. Use `misses.md`, your own-words summaries, the [11 Nov review](https://github.com/suraj9741/interview/blob/main/interview-prep/interviews/2026-11-11-nice-actimize-sre/interview-review-nov-11-nice.md) and the [NiCE cheat sheet](https://github.com/suraj9741/interview/blob/main/interview-prep/interviews/2026-11-11-nice-actimize-sre/nice-actimize-sre-cheatsheet.md) to repair weak spots.
+- No new material. Use `misses.md`, your own-words summaries, the [11 Nov review](../../2026-11-11-nice-actimize-sre/interview-review-nov-11-nice.md) and the [NiCE cheat sheet](../../2026-11-11-nice-actimize-sre/nice-actimize-sre-cheatsheet.md) to repair weak spots.
 - 🎤 Send "Mock 2" at 9:30 and "Mock 3" at 14:00 in the thread.
 
 - [ ] **Mock 2 (morning):** SRE / application-support style, including SQL and Linux rapid-fire

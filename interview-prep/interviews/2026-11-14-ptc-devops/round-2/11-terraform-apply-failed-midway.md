@@ -2,7 +2,7 @@
 
 ![Terraform apply failed midway: stabilise state, read the plan, then fix forward](../diagrams/r2-11-tf-partial-apply.drawio.svg)
 
-> This question is also answered in depth, with a table for reading the plan and typical causes, in [06-failed-halfway-recovery.md](https://github.com/suraj9741/interview/blob/main/interview-prep/interviews/preparation/scenario-questions/terraform/06-failed-halfway-recovery.md) and [08-rollback.md](https://github.com/suraj9741/interview/blob/main/interview-prep/terraform/08-rollback.md). This page is the interview-length version; the facts match.
+> This question is also answered in depth, with a table for reading the plan and typical causes, in [06-failed-halfway-recovery.md](../../preparation/scenario-questions/terraform/06-failed-halfway-recovery.md) and [08-rollback.md](../../../terraform/08-rollback.md). This page is the interview-length version; the facts match.
 
 ## Say this first
 

@@ -236,4 +236,4 @@ API server (authn, authz, admission) → etcd → Deployment controller creates 
 
 ---
 
-Related: [NiCE cheat sheet](nice-actimize-sre-cheatsheet.md) · [Oct 9 review](https://github.com/suraj9741/interview/blob/main/interview-prep/interviews/2026-10-09-one2n-hemant/interview-transcript-review-oct-9.md) · [kubectl commands](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/23-kubectl-commands.md)
+Related: [NiCE cheat sheet](nice-actimize-sre-cheatsheet.md) · [Oct 9 review](../2026-10-09-one2n-hemant/interview-transcript-review-oct-9.md) · [kubectl commands](../../kubernetes/23-kubectl-commands.md)

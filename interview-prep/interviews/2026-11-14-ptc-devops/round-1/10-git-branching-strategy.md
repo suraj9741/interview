@@ -46,7 +46,7 @@ git revert <sha>                             # undo a merged commit safely (new 
 
 ## Deeper notes
 
-[hemant-model-answers.md Q39 (branch divergence between envs)](https://github.com/suraj9741/interview/blob/main/interview-prep/interviews/2026-10-09-one2n-hemant/hemant-model-answers.md#q39-if-the-dev-image-is-deployed-to-qa-github-shows-a-divergence-between-the-branch-and-what-is-running-how-do-you-solve-that) · Git day in the 15-day plan (draft PR #10)
+[hemant-model-answers.md Q39 (branch divergence between envs)](../../2026-10-09-one2n-hemant/hemant-model-answers.md#q39-if-the-dev-image-is-deployed-to-qa-github-shows-a-divergence-between-the-branch-and-what-is-running-how-do-you-solve-that) · Git day in the 15-day plan (draft PR #10)
 
 ## 🎯 Drill: say it from memory, then check
 

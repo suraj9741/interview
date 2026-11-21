@@ -239,7 +239,7 @@ kubectl debug -it <pod> -n <ns> --image=busybox:1.36 --target=<container>   # ep
 
 **Say it:** "I start with `kubectl get pods` and `describe`, because the Events tell me *why*: scheduling, image pull, probe or OOM. Then I read the logs with `--previous` for crashes. For connectivity I go hop by hop, Ingress, Service, endpoints, pod, and empty endpoints usually mean a label mismatch or failing readiness. Before deep debugging I check what changed: the rollout history or the last ArgoCD sync. If a deploy caused it, I roll back first and debug after."
 
-More commands: [kubectl commands](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/23-kubectl-commands.md).
+More commands: [kubectl commands](../../kubernetes/23-kubectl-commands.md).
 
 ## 6. Shell and Python automation (show you can write a small one)
 

@@ -49,7 +49,7 @@ docker rm -f web                         # writable layer gone; image stays
 
 ## Deeper notes
 
-[docker/01-fundamentals.md](https://github.com/suraj9741/interview/blob/main/interview-prep/docker/01-fundamentals.md) · [docker/02-architecture-internals.md](https://github.com/suraj9741/interview/blob/main/interview-prep/docker/02-architecture-internals.md) · [docker/03-images.md](https://github.com/suraj9741/interview/blob/main/interview-prep/docker/03-images.md) · [docker/04-containers.md](https://github.com/suraj9741/interview/blob/main/interview-prep/docker/04-containers.md)
+[docker/01-fundamentals.md](../../../docker/01-fundamentals.md) · [docker/02-architecture-internals.md](../../../docker/02-architecture-internals.md) · [docker/03-images.md](../../../docker/03-images.md) · [docker/04-containers.md](../../../docker/04-containers.md)
 
 ## 🎯 Drill: type from memory, then check
 

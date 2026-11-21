@@ -70,7 +70,7 @@ Prometheus, Grafana, Nagios, federated Prometheus, Alertmanager: yours, own them
 
 ## Deeper notes
 
-[hemant-model-answers.md Q45–Q49](https://github.com/suraj9741/interview/blob/main/interview-prep/interviews/2026-10-09-one2n-hemant/hemant-model-answers.md#q45-we-have-zero-observability-how-would-you-build-the-stack-at-our-future-scale-on-a-tight-budget) · [kubernetes/16-observability.md](https://github.com/suraj9741/interview/blob/main/interview-prep/kubernetes/16-observability.md) · [SLO / error budget diagram](../diagrams/c3-slo-error-budget.drawio.svg) · Prometheus scenarios (cluster monitoring, Alertmanager → Slack) · Story 3 (federated Prometheus)
+[hemant-model-answers.md Q45–Q49](../../2026-10-09-one2n-hemant/hemant-model-answers.md#q45-we-have-zero-observability-how-would-you-build-the-stack-at-our-future-scale-on-a-tight-budget) · [kubernetes/16-observability.md](../../../kubernetes/16-observability.md) · [SLO / error budget diagram](../diagrams/c3-slo-error-budget.drawio.svg) · Prometheus scenarios (cluster monitoring, Alertmanager → Slack) · Story 3 (federated Prometheus)
 
 ## 🎯 Drill: type from memory, then check
 

@@ -107,4 +107,4 @@ Rescheduling isn't failing. Failing costs another 150 USD and a retake wait.
 
 ## Where this helps your interviews
 
-VPC/NAT, ELB, RDS Multi-AZ, IAM roles, S3 policies and CloudWatch come up in AWS admin and SRE interviews. When you study them, also say the troubleshooting angle out loud ([aws-troubleshooting-playbook.md](https://github.com/suraj9741/interview/blob/main/interview-prep/interviews/2026-11-13-aws-admin/aws-troubleshooting-playbook.md)). The exam asks "which service"; interviewers ask "it's broken, what do you check".
+VPC/NAT, ELB, RDS Multi-AZ, IAM roles, S3 policies and CloudWatch come up in AWS admin and SRE interviews. When you study them, also say the troubleshooting angle out loud ([aws-troubleshooting-playbook.md](../2026-11-13-aws-admin/aws-troubleshooting-playbook.md)). The exam asks "which service"; interviewers ask "it's broken, what do you check".

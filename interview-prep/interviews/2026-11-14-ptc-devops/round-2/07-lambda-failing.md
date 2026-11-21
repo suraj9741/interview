@@ -51,7 +51,7 @@ I also check **how it's invoked**, because retries differ: synchronous callers l
 
 ## Deeper notes
 
-Lambda multi-environment scenario: [10-lambda-multi-environment.md](https://github.com/suraj9741/interview/blob/main/interview-prep/interviews/preparation/scenario-questions/aws/10-lambda-multi-environment.md) · playbook S11 "Lambda / ECS / EKS can't reach something"
+Lambda multi-environment scenario: [10-lambda-multi-environment.md](../../preparation/scenario-questions/aws/10-lambda-multi-environment.md) · playbook S11 "Lambda / ECS / EKS can't reach something"
 
 ## 🎯 Drill: say it from memory, then check
 

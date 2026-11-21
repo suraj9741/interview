@@ -42,7 +42,7 @@ A typical design: Route 53 alias → CloudFront with WAF → S3 for the frontend
 
 ## Deeper notes
 
-S3 security in transit and at rest (scenario incl. CloudFront + OAC): [09-secure-s3-in-transit-and-at-rest.md](https://github.com/suraj9741/interview/blob/main/interview-prep/interviews/preparation/scenario-questions/aws/09-secure-s3-in-transit-and-at-rest.md) · [TLS termination diagram](../diagrams/3.6-tls-termination.drawio.svg)
+S3 security in transit and at rest (scenario incl. CloudFront + OAC): [09-secure-s3-in-transit-and-at-rest.md](../../preparation/scenario-questions/aws/09-secure-s3-in-transit-and-at-rest.md) · [TLS termination diagram](../diagrams/3.6-tls-termination.drawio.svg)
 
 ## 🎯 Drill: say it from memory, then check
 
