@@ -50,7 +50,7 @@ On EKS the **AWS Load Balancer Controller** creates an ALB from an `Ingress` (IP
 
 ## Deeper notes
 
-[networking 3.5-lb-5xx diagram](../../../networking/diagrams/3.5-lb-5xx.drawio.svg) · [hemant-model-answers.md Q28–Q30](../../2026-10-09-one2n-hemant/hemant-model-answers.md#q28-it-returns-502-what-do-501-502-and-503-each-mean) · [R2 Q10: pods running but 503](../round-2/10-pods-running-users-get-503.md) · playbook S3/S4
+[networking 3.5-lb-5xx diagram](../diagrams/3.5-lb-5xx.drawio.svg) · [hemant-model-answers.md Q28–Q30](../../2026-10-09-one2n-hemant/hemant-model-answers.md#q28-it-returns-502-what-do-501-502-and-503-each-mean) · [R2 Q10: pods running but 503](../round-2/10-pods-running-users-get-503.md) · playbook S3/S4
 
 ## 🎯 Drill: say it from memory, then check
 

@@ -99,7 +99,7 @@ Write 3–4 real stories from your own work. Use bullet points only, then practi
 
 ## 7. Questions a CTO-level SRE often asks
 
-![SLI, SLO and error budget](../diagrams/c3-slo-error-budget.drawio.svg)
+![SLI, SLO and error budget](diagrams/c3-slo-error-budget.drawio.svg)
 
 You don't need memorised answers. Know the **direction** of a good answer.
 

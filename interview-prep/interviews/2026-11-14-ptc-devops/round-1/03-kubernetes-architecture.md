@@ -1,6 +1,6 @@
 # R1 Q3 · What is Kubernetes? Explain its architecture.
 
-![Kubernetes architecture: control plane and worker nodes](../../../kubernetes/diagrams/02-architecture.drawio.svg)
+![Kubernetes architecture: control plane and worker nodes](../diagrams/02-architecture.drawio.svg)
 
 ## Say this first
 

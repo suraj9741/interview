@@ -12,7 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from drawio_svg import Diagram  # noqa: E402
 
-OUT = Path(__file__).resolve().parents[1] / "interview-prep" / "interviews" / "diagrams"
+OUT = Path(__file__).resolve().parents[1] / "interview-prep" / "interviews" / "2026-10-09-one2n-hemant" / "diagrams"
 
 AZS = [  # (AZ name, public, app, data, app usable range)
     ("AZ a · ap-south-1a", "10.0.0.0/24", "10.0.16.0/20", "10.0.8.0/24"),

@@ -77,7 +77,7 @@ Noisy neighbours (pods without limits), burstable instances (t3) out of CPU cred
 
 ## Deeper notes
 
-[kubernetes/17-troubleshooting.md](../../../kubernetes/17-troubleshooting.md) · [kubernetes/16-observability.md](../../../kubernetes/16-observability.md) · [networking ndots trap diagram](../../../networking/diagrams/3.4-ndots-trap.drawio.svg) · [hemant-model-answers.md Q26 debugging approach](../../2026-10-09-one2n-hemant/hemant-model-answers.md#q26-examplecomabc-works-but-examplecomdef-does-not-what-is-your-debugging-approach) · EKS troubleshooting in playbook 5c (draft PR #12)
+[kubernetes/17-troubleshooting.md](../../../kubernetes/17-troubleshooting.md) · [kubernetes/16-observability.md](../../../kubernetes/16-observability.md) · [networking ndots trap diagram](../diagrams/3.4-ndots-trap.drawio.svg) · [hemant-model-answers.md Q26 debugging approach](../../2026-10-09-one2n-hemant/hemant-model-answers.md#q26-examplecomabc-works-but-examplecomdef-does-not-what-is-your-debugging-approach) · EKS troubleshooting in playbook 5c (draft PR #12)
 
 ## 🎯 Drill: say it from memory, then check
 

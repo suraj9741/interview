@@ -1,6 +1,6 @@
 # R1 Q7 · Difference between public and private subnets in AWS
 
-![A VPC across 3 AZs with public, private and database subnets; the NAT gateway sits inside a public subnet](../../diagrams/r1-vpc-subnets-nat-igw.drawio.svg)
+![A VPC across 3 AZs with public, private and database subnets; the NAT gateway sits inside a public subnet](../diagrams/r1-vpc-subnets-nat-igw.drawio.svg)
 
 > **You lost marks on exactly this on 13 Nov** (private EC2 with no internet: you talked about inbound SSH and never mentioned the NAT gateway or the route table). The one sentence to never forget: **a subnet is public or private only because of its route table.**
 
@@ -37,7 +37,7 @@ Check in order: **route table** of the private subnet has `0.0.0.0/0 → nat-…
 
 ## Deeper notes
 
-[interview-review-oct-9.md](../../2026-10-09-one2n-hemant/interview-review-oct-9.md) (the corrected VPC diagrams r1, r5) · [networking/09-cloud-networking/aws/README.md](../../../networking/09-cloud-networking/aws/README.md) · [AWS NAT diagram](../../../networking/diagrams/3.8-aws-nat.drawio.svg) · playbook S2 "private EC2 can't reach the internet"
+[interview-review-oct-9.md](../../2026-10-09-one2n-hemant/interview-review-oct-9.md) (the corrected VPC diagrams r1, r5) · [networking/09-cloud-networking/aws/README.md](../../../networking/09-cloud-networking/aws/README.md) · [AWS NAT diagram](../diagrams/3.8-aws-nat.drawio.svg) · playbook S2 "private EC2 can't reach the internet"
 
 ## 🎯 Drill: write from memory, then check
 

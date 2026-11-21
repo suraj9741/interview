@@ -2,7 +2,7 @@
 
 ![Where Kubernetes logs and metrics come from](diagrams/16-k8s-observability.drawio.svg)
 
-The full stack design is in the model answers (Q45–Q49), with a [diagram](../interviews/diagrams/46-observability-stack.drawio.svg). This file covers what's **specific to Kubernetes**.
+The full stack design is in the model answers (Q45–Q49), with a [diagram](../interviews/2026-10-09-one2n-hemant/diagrams/46-observability-stack.drawio.svg). This file covers what's **specific to Kubernetes**.
 
 ## Logs
 

@@ -73,7 +73,7 @@ Least privilege (start small; use IAM Access Analyzer to generate policies from 
 
 ## Deeper notes
 
-Scenario notes on IAM audit and cross-account access: [07-audit-iam-for-compliance.md](../../preparation/scenario-questions/aws/07-audit-iam-for-compliance.md) and `08-cross-account-access-for-partner.md` · EKS Pod Identity diagram: [20-pod-identity](../../../kubernetes/diagrams/20-pod-identity.drawio.svg) · S3 AccessDenied walk-through: [R2 Q5](../round-2/05-s3-access-denied.md)
+Scenario notes on IAM audit and cross-account access: [07-audit-iam-for-compliance.md](../../preparation/scenario-questions/aws/07-audit-iam-for-compliance.md) and `08-cross-account-access-for-partner.md` · EKS Pod Identity diagram: [20-pod-identity](../diagrams/20-pod-identity.drawio.svg) · S3 AccessDenied walk-through: [R2 Q5](../round-2/05-s3-access-denied.md)
 
 ## 🎯 Drill: write from memory, then check
 

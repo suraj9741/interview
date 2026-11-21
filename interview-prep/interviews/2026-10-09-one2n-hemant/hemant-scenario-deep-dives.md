@@ -40,7 +40,7 @@ When something "keeps changing back" or "can't be reached," ask: **who else owns
 
 > Everything about Helm, in study order, is also in the [Helm notes](../../helm-chart/README.md). The short practise-out-loud version of this scenario is [Helm 04](../../helm-chart/04-drift-scenario.md).
 
-![Helm 3-way merge](../diagrams/s1-helm-three-way-merge.drawio.svg)
+![Helm 3-way merge](diagrams/s1-helm-three-way-merge.drawio.svg)
 
 **The scenario:**
 - Release `web` was installed with `helm upgrade --install web ./chart -n shop`. It's on revision 3, with `replicas: 3` in the chart.
@@ -142,7 +142,7 @@ When something "keeps changing back" or "can't be reached," ask: **who else owns
 2. Then, by hand: `kubectl edit` (replicas → 5), `kubectl annotate deploy … team=x`, `kubectl rollout restart` (it adds a `restartedAt` pod annotation), and `kubectl set env … DEBUG=true`.
 3. Then `helm upgrade` with the same replicas and the `owner` annotation **removed** from the chart.
 
-![Tested: what happens to each field on helm upgrade](../diagrams/s5-helm-merge-cases.drawio.svg)
+![Tested: what happens to each field on helm upgrade](diagrams/s5-helm-merge-cases.drawio.svg)
 
 **The surprise ⚠️:** `restartedAt` was **lost** with the 3-way merge, even though Helm never set it.
 - The chart's **only** pod annotation was `owner`. Removing it made the whole `annotations:` block vanish from NEW.
@@ -154,7 +154,7 @@ When something "keeps changing back" or "can't be reached," ask: **who else owns
 
 ### Helm 4: server-side apply, tested ⭐ (current: 4.3; your laptop has **v4.2.3**)
 
-![Helm 4 server-side apply: every field has an owner](../diagrams/s6-ssa-field-owners.drawio.svg)
+![Helm 4 server-side apply: every field has an owner](diagrams/s6-ssa-field-owners.drawio.svg)
 
 **The idea: every field carries a name tag.** The API server records **who owns each field** in `metadata.managedFields`.
 - **Helm 3** never looks at the tags: it builds the patch itself and sends a normal **Update**, which the server doesn't check.
@@ -290,7 +290,7 @@ kubectl get deploy demo -o jsonpath='{.spec.replicas} {.metadata.annotations.tea
 
 ## A2 · Two clusters, two VPCs, overlapping CIDRs: how do you connect them? ⭐🔥
 
-![Overlapping CIDR with private NAT and Transit Gateway](../diagrams/s2-overlapping-cidr-private-nat.drawio.svg)
+![Overlapping CIDR with private NAT and Transit Gateway](diagrams/s2-overlapping-cidr-private-nat.drawio.svg)
 
 **The scenario:** cluster A runs in VPC A (`10.0.0.0/16`) and cluster B in VPC B, **also `10.0.0.0/16`** (both made from the same template). A service in A must call an API in B.
 
@@ -312,7 +312,7 @@ kubectl get deploy demo -o jsonpath='{.spec.replicas} {.metadata.annotations.tea
 
 ### What a Transit Gateway is (and why it can't route an overlap) ⭐
 
-![AWS Transit Gateway](../diagrams/s14-transit-gateway.drawio.svg)
+![AWS Transit Gateway](diagrams/s14-transit-gateway.drawio.svg)
 
 **A Transit Gateway (TGW) is a regional network hub.** Every VPC, VPN and Direct Connect connects **once** to the hub, instead of every VPC peering with every other one.
 
@@ -373,7 +373,7 @@ All five pictures use the same setup: VPC A (blue) and VPC B (green), **both `10
 
 #### Option 1 · Amazon VPC Lattice
 
-![Option 1: Amazon VPC Lattice](../diagrams/s7-option1-vpc-lattice.drawio.svg)
+![Option 1: Amazon VPC Lattice](diagrams/s7-option1-vpc-lattice.drawio.svg)
 
 - The client calls a **name**. It resolves to the link-local range `169.254.171.x`, not to anything in either VPC.
 - The **service network** (in the middle, run by AWS) decides where the request goes, by service, never by VPC IP. So the overlap simply doesn't matter.
@@ -381,7 +381,7 @@ All five pictures use the same setup: VPC A (blue) and VPC B (green), **both `10
 
 #### Option 2 · AWS PrivateLink
 
-![Option 2: AWS PrivateLink](../diagrams/s8-option2-privatelink.drawio.svg)
+![Option 2: AWS PrivateLink](diagrams/s8-option2-privatelink.drawio.svg)
 
 - B **publishes** one service: pods → internal NLB → **endpoint service**.
 - A **consumes** it through an **interface endpoint**, an ENI with an IP from **A's own subnet** (`10.0.5.20`). A only ever talks to its own address.
@@ -389,7 +389,7 @@ All five pictures use the same setup: VPC A (blue) and VPC B (green), **both `10
 
 #### Option 3 · Unique CIDR + private NAT + Transit Gateway
 
-![Option 3: private NAT gateway and Transit Gateway](../diagrams/s2-overlapping-cidr-private-nat.drawio.svg)
+![Option 3: private NAT gateway and Transit Gateway](diagrams/s2-overlapping-cidr-private-nat.drawio.svg)
 
 - Only **unique** addresses (`10.100.x.x`) ever cross the TGW.
 - The private NAT hides pod A behind `10.100.0.5`, and B's internal NLB (`10.100.1.10`) is the only address A can reach in B.
@@ -397,7 +397,7 @@ All five pictures use the same setup: VPC A (blue) and VPC B (green), **both `10
 
 #### Option 4 · Remove the overlap (re-IP)
 
-![Option 4: re-IP with a new VPC and blue/green](../diagrams/s9-option4-re-ip.drawio.svg)
+![Option 4: re-IP with a new VPC and blue/green](diagrams/s9-option4-re-ip.drawio.svg)
 
 - Build **VPC B2** with a unique CIDR from **IPAM**, deploy the same code there, and shift traffic with **Route 53 weights**.
 - Once the old VPC B is retired, normal **peering or TGW** works, because nothing overlaps any more.
@@ -405,7 +405,7 @@ All five pictures use the same setup: VPC A (blue) and VPC B (green), **both `10
 
 #### Option 5 · IPv6 clusters
 
-![Option 5: IPv6 clusters](../diagrams/s10-option5-ipv6.drawio.svg)
+![Option 5: IPv6 clusters](diagrams/s10-option5-ipv6.drawio.svg)
 
 - Pods get **IPv6** addresses from each VPC's own unique `/56`, so pod-to-pod traffic routes over TGW or peering with **no NAT**.
 - IPv4 still overlaps, so anything IPv4-only still needs options 1–3.
@@ -428,7 +428,7 @@ All five pictures use the same setup: VPC A (blue) and VPC B (green), **both `10
 
 ### Option 3: which load balancer receives the traffic? ⭐
 
-![Option 3, the way in to VPC B: four load balancer set-ups](../diagrams/s15-option3-inbound-load-balancers.drawio.svg)
+![Option 3, the way in to VPC B: four load balancer set-ups](diagrams/s15-option3-inbound-load-balancers.drawio.svg)
 
 The way IN to B must be a load balancer with an IP in B's **unique** routable subnet. Many services can **share** one.
 
@@ -480,7 +480,7 @@ The NLB is the front door; the controller is the receptionist who reads the name
 
 ### Two-way traffic ⭐
 
-![Two-way traffic with option 3](../diagrams/s11-two-way-private-nat.drawio.svg)
+![Two-way traffic with option 3](diagrams/s11-two-way-private-nat.drawio.svg)
 
 **"Two-way" means both sides can START a connection.** Replies on an existing connection always come back by themselves (step 6 above). What needs extra work is B **starting** a call to A.
 
@@ -501,7 +501,7 @@ The TGW routes (`10.100.0.0/24 → A`, `10.100.1.0/24 → B`) already work in bo
 
 #### Can the other options do two-way? Yes, all of them
 
-![Two-way traffic: what each option needs](../diagrams/s13-two-way-per-option.drawio.svg)
+![Two-way traffic: what each option needs](diagrams/s13-two-way-per-option.drawio.svg)
 
 | Option | Two-way? | What B → A needs |
 |---|---|---|
@@ -525,7 +525,7 @@ The TGW routes (`10.100.0.0/24 → A`, `10.100.1.0/24 → B`) already work in bo
 
 ### Why not a bastion host or a VPN? ⭐
 
-![Why a bastion or a VPN doesn't fix overlapping CIDRs](../diagrams/s12-why-not-bastion-or-vpn.drawio.svg)
+![Why a bastion or a VPN doesn't fix overlapping CIDRs](diagrams/s12-why-not-bastion-or-vpn.drawio.svg)
 
 **The overlap is an addressing problem, and neither of these changes addresses.**
 
@@ -564,7 +564,7 @@ The TGW routes (`10.100.0.0/24 → A`, `10.100.1.0/24 → B`) already work in bo
 
 ## A3 · Nodes in one CIDR, pods in another: how is that done? ⭐🔥
 
-![Node vs pod CIDR](../diagrams/s3-node-vs-pod-cidr.drawio.svg)
+![Node vs pod CIDR](diagrams/s3-node-vs-pod-cidr.drawio.svg)
 
 **The scenario:**
 - `kubectl get nodes -o wide` shows node IPs like `10.0.12.201`;
@@ -583,7 +583,7 @@ The TGW routes (`10.100.0.0/24 → A`, `10.100.1.0/24 → B`) already work in bo
 
 ### Why teams do this
 
-![VPC CNI custom networking, before and after](../diagrams/s16-custom-networking-before-after.drawio.svg)
+![VPC CNI custom networking, before and after](diagrams/s16-custom-networking-before-after.drawio.svg)
 
 **Before:** every pod takes an IP from the node's own small subnet, through the node's ENIs (Elastic Network Interfaces). **After:** the primary ENI keeps only the node IP, and the secondary ENIs sit in a pod subnet from the secondary CIDR (Classless Inter-Domain Routing range) `100.64.0.0/16`.
 
@@ -593,7 +593,7 @@ The TGW routes (`10.100.0.0/24 → A`, `10.100.1.0/24 → B`) already work in bo
 
 ### How VPC CNI custom networking works, step by step
 
-![Set up VPC CNI custom networking in 5 steps](../diagrams/s17-custom-networking-steps.drawio.svg)
+![Set up VPC CNI custom networking in 5 steps](diagrams/s17-custom-networking-steps.drawio.svg)
 
 The VPC CNI (Virtual Private Cloud Container Network Interface) runs as the `aws-node` pods. The right side of the diagram shows how a new node finds **its** ENIConfig: its AZ (Availability Zone) label `topology.kubernetes.io/zone=us-west-1a` picks the ENIConfig named `us-west-1a`.
 
@@ -668,7 +668,7 @@ spec:
 
 ### The One2N incident (expect this as a follow-up) ⭐
 
-![Two controllers fight over NodeClass default](../diagrams/s4-two-controllers-fight.drawio.svg)
+![Two controllers fight over NodeClass default](diagrams/s4-two-controllers-fight.drawio.svg)
 
 - **What happened:**
   - They added a `100.64.0.0/16` pod CIDR through **Argo CD**, by editing a NodeClass named **`default`**.

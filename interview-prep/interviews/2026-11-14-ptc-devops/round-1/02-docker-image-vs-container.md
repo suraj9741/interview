@@ -1,6 +1,6 @@
 # R1 Q2 · What is Docker? Difference between image and container?
 
-![How a container's filesystem is built: read-only image layers plus one writable container layer](../../../docker/diagrams/02-overlay2-layers.drawio.svg)
+![How a container's filesystem is built: read-only image layers plus one writable container layer](../diagrams/02-overlay2-layers.drawio.svg)
 
 ## Say this first
 

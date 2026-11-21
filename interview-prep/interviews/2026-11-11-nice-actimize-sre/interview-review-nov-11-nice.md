@@ -2,7 +2,7 @@
 
 Face-to-face round, from my own recall of the questions and answers. This note covers **every question**, **what I said**, **the gap**, **the answer to give next time**, and a **4-week plan** to close the gaps.
 
-![What happens after kubectl apply: the pod startup flow I couldn't explain](../../kubernetes/diagrams/04-kubectl-apply-flow.drawio.svg)
+![What happens after kubectl apply: the pod startup flow I couldn't explain](diagrams/04-kubectl-apply-flow.drawio.svg)
 
 ---
 
@@ -95,7 +95,7 @@ DROP TABLE users;                 -- DDL: removes the table itself
   - **etcd holds the cluster state, not the kubelet.** The kubelet runs the containers on its node and **reports their status** to the API server, which stores it in etcd.
 - **Answer to give:**
 
-  ![Kubernetes architecture](../../kubernetes/diagrams/02-architecture.drawio.svg)
+  ![Kubernetes architecture](diagrams/02-architecture.drawio.svg)
 
   - **Control plane:**
     - **kube-apiserver** is the only component that talks to etcd. Everything else goes through it. It handles authentication, authorisation and admission.

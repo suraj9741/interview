@@ -66,7 +66,7 @@ Note: a restore always creates a **new** instance with a new endpoint: the app m
 
 ## Deeper notes
 
-[hemant-model-answers.md Q41–Q42 (DB scaling, Postgres → RDS)](../../2026-10-09-one2n-hemant/hemant-model-answers.md#q41-the-database-will-not-scale-what-would-you-propose) · [DB scaling ladder diagram](../../diagrams/41-db-scaling-ladder.drawio.svg) · region failover scenario: [02-region-failover.md](../../preparation/scenario-questions/kubernetes/02-region-failover.md) and S3 backup scenario `aws/06-s3-backup-bucket-unavailable.md` · playbook S6 "app can't connect to RDS"
+[hemant-model-answers.md Q41–Q42 (DB scaling, Postgres → RDS)](../../2026-10-09-one2n-hemant/hemant-model-answers.md#q41-the-database-will-not-scale-what-would-you-propose) · [DB scaling ladder diagram](../diagrams/41-db-scaling-ladder.drawio.svg) · region failover scenario: [02-region-failover.md](../../preparation/scenario-questions/kubernetes/02-region-failover.md) and S3 backup scenario `aws/06-s3-backup-bucket-unavailable.md` · playbook S6 "app can't connect to RDS"
 
 ## 🎯 Drill: say it from memory, then check
 

@@ -1,6 +1,6 @@
 # R2 Q1 · How do you scale an application in Kubernetes?
 
-![Pod and node autoscaling working together](../../../kubernetes/diagrams/12-autoscaling.drawio.svg)
+![Pod and node autoscaling working together](../diagrams/12-autoscaling.drawio.svg)
 
 ## Say this first
 
@@ -67,7 +67,7 @@ HPA formula: `desired = ceil(current × currentMetric / target)`. Example: 4 pod
 
 ## Deeper notes
 
-[kubernetes/12-resources-and-autoscaling.md, Autoscaling](../../../kubernetes/12-resources-and-autoscaling.md#autoscaling-) · HPA too slow scenario: [04-hpa-too-slow.md](../../preparation/scenario-questions/kubernetes/04-hpa-too-slow.md) · [requests vs limits diagram](../../../kubernetes/diagrams/12-requests-limits.drawio.svg)
+[kubernetes/12-resources-and-autoscaling.md, Autoscaling](../../../kubernetes/12-resources-and-autoscaling.md#autoscaling-) · HPA too slow scenario: [04-hpa-too-slow.md](../../preparation/scenario-questions/kubernetes/04-hpa-too-slow.md) · [requests vs limits diagram](../diagrams/12-requests-limits.drawio.svg)
 
 ## 🎯 Drill: type from memory, then check
 

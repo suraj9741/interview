@@ -30,7 +30,7 @@ Each question shows **what you said**, **the gap**, and **a better answer** to s
 
 ### Q1 · Dev and staging in one AWS account: where does it fail or not scale?
 
-![One AWS account per environment](../diagrams/r6-account-per-environment.drawio.svg)
+![One AWS account per environment](diagrams/r6-account-per-environment.drawio.svg)
 
 - **You said:** access policies get complicated; someone with high privileges could delete CloudTrail logs; "create multiple private networks" to scale.
 - **Gap:** the log point was good, but the fix was missing, and the scaling answer was vague.
@@ -44,12 +44,12 @@ Each question shows **what you said**, **the gap**, and **a better answer** to s
 
 ### Q2 · Draw the VPC and the overall architecture
 
-![Corrected VPC](../diagrams/r1-vpc-subnets-nat-igw.drawio.svg)
+![Corrected VPC](diagrams/r1-vpc-subnets-nat-igw.drawio.svg)
 
 - **You said:** you first drew regions **inside** the VPC, then corrected it after his question: "VPC has a region, or region has a VPC?"
 - **Gap:** the nesting order.
 - **Correct order:** **Account → Region → VPC** (a VPC belongs to one region and **spans all its AZs (Availability Zones)**) **→ Subnet** (each subnet sits in **exactly one AZ**).
-- The **internet gateway** is attached to the **VPC**, not to an AZ or a subnet. See [diagram r1](../diagrams/r1-vpc-subnets-nat-igw.drawio.svg).
+- The **internet gateway** is attached to the **VPC**, not to an AZ or a subnet. See [diagram r1](diagrams/r1-vpc-subnets-nat-igw.drawio.svg).
 
 ### Q3 · Which CIDR range do you pick? Do we always need a big VPC?
 
@@ -106,7 +106,7 @@ This is where Hemant said **"totally wrong"**.
   - The **internet gateway is attached to the VPC**, one per VPC.
   - A subnet is **public because of its route table**: `0.0.0.0/0 → internet gateway`.
   - A private subnet's route table says `0.0.0.0/0 → NAT gateway`.
-  - **The route table decides, not the subnet's name.** See [diagram r5](../diagrams/r5-traffic-flows-route-tables.drawio.svg).
+  - **The route table decides, not the subnet's name.** See [diagram r5](diagrams/r5-traffic-flows-route-tables.drawio.svg).
 
 ### Q9 · What is NAT, and where do you place the NAT gateway?
 
@@ -120,7 +120,7 @@ This is where Hemant said **"totally wrong"**.
 
 ### Q10 · How does a developer connect to a private database?
 
-![How a developer reaches a private database](../diagrams/r7-private-db-access.drawio.svg)
+![How a developer reaches a private database](diagrams/r7-private-db-access.drawio.svg)
 
 - **You said:** VPN or bastion; site-to-site vs point-to-site (you couldn't recall).
 - **Better answer, best first:**
@@ -135,7 +135,7 @@ This is where Hemant said **"totally wrong"**.
 
 ### Q11 · Host a 3-tier app on Kubernetes (on AWS)
 
-![Corrected three-tier architecture on EKS](../diagrams/r3-three-tier-on-eks.drawio.svg)
+![Corrected three-tier architecture on EKS](diagrams/r3-three-tier-on-eks.drawio.svg)
 
 - **You said:** database in a "stateful deployment", frontend and backend as Deployments. ✅ The idea was right.
 - **Gaps:**
@@ -183,7 +183,7 @@ This is where Hemant said **"totally wrong"**.
 
 ### Q15 · How do you scale the apps and the nodes?
 
-![Pod and node autoscaling](../../kubernetes/diagrams/12-autoscaling.drawio.svg)
+![Pod and node autoscaling](diagrams/12-autoscaling.drawio.svg)
 
 - **You said:** "node class and node pool… use Auto Scaling groups"; HPA (Horizontal Pod Autoscaler) "inside the Deployment, set min and max replicas"; StatefulSet: "need to check".
 - **Corrections:**
@@ -197,7 +197,7 @@ This is where Hemant said **"totally wrong"**.
 
 ### Q16 · Centralised observability for many accounts, VPCs and clusters
 
-![Central monitoring with SigNoz](../diagrams/r4-central-monitoring-signoz.drawio.svg)
+![Central monitoring with SigNoz](diagrams/r4-central-monitoring-signoz.drawio.svg)
 
 - **You said:**
   - SigNoz: collector, ClickHouse, SigNoz UI and query. ✅ The components were right.
@@ -207,15 +207,15 @@ This is where Hemant said **"totally wrong"**.
   - Only these collectors send data out, through **PrivateLink** (or a TGW (Transit Gateway)). If you must use the internet: **TLS plus authentication**.
   - Separate **metrics, logs and traces**: you said "push the logs" while talking about metrics.
   - Add retention, scaling and **alerts**.
-- See [diagram r4](../diagrams/r4-central-monitoring-signoz.drawio.svg).
+- See [diagram r4](diagrams/r4-central-monitoring-signoz.drawio.svg).
 
 ---
 
 ## 3. The biggest gap: IP and subnetting maths
 
-![Subnetting on paper: the block-size method](../diagrams/r8-subnet-block-size.drawio.svg)
+![Subnetting on paper: the block-size method](diagrams/r8-subnet-block-size.drawio.svg)
 
-![CIDR explained](../diagrams/r2-cidr-explained.drawio.svg)
+![CIDR explained](diagrams/r2-cidr-explained.drawio.svg)
 
 ### The 4 facts to know cold
 
@@ -279,7 +279,7 @@ The 8 bits of an octet are worth **128 64 32 16 8 4 2 1**. Add up the bits that 
 
 ## 4. Placement, route tables and traffic flow
 
-![Traffic flow and route tables](../diagrams/r5-traffic-flows-route-tables.drawio.svg)
+![Traffic flow and route tables](diagrams/r5-traffic-flows-route-tables.drawio.svg)
 
 **The rules to remember:**
 1. **Internet gateway:** one per **VPC**, at its edge.
@@ -289,7 +289,7 @@ The 8 bits of an octet are worth **128 64 32 16 8 4 2 1**. Add up the bits that 
 5. **Data subnet** = local routes only.
 
 **Drawing exercises** (on paper, from memory):
-1. Draw the VPC from [r1](../diagrams/r1-vpc-subnets-nat-igw.drawio.svg): 3 AZs × 3 tiers, with the internet gateway, the NAT gateways and all 3 route tables. Target: **10 minutes**.
+1. Draw the VPC from [r1](diagrams/r1-vpc-subnets-nat-igw.drawio.svg): 3 AZs × 3 tiers, with the internet gateway, the NAT gateways and all 3 route tables. Target: **10 minutes**.
 2. On that drawing, trace with a pen: **①** a user opening the site, and **②** a pod downloading a package (as in r5).
 3. Add flow **③**: a developer reaching the database with SSM port forwarding.
 4. Find "AWS VPC architecture diagram" images online, as Hemant suggested, and redraw one that has a NAT gateway. Then check: is every element in the right place?
@@ -300,7 +300,7 @@ The 8 bits of an octet are worth **128 64 32 16 8 4 2 1**. Add up the bits that 
 
 ## 5. Dockerfile depth
 
-![CMD vs ENTRYPOINT](../../docker/diagrams/05-cmd-entrypoint.drawio.svg)
+![CMD vs ENTRYPOINT](diagrams/05-cmd-entrypoint.drawio.svg)
 
 Know these, and say **why** each one matters:
 - **Multi-stage builds:** build tools stay in the first stage, so the final image is small and has fewer vulnerabilities.
@@ -316,7 +316,7 @@ Your notes: [Docker 05 Dockerfile](../../docker/05-dockerfile.md) and [06 Build 
 
 ## 6. Kubernetes: exposure and scaling
 
-**The request path to know by heart (3-tier on EKS)** ([diagram r3](../diagrams/r3-three-tier-on-eks.drawio.svg)):
+**The request path to know by heart (3-tier on EKS)** ([diagram r3](diagrams/r3-three-tier-on-eks.drawio.svg)):
 
 Browser → Route 53 (alias) → ALB (created by an Ingress) → `/` → frontend Service (ClusterIP) → frontend pods. The browser also calls `/api` → backend Service (ClusterIP) → backend pods → database (StatefulSet + headless Service + PVC (PersistentVolumeClaim), or RDS).
 

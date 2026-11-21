@@ -61,7 +61,7 @@ kubectl describe svc web                     # events from the controller
 
 ## Deeper notes
 
-[kubernetes/08-services-and-dns.md](../../../kubernetes/08-services-and-dns.md) · [kubernetes/09-ingress-and-gateway-api.md](../../../kubernetes/09-ingress-and-gateway-api.md) · [Service traffic diagram](../../../kubernetes/diagrams/08-service-traffic.drawio.svg) · [ingress errors diagram](../../../kubernetes/diagrams/09-ingress-errors.drawio.svg) · [kubernetes/17-troubleshooting.md](../../../kubernetes/17-troubleshooting.md) · [R2 Q10: pods running but 503](10-pods-running-users-get-503.md)
+[kubernetes/08-services-and-dns.md](../../../kubernetes/08-services-and-dns.md) · [kubernetes/09-ingress-and-gateway-api.md](../../../kubernetes/09-ingress-and-gateway-api.md) · [Service traffic diagram](../diagrams/08-service-traffic.drawio.svg) · [ingress errors diagram](../diagrams/09-ingress-errors.drawio.svg) · [kubernetes/17-troubleshooting.md](../../../kubernetes/17-troubleshooting.md) · [R2 Q10: pods running but 503](10-pods-running-users-get-503.md)
 
 ## 🎯 Drill: type the commands from memory, then check
 

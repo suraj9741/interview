@@ -2,7 +2,7 @@
 
 The role: **AWS Admin Engineer, 4–8 years**. Troubleshooting AWS services, load balancers, security, connectivity and outages, with a working knowledge of Terraform. Expect **scenario questions**: "X is broken, what do you check?". Answer every one with the same habit: **scope → path → evidence → fix → prevent**.
 
-![Connectivity check order](../diagrams/a1-aws-connectivity-check-order.drawio.svg)
+![Connectivity check order](diagrams/a1-aws-connectivity-check-order.drawio.svg)
 
 ---
 
@@ -16,7 +16,7 @@ The role: **AWS Admin Engineer, 4–8 years**. Troubleshooting AWS services, loa
 
 **Opening line you can use:** "First I'd scope it and check what changed, then I'd walk the network path layer by layer and use Flow Logs and CloudTrail to prove where it breaks, instead of guessing."
 
-**Background you should be able to draw** (from your 9 Oct review): ![VPC](../diagrams/r1-vpc-subnets-nat-igw.drawio.svg) ![Route tables and traffic flows](../diagrams/r5-traffic-flows-route-tables.drawio.svg)
+**Background you should be able to draw** (from your 9 Oct review): ![VPC](diagrams/r1-vpc-subnets-nat-igw.drawio.svg) ![Route tables and traffic flows](diagrams/r5-traffic-flows-route-tables.drawio.svg)
 
 ---
 

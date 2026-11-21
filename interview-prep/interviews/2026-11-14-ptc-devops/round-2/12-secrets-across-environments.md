@@ -58,7 +58,7 @@ Secrets in Git (even "private" repos; history keeps them), in Dockerfile `ENV`/b
 
 ## Deeper notes
 
-[kubernetes/10-configmaps-and-secrets.md](../../../kubernetes/10-configmaps-and-secrets.md) · [secrets flow diagram](../../../kubernetes/diagrams/10-secrets-flow.drawio.svg) · [secret leak diagram](../../diagrams/57-secret-leak.drawio.svg) · Terraform secrets note [02-secrets.md](../../../terraform/02-secrets.md) · Lambda multi-env scenario `aws/10-lambda-multi-environment.md`
+[kubernetes/10-configmaps-and-secrets.md](../../../kubernetes/10-configmaps-and-secrets.md) · [secrets flow diagram](../diagrams/10-secrets-flow.drawio.svg) · [secret leak diagram](../diagrams/57-secret-leak.drawio.svg) · Terraform secrets note [02-secrets.md](../../../terraform/02-secrets.md) · Lambda multi-env scenario `aws/10-lambda-multi-environment.md`
 
 ## 🎯 Drill: say it from memory, then check
 

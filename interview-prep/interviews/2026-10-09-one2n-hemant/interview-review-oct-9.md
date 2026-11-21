@@ -19,7 +19,7 @@ Short terms are written in full the first time they appear.
 
 ## 1 · VPC and subnets: how to choose them
 
-![Corrected VPC with 3 AZs and 3 subnet tiers](../diagrams/r1-vpc-subnets-nat-igw.drawio.svg)
+![Corrected VPC with 3 AZs and 3 subnet tiers](diagrams/r1-vpc-subnets-nat-igw.drawio.svg)
 
 **What was drawn:** account (dev-staging) → region → VPC `10.0.0.0/16` → 3 AZs (Availability Zones) a, b, c, with 2 subnets each. The overall nesting (account → region → VPC → AZ → subnet) was **right**.
 
@@ -66,7 +66,7 @@ Everything from `10.0.64.0` to `10.0.255.255` stays free for growth.
 
 ## 2 · CIDR and IP addresses: what was wrong
 
-![CIDR explained](../diagrams/r2-cidr-explained.drawio.svg)
+![CIDR explained](diagrams/r2-cidr-explained.drawio.svg)
 
 **CIDR (Classless Inter-Domain Routing)** notation `10.0.1.0/24` means: **the first 24 bits are fixed**, and the remaining 8 bits are free. 2⁸ = **256 addresses**, from `10.0.1.0` to `10.0.1.255`.
 
@@ -89,9 +89,9 @@ Everything from `10.0.64.0` to `10.0.255.255` stays free for growth.
 
 ## 3 · NAT gateway and internet gateway: where they fit
 
-![Traffic flow and route tables](../diagrams/r5-traffic-flows-route-tables.drawio.svg)
+![Traffic flow and route tables](diagrams/r5-traffic-flows-route-tables.drawio.svg)
 
-The same diagram as section 1 ([r1](../diagrams/r1-vpc-subnets-nat-igw.drawio.svg)).
+The same diagram as section 1 ([r1](diagrams/r1-vpc-subnets-nat-igw.drawio.svg)).
 
 **What was drawn:**
 - "IG" and "NAT" boxes inside the VPC but **outside every AZ and subnet**;
@@ -126,7 +126,7 @@ The same diagram as section 1 ([r1](../diagrams/r1-vpc-subnets-nat-igw.drawio.sv
 
 ## 4 · Three-tier architecture on EKS
 
-![Corrected three-tier architecture on EKS](../diagrams/r3-three-tier-on-eks.drawio.svg)
+![Corrected three-tier architecture on EKS](diagrams/r3-three-tier-on-eks.drawio.svg)
 
 **What was drawn:**
 - 3 bands: front end, backend, database;
@@ -154,7 +154,7 @@ The same diagram as section 1 ([r1](../diagrams/r1-vpc-subnets-nat-igw.drawio.sv
 
 ## 5 · Central monitoring with SigNoz
 
-![Central monitoring with SigNoz for many accounts](../diagrams/r4-central-monitoring-signoz.drawio.svg)
+![Central monitoring with SigNoz for many accounts](diagrams/r4-central-monitoring-signoz.drawio.svg)
 
 **What was drawn:**
 - Accounts A, B and a third one on the left; only **A** had front-end and back-end boxes;
@@ -226,7 +226,7 @@ service:
 
 ## 6 · The Dockerfile on the same drawing
 
-![Multi-stage build](../../docker/diagrams/06-multi-stage-build.drawio.svg)
+![Multi-stage build](diagrams/06-multi-stage-build.drawio.svg)
 
 **What was written:** `From reactjs`, `COPY package`, `WORKDIR /dir`, `RUN install pakages`, `COPY copy code`, `EXPOSE 8080`, `USER create user`, `CMD [application run]`, then `docker build .`, `docker tag tagname image`, `docker push repository`.
 

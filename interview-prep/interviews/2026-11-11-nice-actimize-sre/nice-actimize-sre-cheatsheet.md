@@ -3,7 +3,7 @@
 **Interview:** 11 Nov 2026, 2:00 PM IST, face to face. R Systems is the employer and NiCE Actimize is the client, in Pune (Hinjawadi Phase 2).
 **Rule from NiCE:** only mention tools that are on your resume. Expect them to dig into practical scenarios for every tool you list.
 
-![Incident lifecycle and ITIL](../diagrams/n1-incident-lifecycle.drawio.svg)
+![Incident lifecycle and ITIL](diagrams/n1-incident-lifecycle.drawio.svg)
 
 ---
 
@@ -106,7 +106,7 @@ Have these three kinds ready:
 
 ## 4. SLI, SLO, SLA, error budget
 
-![SLI to SLO to error budget](../diagrams/c3-slo-error-budget.drawio.svg)
+![SLI to SLO to error budget](diagrams/c3-slo-error-budget.drawio.svg)
 
 - **SLI (Service Level Indicator)** is what you measure, for example the % of requests that succeed in under 500 ms.
 - **SLO (Service Level Objective)** is the internal target, for example 99.9% over 30 days.
@@ -144,7 +144,7 @@ Have these three kinds ready:
 
 ## 5. Linux troubleshooting (type these, don't just read them)
 
-![Linux triage order](../diagrams/n2-linux-triage.drawio.svg)
+![Linux triage order](diagrams/n2-linux-triage.drawio.svg)
 
 | Symptom | Commands | What you're looking for |
 |---|---|---|
