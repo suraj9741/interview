@@ -100,7 +100,7 @@ Every original file was moved with `git mv` first (commit `4eb03a9`, no content 
 | Diagrams and whiteboard tips | [diagrams/README](../diagrams/README.md), [interview preparation](../15-interview-preparation/README.md#whiteboard-diagrams-to-practise) |
 | Related files and videos | [Videos and further reading](../references/videos-and-further-reading.md), README "Related notes" |
 
-**Links fixed outside this folder:** [Docker 08](../../docker/08-networking.md) ("Go deeper" line), the [Kubernetes README](../../kubernetes/README.md) (networking line), and the 4-week plan in the [transcript review](../../interview-transcript-review-oct-9.md#9-the-4-week-plan) (two links to `01-basics.md` and `02-nat.md`).
+**Links fixed outside this folder:** [Docker 08](../../docker/08-networking.md) ("Go deeper" line), the [Kubernetes README](../../kubernetes/README.md) (networking line), and the 4-week plan in the [transcript review](../../interviews/2026-10-09-one2n-hemant/interview-transcript-review-oct-9.md#9-the-4-week-plan) (two links to `01-basics.md` and `02-nat.md`).
 
 ## 4 · Decisions and why
 

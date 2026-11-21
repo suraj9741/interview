@@ -141,7 +141,7 @@ On your Docker Desktop, the `iptables` command is really `iptables-nft` **(teste
 |---|---|
 | **NAT gateway** | **MASQUERADE for a private subnet.** The private subnet's route `0.0.0.0/0 → nat-xxxx`. The NAT gateway sits in a **public** subnet with an Elastic IP. Use one per AZ, for availability and to avoid cross-AZ charges. |
 | **Internet gateway** | **1:1 NAT** between an instance's private IP and its public IP. The instance never sees its public IP on its own card: `ip addr` shows only the private one. |
-| **Private NAT gateway** | SNAT to a routable **private** IP, with no internet. Used for **overlapping CIDRs** ([scenario deep dives](../../hemant-scenario-deep-dives.md), A2). |
+| **Private NAT gateway** | SNAT to a routable **private** IP, with no internet. Used for **overlapping CIDRs** ([scenario deep dives](../../interviews/2026-10-09-one2n-hemant/hemant-scenario-deep-dives.md), A2). |
 
 ## Interview angle
 

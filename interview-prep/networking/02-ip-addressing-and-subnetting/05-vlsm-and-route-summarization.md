@@ -82,7 +82,7 @@ python3 -c "import ipaddress as i; print(list(i.collapse_addresses([i.ip_network
 ![Company 10.0.0.0/8 splits into regions India 10.0.0.0/12 and EU 10.16.0.0/12; India holds prod, staging and dev /16 VPCs; prod holds /20 app and /24 public and data subnets](../diagrams/2.5-hierarchical-plan.drawio.svg)
 
 - Every India VPC sits inside `10.0.0.0/12`, so an EU router needs **one** route for all of India, and a firewall rule "allow from India" is one CIDR.
-- A new VPC takes the next `/16` in its region's block: no overlap, no renumbering. This is exactly the planning that avoids "two VPCs with the same CIDR" ([scenario deep dives](../../hemant-scenario-deep-dives.md), A2).
+- A new VPC takes the next `/16` in its region's block: no overlap, no renumbering. This is exactly the planning that avoids "two VPCs with the same CIDR" ([scenario deep dives](../../interviews/2026-10-09-one2n-hemant/hemant-scenario-deep-dives.md), A2).
 
 ## Where you meet it
 

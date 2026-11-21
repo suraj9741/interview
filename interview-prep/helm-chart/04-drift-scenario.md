@@ -4,7 +4,7 @@
 
 **The question:** release `web` was installed with `replicas: 3`. During an incident someone ran `kubectl edit deploy web` (replicas → 5) and added an annotation `team=x`. Next day CI runs `helm upgrade` with the **same** chart and values. What happens?
 
-The full version, with every follow-up, is in [the scenario deep dives, A1](../hemant-scenario-deep-dives.md). This page is the version to practise out loud.
+The full version, with every follow-up, is in [the scenario deep dives, A1](../interviews/2026-10-09-one2n-hemant/hemant-scenario-deep-dives.md). This page is the version to practise out loud.
 
 ## Answer in Hemant's 5 steps
 

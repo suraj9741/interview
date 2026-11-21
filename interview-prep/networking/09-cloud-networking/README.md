@@ -46,6 +46,6 @@
 - [3.8 · NAT](../03-core-networking-protocols/08-nat-pat-and-port-forwarding.md): IGW vs NAT gateway, port exhaustion, idle timeouts.
 - [3.10 · Packet flow end to end](../03-core-networking-protocols/10-packet-flow-end-to-end.md#the-same-journey-from-a-kubernetes-pod-in-aws-eks): a pod's request through a VPC.
 - [Interview scenarios N10–N13](../15-interview-preparation/troubleshooting-scenarios-docker-kubernetes-aws.md#️-aws): EKS IP exhaustion, timeouts to EC2 and RDS, private subnets without internet.
-- [Scenario deep dives](../../hemant-scenario-deep-dives.md) (A2 overlapping CIDRs, A3 node vs pod CIDR) and the VPC diagrams in the [Oct 9 interview review](../../interview-transcript-review-oct-9.md).
+- [Scenario deep dives](../../interviews/2026-10-09-one2n-hemant/hemant-scenario-deep-dives.md) (A2 overlapping CIDRs, A3 node vs pod CIDR) and the VPC diagrams in the [Oct 9 interview review](../../interviews/2026-10-09-one2n-hemant/interview-transcript-review-oct-9.md).
 
 ➡️ **Next level:** [Level 10 · Container and Kubernetes networking](../10-container-and-kubernetes-networking/README.md)

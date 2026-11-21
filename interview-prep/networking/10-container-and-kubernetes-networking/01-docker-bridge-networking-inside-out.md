@@ -6,7 +6,7 @@ What really happens when you run `docker run -p 8080:80 nginx`. Every output her
 
 For network types, the default-bridge DNS trap and port publishing options, see [Docker 08 Networking](../../docker/08-networking.md).
 
-![How the default bridge network works](../../docker/diagrams/08-bridge-network.drawio.svg)
+![How the default bridge network works](../diagrams/08-bridge-network.drawio.svg)
 
 ## The 4 pieces
 
@@ -73,7 +73,7 @@ default via 172.17.0.1 dev eth0          ← anything not local goes to docker0
 
 ## 4. The packet's journey ⭐ (draw this on the whiteboard)
 
-![A packet's journey: going out (MASQUERADE) and coming in (DNAT)](../../docker/diagrams/08-packet-flow.drawio.svg)
+![A packet's journey: going out (MASQUERADE) and coming in (DNAT)](../diagrams/08-packet-flow.drawio.svg)
 
 ```text
 OUTBOUND: container eth0 → veth → docker0 → host routing → MASQUERADE (src = host IP) → host eth0 → internet
