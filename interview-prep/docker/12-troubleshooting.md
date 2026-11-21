@@ -51,7 +51,7 @@ docker run -it --rm --network container:c nicolaka/netshoot
 - Use the image's `:debug` variant, or
 - start a tool container in the same namespaces: `docker run -it --rm --network container:c --pid container:c busybox sh`.
 
-> **Kubernetes link:** the same method using `kubectl get pods` → `describe` → `logs --previous` → `exec` → `get events`, plus `kubectl debug` with an ephemeral container for distroless pods. See Day 2 of the [prep plan](../devops-interview-prep-plan.md).
+> **Kubernetes link:** the same method using `kubectl get pods` → `describe` → `logs --previous` → `exec` → `get events`, plus `kubectl debug` with an ephemeral container for distroless pods. See Day 2 of the [prep plan](../interviews/2026-10-09-one2n-hemant/devops-interview-prep-plan.md).
 
 ## Interview angle
 

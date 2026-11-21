@@ -127,7 +127,7 @@ overlaps []
 used 13824 of 65536
 ```
 
-About 21% used, with room to grow. The full VPC drawing (internet gateway, NAT gateways, route tables) is [diagram r1](../../diagrams/r1-vpc-subnets-nat-igw.drawio.svg) from the interview review; [Level 9](../09-cloud-networking/README.md) builds it.
+About 21% used, with room to grow. The full VPC drawing (internet gateway, NAT gateways, route tables) is [diagram r1](../../interviews/diagrams/r1-vpc-subnets-nat-igw.drawio.svg) from the interview review; [Level 9](../09-cloud-networking/README.md) builds it.
 
 ## Troubleshooting (and the 🔥 common mistakes)
 
@@ -147,7 +147,7 @@ About 21% used, with room to grow. The full VPC drawing (internet gateway, NAT g
 
 ## Practice
 
-- 🔥 **First**: the [12-question worksheet](../../interview-transcript-review-oct-9.md#worksheet-do-it-on-paper-then-check) from the interview review. Target: all 12 right, on paper, in under 15 minutes.
+- 🔥 **First**: the [12-question worksheet](../../interviews/2026-10-09-one2n-hemant/interview-transcript-review-oct-9.md#worksheet-do-it-on-paper-then-check) from the interview review. Target: all 12 right, on paper, in under 15 minutes.
 - Then: [Level 2 subnetting drills](../14-practice-exercises/02-level-2-subnetting-drills.md), sets B–E (36 problems, many with several parts, all with worked solutions).
 - [Lab 2.1](../13-hands-on-labs/lab-02.1-subnetting-by-hand-then-verify.md): plan a network on paper, then check every answer with `ipcalc` and Python, including the overlap test.
 

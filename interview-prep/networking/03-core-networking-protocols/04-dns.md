@@ -274,7 +274,7 @@ docker run --rm --dns 8.8.8.8 --dns-search default.svc.cluster.local --dns-searc
 |---|---|
 | **Route 53** | AWS's DNS service and the **authoritative** owner of your domains: a **public hosted zone** answers the internet; a **private hosted zone** answers only inside the VPCs you attach it to |
 | **VPC resolver** | At the **VPC base address + 2** (e.g. `10.0.0.2`), also at `169.254.169.253`. Needs `enableDnsSupport`; private hosted zones also need `enableDnsHostnames` |
-| **Interface endpoints** | (e.g. for ECR) rely on **private DNS**, so the normal service name resolves to the endpoint's private IP ([scenario deep dives](../../hemant-scenario-deep-dives.md), B10) |
+| **Interface endpoints** | (e.g. for ECR) rely on **private DNS**, so the normal service name resolves to the endpoint's private IP ([scenario deep dives](../../interviews/2026-10-09-one2n-hemant/hemant-scenario-deep-dives.md), B10) |
 | **Resolver endpoints** | Inbound and outbound: connect VPC DNS with on-premises DNS |
 | **Routing policies** | Weighted, latency, failover, geolocation: Route 53 answers differently per client or per health check (DNS as a traffic manager) |
 

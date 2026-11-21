@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create the draw.io diagrams used by interview-prep/hemant-model-answers.md.
+"""Create the draw.io diagrams used by interview-prep/interviews/2026-10-09-one2n-hemant/hemant-model-answers.md.
 
 Run once:  python3 tools/diagrams_model_answers.py
 Existing .drawio.svg files are skipped (they may have been edited in draw.io);
@@ -11,7 +11,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from drawio_svg import Diagram  # noqa: E402
 
-OUT = Path(__file__).resolve().parents[1] / "interview-prep" / "diagrams"
+OUT = Path(__file__).resolve().parents[1] / "interview-prep" / "interviews" / "diagrams"
 
 
 def observability_stack():

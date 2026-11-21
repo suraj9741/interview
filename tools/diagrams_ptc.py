@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create the draw.io diagrams used by interview-prep/ptc-devops-interview/ (PTC Senior DevOps questions).
+"""Create the draw.io diagrams used by interview-prep/interviews/2026-11-14-ptc-devops/ (PTC Senior DevOps questions).
 
 Run once:  python3 tools/diagrams_ptc.py
 Existing .drawio.svg files are skipped (they may have been edited in draw.io);
@@ -11,7 +11,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from drawio_svg import Diagram  # noqa: E402
 
-OUT = Path(__file__).resolve().parents[1] / "interview-prep" / "ptc-devops-interview" / "diagrams"
+OUT = Path(__file__).resolve().parents[1] / "interview-prep" / "interviews" / "2026-11-14-ptc-devops" / "diagrams"
 
 
 def chain(d, ids):

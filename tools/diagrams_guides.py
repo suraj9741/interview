@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create the draw.io diagrams used by the interview guides and plans in interview-prep/:
+"""Create the draw.io diagrams used by the interview guides and plans in interview-prep/interviews/2026-10-09-one2n-hemant/:
 cto-sre-discussion-guide.md (c*), devops-interview-prep-plan.md and study-plan-oct-5-9.md (p*).
 
 Run once:  python3 tools/diagrams_guides.py
@@ -12,7 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from drawio_svg import Diagram  # noqa: E402
 
-OUT = Path(__file__).resolve().parents[1] / "interview-prep" / "diagrams"
+OUT = Path(__file__).resolve().parents[1] / "interview-prep" / "interviews" / "diagrams"
 
 
 def slo_error_budget():

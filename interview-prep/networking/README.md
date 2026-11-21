@@ -164,4 +164,4 @@ Tick as you go (copy the list into your own notes, or edit this file).
 
 - [Docker notes](../docker/README.md), especially [08 · Networking](../docker/08-networking.md)
 - [Kubernetes notes](../kubernetes/README.md): [08 · Services and DNS](../kubernetes/08-services-and-dns.md), [14 · Cluster networking](../kubernetes/14-cluster-networking.md), [17 · Troubleshooting](../kubernetes/17-troubleshooting.md), [20 · EKS](../kubernetes/20-eks.md)
-- Interview material: [past questions](../hemant-past-interview-questions.md), [model answers](../hemant-model-answers.md), [scenario deep dives](../hemant-scenario-deep-dives.md), [transcript review, 9 Oct](../interview-transcript-review-oct-9.md)
+- Interview material: [past questions](../interviews/2026-10-09-one2n-hemant/hemant-past-interview-questions.md), [model answers](../interviews/2026-10-09-one2n-hemant/hemant-model-answers.md), [scenario deep dives](../interviews/2026-10-09-one2n-hemant/hemant-scenario-deep-dives.md), [transcript review, 9 Oct](../interviews/2026-10-09-one2n-hemant/interview-transcript-review-oct-9.md)

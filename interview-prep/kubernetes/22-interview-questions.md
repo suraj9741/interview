@@ -49,7 +49,7 @@ Answer each question **out loud in under 2 minutes**, then tick it. Expect a "wh
 
 ## Scenario questions Hemant named ⭐🔥
 
-These are in [Scenario deep dives](../hemant-scenario-deep-dives.md), with diagrams and follow-ups:
+These are in [Scenario deep dives](../interviews/2026-10-09-one2n-hemant/hemant-scenario-deep-dives.md), with diagrams and follow-ups:
 - [ ] **31. Helm drift:** someone edited a Helm release in the cluster. What happens on the next `helm upgrade`? [A1]
 - [ ] **32. Two clusters, overlapping VPC CIDRs:** how do you connect them? [A2]
 - [ ] **33. Nodes in 10.0.x.x, pods in 100.64.x.x:** how is it done, and why did One2N's NodeClass keep reverting? [A3]

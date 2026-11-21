@@ -72,7 +72,7 @@ For built-in types, Kubernetes knows how to merge **lists by a key**: containers
 2. By hand: `kubectl edit` (replicas → 5), `kubectl annotate deploy … team=x`, `kubectl rollout restart` (adds a `restartedAt` pod annotation), `kubectl set env … DEBUG=true`.
 3. `helm upgrade` with the same replicas, and `owner` **removed** from the chart.
 
-![Tested: what happens to each field on helm upgrade](../diagrams/s5-helm-merge-cases.drawio.svg)
+![Tested: what happens to each field on helm upgrade](../interviews/diagrams/s5-helm-merge-cases.drawio.svg)
 
 ### ⚠️ The surprise: deletion works on whole blocks
 
