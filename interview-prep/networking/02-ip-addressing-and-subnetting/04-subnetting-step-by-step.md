@@ -127,7 +127,7 @@ overlaps []
 used 13824 of 65536
 ```
 
-About 21% used, with room to grow. The full VPC drawing (internet gateway, NAT gateways, route tables) is [diagram r1](../../interviews/2026-10-09-one2n-hemant/diagrams/r1-vpc-subnets-nat-igw.drawio.svg) from the interview review; [Level 9](../09-cloud-networking/README.md) builds it.
+About 21% used, with room to grow. The full VPC drawing (internet gateway, NAT gateways, route tables) is [diagram r1](../diagrams/r1-vpc-subnets-nat-igw.drawio.svg) from the interview review; [Level 9](../09-cloud-networking/README.md) builds it.
 
 ## Troubleshooting (and the 🔥 common mistakes)
 

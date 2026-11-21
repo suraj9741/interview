@@ -120,7 +120,7 @@ You'll often be asked to draw. Practise each **from memory** on paper until you 
 | The debugging ladder | [06-debug-ladder](../diagrams/06-debug-ladder.drawio.svg), [3.11](../03-core-networking-protocols/11-troubleshooting-connectivity.md) | Any "it doesn't work" question |
 | A DNS lookup's journey | [04-dns-journey](../diagrams/04-dns-journey.drawio.svg), [3.4](../03-core-networking-protocols/04-dns.md) | "What happens when you type a URL" |
 | The OSI layers and encapsulation | [08-osi-layers](../diagrams/08-osi-layers.drawio.svg), [08-osi-encapsulation](../diagrams/08-osi-encapsulation.drawio.svg) | "Where does X sit?", L4 vs L7 |
-| A packet's journey through a Docker host | [the packet flow](../../docker/diagrams/08-packet-flow.drawio.svg), [10.1](../10-container-and-kubernetes-networking/01-docker-bridge-networking-inside-out.md) | `-p`, NAT, "why can't I reach my container" |
+| A packet's journey through a Docker host | [the packet flow](../diagrams/08-packet-flow.drawio.svg), [10.1](../10-container-and-kubernetes-networking/01-docker-bridge-networking-inside-out.md) | `-p`, NAT, "why can't I reach my container" |
 | Netfilter's five hooks | [02-netfilter-chains](../diagrams/02-netfilter-chains.drawio.svg), [8.6](../08-linux-networking/06-netfilter-nat-and-conntrack.md) | iptables, kube-proxy, Docker and `ufw` |
 | A VPC: 3 AZs × public, private and data subnets, IGW, NAT gateways, route tables | [Interview review, section 1](../../interviews/2026-10-09-one2n-hemant/interview-review-oct-9.md) | 🔥 Any AWS design question |
 

@@ -7,7 +7,7 @@ Every diagram in these notes is an editable **draw.io** file (`.drawio.svg`): Gi
 - **Older diagrams** keep their original names (`00-` to `08-`) because the Docker notes and `tools/diagrams_networking.py` refer to them.
 - **To redraw on a whiteboard in an interview:** [the URL journey](3.10-url-journey.drawio.svg), [the debug ladder](06-debug-ladder.drawio.svg), [the OSI layers](08-osi-layers.drawio.svg) and [what a host does for every packet](2.7-routing-decision.drawio.svg).
 
-Two diagrams in the Docker notes are used here too: [the bridge network](../../docker/diagrams/08-bridge-network.drawio.svg) and [the packet's journey](../../docker/diagrams/08-packet-flow.drawio.svg) (both in [10.1](../10-container-and-kubernetes-networking/01-docker-bridge-networking-inside-out.md)).
+Two diagrams in the Docker notes are used here too: [the bridge network](08-bridge-network.drawio.svg) and [the packet's journey](08-packet-flow.drawio.svg) (both in [10.1](../10-container-and-kubernetes-networking/01-docker-bridge-networking-inside-out.md)).
 
 ## Guides and roadmap
 

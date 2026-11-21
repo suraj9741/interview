@@ -1,6 +1,6 @@
 # 03 · Server-Side Apply (Helm 4) ⭐
 
-![Helm 4 server-side apply: every field has an owner](../interviews/2026-10-09-one2n-hemant/diagrams/s6-ssa-field-owners.drawio.svg)
+![Helm 4 server-side apply: every field has an owner](diagrams/s6-ssa-field-owners.drawio.svg)
 
 ## The idea: every field carries a name tag
 

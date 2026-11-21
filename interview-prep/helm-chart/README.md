@@ -12,7 +12,7 @@ Helm drift is one of the **three scenarios Hemant named** ([A1](../interviews/20
 
 ## The one idea: every field has an owner
 
-![Helm 4 server-side apply: every field has an owner](../interviews/2026-10-09-one2n-hemant/diagrams/s6-ssa-field-owners.drawio.svg)
+![Helm 4 server-side apply: every field has an owner](diagrams/s6-ssa-field-owners.drawio.svg)
 
 Think of a Kubernetes object as a **shared document where every line carries a name tag**: who wrote it last.
 
@@ -35,7 +35,7 @@ When something "keeps changing back" or "won't update", ask: **who else owns thi
 
 ## Diagrams
 
-The diagrams are in [diagrams/](diagrams/) as editable **`.drawio.svg`** files; open one in VS Code (Draw.io Integration) or [app.diagrams.net](https://app.diagrams.net) to edit it. Two more come from the scenario notes: [s5, tested field results](../interviews/2026-10-09-one2n-hemant/diagrams/s5-helm-merge-cases.drawio.svg) and [s6, field owners](../interviews/2026-10-09-one2n-hemant/diagrams/s6-ssa-field-owners.drawio.svg).
+The diagrams are in [diagrams/](diagrams/) as editable **`.drawio.svg`** files; open one in VS Code (Draw.io Integration) or [app.diagrams.net](https://app.diagrams.net) to edit it. Two more come from the scenario notes: [s5, tested field results](diagrams/s5-helm-merge-cases.drawio.svg) and [s6, field owners](diagrams/s6-ssa-field-owners.drawio.svg).
 
 **To draw on a whiteboard:** the three Helm versions (02) and the field owners (s6).
 
