@@ -11,6 +11,7 @@ the per-topic generator scripts refuse to overwrite an existing file unless --fo
 """
 from __future__ import annotations
 
+import base64
 import html
 import math
 import xml.etree.ElementTree as ET
@@ -33,6 +34,12 @@ LINE = "#555555"
 FONT = "Helvetica, Arial, sans-serif"
 CHAR_W = 0.56  # rough average glyph width, as a fraction of font size (fit warnings only)
 LINE_H = 1.3   # line height, as a fraction of font size
+ICON_DIR = Path(__file__).resolve().parent / "aws-icons"  # vendored AWS Architecture Icons (see its README)
+
+
+def icon_b64(name: str) -> str:
+    """Base64 of tools/aws-icons/<name>.svg, for embedding (no external links, so GitHub renders it)."""
+    return base64.b64encode((ICON_DIR / f"{name}.svg").read_bytes()).decode("ascii")
 
 
 def _q(s: str) -> str:
@@ -100,22 +107,34 @@ class Diagram:
 
     # ---- building ---------------------------------------------------------------
     def box(self, id, x, y, w, h, label, color="blue", *, shape="rect", size=12, bold=False,
-            italic=False, dashed=False, valign="middle", align="center", bold_first=True):
+            italic=False, dashed=False, valign="middle", align="center", bold_first=True,
+            icon=None, icon_size=32):
+        """icon = name of an AWS icon in tools/aws-icons/ (without .svg), drawn at the left of the box."""
         if id in self._by_id:
             raise ValueError(f"{self.name}: duplicate id {id!r}")
-        v = dict(id=id, x=x, y=y, w=w, h=h, lines=label.split("\n"), color=color, shape=shape,
-                 size=size, bold=bold, italic=italic, dashed=dashed, valign=valign, align=align,
-                 bold_first=bold_first)
+        pad = icon_size + 10 if icon else 0
+        v = dict(id=id, x=x, y=y, w=w, h=h, lines=label.split("\n") if label else [], color=color,
+                 shape=shape, size=size, bold=bold, italic=italic, dashed=dashed, valign=valign,
+                 align=align, bold_first=bold_first, pad_left=pad, image=None)
         self.vertices.append(v)
         self._by_id[id] = v
         self._check_fit(v)
+        if icon:
+            iy = y + 6 if valign == "top" else y + (h - icon_size) / 2
+            self.icon(f"{id}-icon", x + 8, iy, icon, icon_size)
         return id
 
     def group(self, id, x, y, w, h, label, color="gray", *, dashed=False, size=13,
-              valign="top", align="center"):
+              valign="top", align="center", icon=None, icon_size=24):
         """A labelled region. Add it BEFORE the boxes inside it, so it is drawn behind them."""
         return self.box(id, x, y, w, h, label, color, size=size, bold=True, dashed=dashed,
-                        valign=valign, align=align)
+                        valign=valign, align=align, icon=icon, icon_size=icon_size)
+
+    def icon(self, id, x, y, name, size=40):
+        """An AWS Architecture Icon on its own (an image cell in draw.io)."""
+        v = self._by_id.get(self.box(id, x, y, size, size, "", "none"))
+        v["shape"], v["image"] = "image", icon_b64(name)
+        return id
 
     def text(self, id, x, y, w, h, label, *, size=12, bold=False, italic=False, align="center"):
         return self.box(id, x, y, w, h, label, "none", shape="text", size=size, bold=bold,
@@ -130,7 +149,7 @@ class Diagram:
                                both=both, points=list(points or []), size=size))
 
     def _check_fit(self, v):
-        pad = 0 if v["shape"] == "text" else 12
+        pad = (0 if v["shape"] == "text" else 12) + v.get("pad_left", 0)
         for i, line in enumerate(v["lines"]):
             bold = v["bold"] or (v["bold_first"] and i == 0 and len(v["lines"]) > 1)
             est = len(line) * v["size"] * CHAR_W * (1.08 if bold else 1.0)
@@ -156,6 +175,9 @@ class Diagram:
         dash = ' stroke-dasharray="6 4"' if v["dashed"] else ""
         paint = f'fill="{fill}" stroke="{stroke}" stroke-width="1.5"{dash}'
         out, inset = [], 0.0
+        if v["shape"] == "image":
+            return (f'<image x="{x}" y="{y}" width="{w}" height="{h}" '
+                    f'href="data:image/svg+xml;base64,{v["image"]}"/>')
         if v["shape"] == "rect":
             out.append(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="8" ry="8" {paint}/>')
         elif v["shape"] == "ellipse":
@@ -166,7 +188,8 @@ class Diagram:
                        f'L{x + w},{y + ry}" {paint}/>')
             out.append(f'<ellipse cx="{x + r}" cy="{y + ry}" rx="{r}" ry="{ry}" {paint}/>')
             inset = 2 * ry
-        out.append(_svg_text(v["lines"], x, y, w, h, v["size"], v["valign"], v["align"], v["bold"],
+        pad = v.get("pad_left", 0)
+        out.append(_svg_text(v["lines"], x + pad, y, w - pad, h, v["size"], v["valign"], v["align"], v["bold"],
                              v["bold_first"], v["italic"], top_inset=inset))
         return "".join(out)
 
@@ -202,6 +225,9 @@ class Diagram:
     @staticmethod
     def _mx_vertex_style(v) -> str:
         fill, stroke = PALETTE[v["color"]]
+        if v["shape"] == "image":
+            return ("shape=image;html=1;imageAspect=0;aspect=fixed;verticalLabelPosition=bottom;"
+                    f"verticalAlign=top;image=data:image/svg+xml,{v['image']};")
         common = (f"whiteSpace=wrap;html=1;fontSize={v['size']};fontColor={INK};fontFamily=Helvetica;"
                   f"align={v['align']};verticalAlign={v['valign']};")
         if v["shape"] == "text":
@@ -215,8 +241,8 @@ class Diagram:
             style += "dashed=1;dashPattern=6 4;"
         if v["bold"]:
             style += "fontStyle=1;"
-        if v["align"] == "left":
-            style += "spacingLeft=6;"
+        if v["align"] == "left" or v.get("pad_left"):
+            style += f"spacingLeft={v.get('pad_left', 0) + (6 if v['align'] == 'left' else 0)};"
         if v["valign"] in ("top", "bottom"):
             style += "spacingTop=2;spacingBottom=2;"
         return style
