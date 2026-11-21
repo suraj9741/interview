@@ -2,7 +2,7 @@
 
 > **Reference.** Watch a video **before** a lesson to get the picture, then do the lesson and its lab. Books and docs are for going deeper once a level feels solid.
 >
-> The video links were collected from the original networking notes and the Oct 9 interview review, where each one's title, channel and length were checked when it was added. The links in this file were **not re-checked** during the reorganisation; if one has moved, search for its title and channel.
+> The video links were collected from the original networking notes and the [Oct 9 interview review](../../interviews/2026-10-09-one2n-hemant/interview-transcript-review-oct-9.md), where each one's title, channel and length were checked when it was added. The links in this file were **not re-checked** during the reorganisation; if one has moved, search for its title and channel.
 
 ## Videos, by level
 
@@ -42,4 +42,4 @@
 
 - [Docker 08 · Networking](../../docker/08-networking.md): network types, the default-bridge DNS trap, port publishing.
 - Kubernetes: [08 · Services and DNS](../../kubernetes/08-services-and-dns.md), [14 · Cluster networking](../../kubernetes/14-cluster-networking.md), [17 · Troubleshooting](../../kubernetes/17-troubleshooting.md), [20 · EKS](../../kubernetes/20-eks.md).
-- Scenario deep dives: A2 overlapping CIDRs, A3 node vs pod CIDR, B1 and B10–B13 (network scenarios).
+- [Scenario deep dives](../../interviews/2026-10-09-one2n-hemant/hemant-scenario-deep-dives.md): A2 overlapping CIDRs, A3 node vs pod CIDR, B1 and B10–B13 (network scenarios).

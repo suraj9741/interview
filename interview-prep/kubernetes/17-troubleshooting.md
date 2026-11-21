@@ -64,7 +64,7 @@ A container full of network tools: `kubectl run tmp --rm -it --image=nicolaka/ne
 - ⭐ "The pods are Running, but the app isn't reachable." → readiness → endpoints (selector) → `targetPort` → NetworkPolicy → DNS → Ingress or load balancer.
 - "A node is NotReady." → `describe node` conditions, kubelet and runtime status, disk, network. Pods are evicted after about 5 minutes and recreated elsewhere by their controllers.
 
-## Practice 🖥️ (break it on purpose; the full table is in the old plan, Day 2)
+## Practice 🖥️ (break it on purpose; the full table is in the [old plan, Day 2](../interviews/2026-10-09-one2n-hemant/devops-interview-prep-plan.md))
 
 ```bash
 kubectl create deployment broken --image=nginx:does-not-exist

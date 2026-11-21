@@ -38,6 +38,6 @@ All diagrams are in [diagrams/](diagrams/) as **`.drawio.svg`** files: a normal 
 
 ## Related files
 
-- 3-day prep plan: Day 1 morning is Docker.
-- Hemant's past questions and model answers: Q20, Q21 and Q58 tie into these notes.
+- [3-day prep plan](../interviews/2026-10-09-one2n-hemant/devops-interview-prep-plan.md): Day 1 morning is Docker.
+- [Hemant's past questions](../interviews/2026-10-09-one2n-hemant/hemant-past-interview-questions.md) and [model answers](../interviews/2026-10-09-one2n-hemant/hemant-model-answers.md): Q20, Q21 and Q58 tie into these notes.
 - [Networking notes](../networking/README.md): what happens underneath Docker networking (bridge, veth, NAT, DNS) and how to debug it.

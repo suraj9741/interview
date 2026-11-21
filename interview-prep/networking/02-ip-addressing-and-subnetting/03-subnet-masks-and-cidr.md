@@ -138,7 +138,7 @@ A = `10.0.1.10/24`, B = `10.0.1.200/25` (a typo: should be `/24`), same switch:
 | AWS VPC design | Choosing prefix lengths: a `/16` VPC split into `/24` or `/20` subnets ([2.4](04-subnetting-step-by-step.md)) |
 | Security groups, firewalls | `10.0.0.0/16` = the whole VPC; `203.0.113.7/32` = one office IP; `0.0.0.0/0` = anyone (dangerous for SSH) |
 | Kubernetes | `--pod-network-cidr=10.244.0.0/16` and a Service CIDR like `10.96.0.0/12`: must not overlap the node network |
-| EKS | With the VPC CNI every pod takes a subnet IP. A `/24` (251 usable) runs out fast: bigger subnets, prefix delegation or a secondary CIDR (scenario deep dives, A3) |
+| EKS | With the VPC CNI every pod takes a subnet IP. A `/24` (251 usable) runs out fast: bigger subnets, prefix delegation or a secondary CIDR ([scenario deep dives](../../interviews/2026-10-09-one2n-hemant/hemant-scenario-deep-dives.md), A3) |
 
 ## Troubleshooting
 

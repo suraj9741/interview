@@ -9,7 +9,7 @@
 - Routers forward by the **network part** only: one entry per network, not per device. That's what lets the internet scale.
 - ⭐ **Private (RFC 1918):** `10.0.0.0/8`, `172.16.0.0/12` (**172.16–172.31 only**), `192.168.0.0/16`. Reusable by anyone, never routed on the internet, so going out needs **NAT** ([3.8](../03-core-networking-protocols/08-nat-pat-and-port-forwarding.md)). Private addressing plus NAT kept IPv4 alive after the public addresses ran out.
 - ⚠️ **Trap:** `172.32.0.1` is **public**. (Why a `/12` stops at 31 is a block-size question: [2.4](04-subnetting-step-by-step.md).)
-- Two VPCs (or a VPN and Docker) with the **same** range can't be connected without NAT. Overlap is one of the most expensive mistakes to undo (scenario deep dives, A2).
+- Two VPCs (or a VPN and Docker) with the **same** range can't be connected without NAT. Overlap is one of the most expensive mistakes to undo ([scenario deep dives](../../interviews/2026-10-09-one2n-hemant/hemant-scenario-deep-dives.md), A2).
 
 ## Address classes (historical context)
 
@@ -38,7 +38,7 @@ Before 1993 the **first bits** fixed the network/host split (**classful** addres
 
 **Special-purpose ranges** (first diagram; reserved by the IETF in IANA's special-purpose registry):
 
-- `127.0.0.0/8` loopback · `169.254.0.0/16` link-local (self-assigned when DHCP fails; AWS IMDS `169.254.169.254`, VPC DNS `169.254.169.253`) · `100.64.0.0/10` shared / CGNAT (EKS secondary pod CIDR, scenario deep dives A3).
+- `127.0.0.0/8` loopback · `169.254.0.0/16` link-local (self-assigned when DHCP fails; AWS IMDS `169.254.169.254`, VPC DNS `169.254.169.253`) · `100.64.0.0/10` shared / CGNAT (EKS secondary pod CIDR, [scenario deep dives](../../interviews/2026-10-09-one2n-hemant/hemant-scenario-deep-dives.md) A3).
 - `224.0.0.0/4` multicast (OSPF `224.0.0.5`) · `240.0.0.0/4` reserved · `255.255.255.255` limited broadcast (DHCP Discover) · `198.18.0.0/15` benchmarking.
 - `0.0.0.0/8` "this network": source `0.0.0.0` = no address yet (DHCP); listening on `0.0.0.0` = all interfaces ([1.3](../01-networking-fundamentals/03-addresses-ports-and-protocols.md)); `0.0.0.0/0` in a route = **everything** (the default route).
 - Documentation (TEST-NET-1/2/3): `192.0.2.0/24`, `198.51.100.0/24`, `203.0.113.0/24`, never routed; labs here use `203.0.113.x` as "a public address".

@@ -107,7 +107,7 @@ spec:
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
 ```
 
-Any change to the ConfigMap changes the pod template, which starts a rollout (scenario deep dives, B5).
+Any change to the ConfigMap changes the pod template, which starts a rollout ([scenario deep dives](../interviews/2026-10-09-one2n-hemant/hemant-scenario-deep-dives.md), B5).
 
 ## Interview angle
 

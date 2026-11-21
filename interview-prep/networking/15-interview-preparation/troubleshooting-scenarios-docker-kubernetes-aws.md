@@ -9,7 +9,7 @@ How to use this file:
 2. Answer **out loud**, in the order of the [6-step method](../03-core-networking-protocols/11-troubleshooting-connectivity.md#the-method-say-this-in-the-interview): DNS → route → port → listener → rules → app.
 3. Then compare with **Say**, run the **Check** commands where you can, and prepare for **He'll push**.
 
-Each one: **Say** (the core answer, in method order), **Check** (the commands), and **He'll push** (the follow-up). ⭐ = most likely. More network scenarios are in the scenario deep dives: A2 (overlapping CIDRs), A3 (node vs pod CIDR), B1 (distroless), B10 (ECR timeout), B11 (NAT bill), B12 (502s during deploys) and B13 (private EKS endpoint).
+Each one: **Say** (the core answer, in method order), **Check** (the commands), and **He'll push** (the follow-up). ⭐ = most likely. More network scenarios are in the [scenario deep dives](../../interviews/2026-10-09-one2n-hemant/hemant-scenario-deep-dives.md): A2 (overlapping CIDRs), A3 (node vs pod CIDR), B1 (distroless), B10 (ECR timeout), B11 (NAT bill), B12 (502s during deploys) and B13 (private EKS endpoint).
 
 ## 🐳 Docker
 
@@ -50,7 +50,7 @@ Each one: **Say** (the core answer, in method order), **Check** (the commands), 
 - **Say:** go step by step from inside the container:
   1. **DNS:** `nslookup google.com` inside it. If DNS fails but the IP works, fix DNS (`--dns`, or `"dns"` in `daemon.json`).
   2. **Host forwarding:** `sysctl net.ipv4.ip_forward` must be 1, and the MASQUERADE rule must exist.
-  3. **A clash of addresses** (a classic): if the office or VPN network also uses `172.17.x.x`, the host sends that traffic into `docker0` instead of to the office. Change Docker's ranges with `"bip"` and `"default-address-pools"` in `daemon.json`. This is the same problem as overlapping CIDRs (A2), at a smaller scale.
+  3. **A clash of addresses** (a classic): if the office or VPN network also uses `172.17.x.x`, the host sends that traffic into `docker0` instead of to the office. Change Docker's ranges with `"bip"` and `"default-address-pools"` in `daemon.json`. This is the same problem as [overlapping CIDRs](../../interviews/2026-10-09-one2n-hemant/hemant-scenario-deep-dives.md) (A2), at a smaller scale.
   4. **A proxy or VPN** on the laptop that the container doesn't know about.
 - **Check:**
   ```bash
@@ -131,7 +131,7 @@ Each one: **Say** (the core answer, in method order), **Check** (the commands), 
 - **He'll push:** "Two rules in one `from` entry: AND or OR?" → see [Kubernetes 14](../../kubernetes/14-cluster-networking.md).
 
 **N10 "EKS pods are stuck in `ContainerCreating`: failed to assign an IP address."**
-- **Say:** the VPC CNI gives every pod a **real VPC IP**, and either the **subnet has run out of free IPs** or the node has reached its **max pods**. Fixes: **prefix delegation**, bigger subnets, or a **secondary CIDR for pods** (scenario deep dives, A3).
+- **Say:** the VPC CNI gives every pod a **real VPC IP**, and either the **subnet has run out of free IPs** or the node has reached its **max pods**. Fixes: **prefix delegation**, bigger subnets, or a **secondary CIDR for pods** ([scenario deep dives](../../interviews/2026-10-09-one2n-hemant/hemant-scenario-deep-dives.md), A3).
 - **Check:**
   ```bash
   kubectl -n kube-system logs -l k8s-app=aws-node -c aws-node --tail=50
@@ -191,7 +191,7 @@ The fields are: version, account, ENI, **source**, **destination**, source port,
   2. The NAT gateway must sit in a **public** subnet, whose own route is `0.0.0.0/0 → igw-xxxx`.
   3. The NAT gateway needs an Elastic IP.
   4. Check the NACLs.
-  - For AWS services, prefer **VPC endpoints**. The S3 gateway endpoint is free and keeps traffic off the NAT (scenario deep dives, B10 and B11).
+  - For AWS services, prefer **VPC endpoints**. The S3 gateway endpoint is free and keeps traffic off the NAT ([scenario deep dives](../../interviews/2026-10-09-one2n-hemant/hemant-scenario-deep-dives.md), B10 and B11).
 - **Check:**
   ```bash
   aws ec2 describe-nat-gateways --filter Name=vpc-id,Values=vpc-0123456789abcdef0

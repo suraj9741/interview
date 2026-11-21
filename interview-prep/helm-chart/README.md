@@ -2,7 +2,7 @@
 
 Everything we've learned about Helm while preparing for the interview with Hemant (One2N), in the same format as the [Docker](../docker/README.md), [Kubernetes](../kubernetes/README.md) and [Networking](../networking/README.md) notes.
 
-Helm drift is one of the **three scenarios Hemant named** (A1), so these notes go deep on **how `helm upgrade` really changes objects**. Almost everything here was **run for real** with **your Helm v4.2.3** on a throwaway Kubernetes 1.34 cluster (k3s in Docker) on 8–9 Oct 2026.
+Helm drift is one of the **three scenarios Hemant named** ([A1](../interviews/2026-10-09-one2n-hemant/hemant-scenario-deep-dives.md)), so these notes go deep on **how `helm upgrade` really changes objects**. Almost everything here was **run for real** with **your Helm v4.2.3** on a throwaway Kubernetes 1.34 cluster (k3s in Docker) on 8–9 Oct 2026.
 
 ## How to use these notes
 
@@ -76,4 +76,4 @@ docker stop helm-lab
 ## Related files
 
 - [Kubernetes 21: Helm, Kustomize and GitOps](../kubernetes/21-helm-kustomize-gitops.md): the short Helm overview, Kustomize, Argo CD.
-- Scenario deep dives: A1 (Helm drift) in Hemant's format, plus B3 (mutable tags), B5 (ConfigMap changes), B7 (stuck rollout) and B8 (removed APIs after an EKS upgrade).
+- [Scenario deep dives](../interviews/2026-10-09-one2n-hemant/hemant-scenario-deep-dives.md): A1 (Helm drift) in Hemant's format, plus B3 (mutable tags), B5 (ConfigMap changes), B7 (stuck rollout) and B8 (removed APIs after an EKS upgrade).
