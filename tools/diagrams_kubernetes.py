@@ -910,13 +910,45 @@ def helm_vs_kustomize():
     return d
 
 
+def pod_startup():
+    d = Diagram("05-pod-startup", 1000, 560, "What happens when a pod starts (and the status you see if a step fails)")
+    d.box("saved", 20, 55, 280, 64, "API server → etcd\nPod saved: Pending, no node yet", "purple", size=11)
+    d.box("sched", 360, 55, 280, 64, "Scheduler\nfilter → score → bind (sets nodeName)", "green", size=11)
+    d.box("kl", 700, 55, 280, 64, "kubelet on that node\nwatches, sees a pod assigned to it", "orange", size=11)
+    d.edge("saved", "sched")
+    d.edge("sched", "kl")
+    d.box("f0", 360, 127, 280, 30, "✗ Pending: Insufficient cpu · taint · PVC zone", "red", size=10, bold_first=False)
+    d.group("node", 10, 172, 980, 330, "On the node: kubelet drives containerd (CRI) and the CNI plugin", "white", size=12)
+    row1 = [("vol", "1 · Volumes\nSecrets, ConfigMaps, PVC mounted", "✗ ContainerCreating:\nSecret not found / volume attach"),
+            ("sbx", "2 · Pod sandbox\n\"pause\" container (CRI)", "✗ FailedCreatePodSandBox\nruntime error"),
+            ("cni", "3 · CNI gives pod IP\nEKS: real VPC IP", "✗ ContainerCreating:\nno free IPs (VPC CNI)"),
+            ("img", "4 · Pull image\nimagePullPolicy", "✗ ErrImagePull /\nImagePullBackOff")]
+    row2 = [("init", "5 · Init containers\none by one, each must exit 0", "✗ Init:Error /\nInit:CrashLoopBackOff"),
+            ("app", "6 · App containers start\n(+ sidecars) · postStart hook", "✗ CrashLoopBackOff\nOOMKilled = exit 137"),
+            ("prb", "7 · Probes\nstartup → liveness / readiness", "✗ Running but 0/1 Ready\n(liveness fail = restarts)"),
+            ("rdy", "8 · Ready\nEndpointSlice + kube-proxy rules", "✗ Ready, no traffic:\nselector / targetPort")]
+    for r, (row, y) in enumerate([(row1, 205), (row2, 355)]):
+        for i, (sid, label, fail) in enumerate(row):
+            x = 25 + i * 242
+            d.box(sid, x, y, 225, 60, label, "blue" if r == 0 else "yellow", size=11)
+            d.box(sid + "_f", x, y + 68, 225, 44, fail, "red", size=10, bold_first=False)
+    for a, b in [("vol", "sbx"), ("sbx", "cni"), ("cni", "img"), ("init", "app"), ("app", "prb"), ("prb", "rdy")]:
+        d.edge(a, b)
+    d.edge("img", "init", points=[(984, 235), (984, 337), (137, 337)])
+    d.edge("kl", "vol", points=[(840, 160), (137, 160)])
+    d.text("caption", 0, 510, 1000, 44,
+           "Pod IP comes at step 3, before your app starts. kubelet reports status at every step: Pending → ContainerCreating → Running.\n"
+           "First command for any red box: kubectl describe pod <name>  → read Events at the bottom.", size=12)
+    return d
+
+
 ALL = [reconciliation_loop, architecture, node_internals, api_request_pipeline, scheduler_steps, etcd_quorum,
        controller_internals, ha_control_plane, labels_selectors, apply_flow, pod_anatomy, deployment_rollout,
        service_traffic, ingress_paths, secrets_flow, storage_flow, autoscaling, networkpolicy, rbac,
        troubleshooting, operator_pattern, eks, gitops, core_ideas, ownership_finalizers, pod_lifecycle,
        graceful_shutdown, probes, workload_types, service_types, dns_lookup, ingress_errors, config_to_pod,
        requests_limits, taints_affinity, pod_to_pod, security_layers, k8s_observability, upgrade_order, pod_identity,
-       helm_vs_kustomize]
+       helm_vs_kustomize, pod_startup]
 
 if __name__ == "__main__":
     force = "--force" in sys.argv

@@ -12,6 +12,48 @@
 
 ![Pod anatomy](diagrams/05-pod-anatomy.drawio.svg)
 
+## What happens when a pod starts ⭐ (the question missed on 11 Nov)
+
+![What happens when a pod starts](diagrams/05-pod-startup.drawio.svg)
+
+This is the pod's side of the story. The full `kubectl apply` flow (authentication, RBAC, admission, Deployment and ReplicaSet controllers) is in [04](04-kubectl-apply-flow.md); this section zooms into what happens **from the moment the Pod object exists**.
+
+**Before the node (control plane):**
+
+- The Pod object is saved in **etcd** by the API server (only the API server talks to etcd). It is `Pending` with an empty `spec.nodeName`.
+- The **scheduler** watches for pods with no node. It **filters** nodes (CPU/memory **requests**, taints and tolerations, nodeSelector/affinity, PVC zone), **scores** the rest, and **binds** the pod by writing `nodeName` through the API server.
+- The **kubelet** on that node watches the API server, sees a pod assigned to it, and starts working.
+
+**On the node (kubelet, containerd through the CRI, and the CNI plugin):**
+
+1. **Volumes:** mounts Secrets, ConfigMaps and PVCs (an EBS volume is attached by the CSI driver first).
+2. **Pod sandbox:** asks containerd to create the **"pause" container**, which holds the pod's network namespace.
+3. **CNI:** the CNI plugin **assigns the pod IP** and wires up the network. On EKS the VPC CNI gives the pod a real VPC IP. The pod has its IP **before the app starts**.
+4. **Image pull**, following `imagePullPolicy`.
+5. **Init containers** run one by one; each must exit 0 before the next starts.
+6. **App containers** (and native sidecars) start; the `postStart` hook runs.
+7. **Probes:** startup probe first, then liveness (fails → restart the container) and readiness (fails → no traffic).
+8. **Ready:** the EndpointSlice controller adds the pod IP to the Service, and **kube-proxy** on every node updates iptables/IPVS. Traffic now reaches the pod.
+
+The kubelet reports status to the API server at every step: `Pending → ContainerCreating → Running`, then `READY 1/1`.
+
+**Where it breaks, by step:**
+
+| What you see | Step | First check |
+|---|---|---|
+| `Forbidden` on apply | before the pod (RBAC, see [04](04-kubectl-apply-flow.md)) | `kubectl auth can-i create deploy` |
+| `Pending` forever | scheduler | `kubectl describe pod` → Events: `Insufficient cpu`, taint, PVC zone |
+| `ContainerCreating` stuck | 1–3 | Secret/ConfigMap missing, volume can't attach, CNI out of IPs (common on EKS) |
+| `ImagePullBackOff` / `ErrImagePull` | 4 | image name or tag, registry auth, ECR permissions on the node role |
+| `Init:Error` / `Init:CrashLoopBackOff` | 5 | `kubectl logs <pod> -c <init-container>` |
+| `CrashLoopBackOff` | 6 | `kubectl logs <pod> --previous`, exit code (137 = OOMKilled) |
+| `Running` but `0/1` Ready | 7 | readiness probe path/port, dependency down |
+| Ready, but no traffic | 8 | `kubectl get endpointslices`; Service selector vs labels, `targetPort` |
+
+**30-second spoken answer:** "kubectl sends the request to the API server, which authenticates, authorizes through RBAC, runs admission controllers and stores the object in etcd. The Deployment controller creates a ReplicaSet, which creates pods. The scheduler filters and scores nodes and binds the pod. The kubelet on that node mounts volumes, has containerd create the sandbox, CNI assigns the IP, then it pulls the image, runs init containers and starts the app. Once the readiness probe passes, the pod IP is added to the Service endpoints and kube-proxy routes traffic to it."
+
+**From-memory drill (type it, don't read it):** cover this section and write the 8 node steps plus the 3 control-plane steps in order. Then, for each of these statuses, name the step and the first command: `Pending`, `ContainerCreating`, `ImagePullBackOff`, `CrashLoopBackOff`, `0/1 Ready`. Check against the table above.
+
 ## Pod phases vs container states ⭐
 
 ![Pod phase vs container state](diagrams/05-pod-lifecycle.drawio.svg)
