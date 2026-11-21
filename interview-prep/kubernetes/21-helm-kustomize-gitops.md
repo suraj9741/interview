@@ -122,7 +122,7 @@ spec:
 - ⭐ "Helm vs Kustomize?" → templates and packages vs plain YAML with patches. Often both are used.
 - ⭐ "Walk me through deploying a change with GitOps." → PR → CI builds, scans and pushes an image tagged with the SHA → CI updates the tag in the deploy repo → ArgoCD notices the drift and syncs → the rollout follows probes and PDBs → roll back with `git revert`.
 - "Someone `kubectl edit`ed production. What happens?" → with `selfHeal`, ArgoCD reverts it; without it, the app shows OutOfSync.
-- ⭐🔥 "Someone edited a **Helm** release in the cluster. What happens on the next `helm upgrade`?" → Hemant named this one himself. See [Scenario A1](../interviews/2026-10-09-one2n-hemant/hemant-scenario-deep-dives.md#a1--helm-drift-someone-edited-the-cluster-then-we-run-helm-upgrade-again-): Helm 3's 3-way merge, Helm 4's server-side apply conflicts, the custom-resource catch, and HPA vs `replicas`.
+- ⭐🔥 "Someone edited a **Helm** release in the cluster. What happens on the next `helm upgrade`?" → Hemant named this one himself. See Scenario A1: Helm 3's 3-way merge, Helm 4's server-side apply conflicts, the custom-resource catch, and HPA vs `replicas`.
 - "How would you do a canary on Kubernetes?" → Argo Rollouts or Flagger with metric analysis, or Gateway API weights for a simple split.
 
 ## Practice 🖥️

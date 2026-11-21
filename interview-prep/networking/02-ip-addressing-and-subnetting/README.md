@@ -4,7 +4,7 @@
 
 - **Goal:** read, split and plan IP ranges without a calculator; know how a host picks where each packet goes and how it gets its address.
 - **Start here if:** you've finished [Level 1](../01-networking-fundamentals/README.md), or already know what IP addresses, MAC addresses and routers are.
-- 🔥 **Interview feedback topic.** Subnetting was the clearest gap in the [Oct 9 interview review](../../interviews/2026-10-09-one2n-hemant/interview-transcript-review-oct-9.md). The skill comes from **15 minutes of paper drills a day** until the answers are automatic, not from reading.
+- 🔥 **Interview feedback topic.** Subnetting was the clearest gap in the Oct 9 interview review. The skill comes from **15 minutes of paper drills a day** until the answers are automatic, not from reading.
 - ⏱️ About 12 hours (lessons ~10 h, labs ~2 h), plus 15 minutes of drills a day for at least a week (estimate).
 
 ## Lessons (read in this order)
@@ -28,7 +28,7 @@
 | 🖥️ Lab 2.2 | [Routing between two subnets](../13-hands-on-labs/lab-02.2-routing-between-two-subnets.md) (Linux lab container, 45 min) |
 | 🖥️ Lab 2.3 | [DHCP: capture the DORA exchange](../13-hands-on-labs/lab-02.3-dhcp-dora-capture.md) (Linux lab container, 30 min) |
 | ✍️ Drills | [Level 2 subnetting drills](../14-practice-exercises/02-level-2-subnetting-drills.md) (sets A–E) · [solutions](../14-practice-exercises/solutions/02-level-2-subnetting-drills-solutions.md) |
-| 🔥 Worksheet | The [12-question worksheet](../../interviews/2026-10-09-one2n-hemant/interview-transcript-review-oct-9.md#worksheet-do-it-on-paper-then-check) from the interview review |
+| 🔥 Worksheet | The 12-question worksheet from the interview review |
 
 ## Milestone: you're ready for Level 3 when you can…
 

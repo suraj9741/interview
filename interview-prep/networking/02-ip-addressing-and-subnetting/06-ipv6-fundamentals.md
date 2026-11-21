@@ -7,7 +7,7 @@
 
 - **Why:** IPv4's ~4.3 billion addresses ran out ([2.2](02-ipv4-addresses-and-ranges.md#who-hands-out-public-addresses)); NAT stretched them at the cost of complexity ([3.8](../03-core-networking-protocols/08-nat-pat-and-port-forwarding.md)). IPv6 has **128 bits** (2¹²⁸ ≈ 3.4 × 10³⁸): every LAN gets 2⁶⁴ addresses (18 quintillion), so every device can have a **globally unique address** (no NAT needed), **almost every LAN is a `/64`**, and devices **configure their own address** from what the router advertises.
 - A **separate protocol** running **alongside** IPv4 (**dual stack**) on most networks, not a "bigger IPv4" you switch on. No broadcast, no ARP, no NAT by default: **firewall rules matter more**.
-- Already here: your Mac's DNS server is an IPv6 address (below); mobile networks and large providers run mostly on IPv6; **AWS charges for every public IPv4 address** while IPv6 is free, and **EKS IPv6 clusters** escape pod IP exhaustion ([scenario deep dives](../../interviews/2026-10-09-one2n-hemant/hemant-scenario-deep-dives.md), A2 option 5).
+- Already here: your Mac's DNS server is an IPv6 address (below); mobile networks and large providers run mostly on IPv6; **AWS charges for every public IPv4 address** while IPv6 is free, and **EKS IPv6 clusters** escape pod IP exhaustion (scenario deep dives, A2 option 5).
 
 ## Reading an IPv6 address
 

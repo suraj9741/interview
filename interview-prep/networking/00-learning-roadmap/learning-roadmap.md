@@ -60,7 +60,7 @@ Levels **1 → 2 → 3 → 4 → 5 → 6 → 7**, then 8, 9 and 12.
 
 ### Path C · Interview fast track (about 35–40 hours, estimate)
 
-For an interview in about two weeks, at 2–3 hours a day: what DevOps interviews ask most, based on the [past interview questions](../../interviews/2026-10-09-one2n-hemant/hemant-past-interview-questions.md). The links:
+For an interview in about two weeks, at 2–3 hours a day: what DevOps interviews ask most, based on the past interview questions. The links:
 
 | Order | Study | Time (estimate) |
 |---|---|---|

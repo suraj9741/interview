@@ -27,7 +27,7 @@ This file joins two of Hemant's focus topics, **AWS and Kubernetes**.
 - ⚠️ **The number of pods per node is limited** by the instance's ENIs and IPs: `max pods = ENIs × (IPs per ENI − 1) + 2`. For example, an m5.large: 3 × (10 − 1) + 2 = **29 pods**.
 - ⚠️ **Subnets run out of IPs.** Fixes:
   - **prefix delegation** (each slot gets a /28 block of 16 IPs, so far more pods per node);
-  - **custom networking** with a **secondary CIDR** (for example from `100.64.0.0/10`) just for pods. Hemant asks about this; see ⭐🔥 [Scenario A3](../interviews/2026-10-09-one2n-hemant/hemant-scenario-deep-dives.md#a3--nodes-in-one-cidr-pods-in-another-how-is-that-done-) for the full mechanism and EKS Auto Mode's version;
+  - **custom networking** with a **secondary CIDR** (for example from `100.64.0.0/10`) just for pods. Hemant asks about this; see ⭐🔥 Scenario A3 for the full mechanism and EKS Auto Mode's version;
   - bigger subnets.
 - **Security groups for pods:** give specific pods their own Security Group (for example, only the payments pods may reach RDS).
 - The VPC CNI can **enforce NetworkPolicy** once you turn that feature on ([14](14-cluster-networking.md)).

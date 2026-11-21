@@ -25,7 +25,7 @@ See them with `helm history web -n shop`, or list releases by state with `helm l
 | `another operation (install/upgrade/rollback) is in progress` | A previous run was killed half-way and left the release in `pending-*` | `helm history`, then `helm rollback web <last deployed revision>`. Prevent with a CI concurrency group |
 | `has no deployed releases` | The very first install failed, so there's nothing to upgrade from | `helm uninstall`, then install again, or use `--rollback-on-failure` on install |
 | `cannot re-use a name that is still in use` | `helm install` with a name that already exists | Use `helm upgrade --install` |
-| `no matches for kind "PodDisruptionBudget" in version "policy/v1beta1"` | The **stored** manifest uses an API the upgraded cluster removed | The `helm mapkubeapis` plugin rewrites the stored manifest ([scenario deep dives](../interviews/2026-10-09-one2n-hemant/hemant-scenario-deep-dives.md), B8) |
+| `no matches for kind "PodDisruptionBudget" in version "policy/v1beta1"` | The **stored** manifest uses an API the upgraded cluster removed | The `helm mapkubeapis` plugin rewrites the stored manifest (scenario deep dives, B8) |
 | A timeout with `--wait` | Pods never became ready (image pull, probes, resources) | Debug the pods; `--rollback-on-failure` restores the last good revision |
 | `Flag --atomic has been deprecated, use --rollback-on-failure instead` 🧪 | An old Helm 3 flag | Rename it in CI (it still works for now) |
 
@@ -35,7 +35,7 @@ See them with `helm history web -n shop`, or list releases by state with `helm l
 Without `--wait`, Helm 4 waits for **hooks only** (`hookOnly`), so `deployed` means "applied", not "healthy". Use `--wait --rollback-on-failure` in CI.
 
 **"We pushed a fix with the same image tag; half the pods still run the old code."**
-Tags are mutable, and nodes reuse cached images (`IfNotPresent`). Use a unique tag per build (the git SHA) or a digest, plus ECR tag immutability ([scenario deep dives](../interviews/2026-10-09-one2n-hemant/hemant-scenario-deep-dives.md), B3).
+Tags are mutable, and nodes reuse cached images (`IfNotPresent`). Use a unique tag per build (the git SHA) or a digest, plus ECR tag immutability (scenario deep dives, B3).
 
 **"We changed a ConfigMap through Helm, but the app still has the old config."**
 The pod template didn't change, so no rollout happened. Add a `checksum/config` annotation ([05](05-flags-annotations-hooks.md)), or `kubectl rollout restart`.
