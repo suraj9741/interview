@@ -794,6 +794,196 @@ def elasticache():
     return d
 
 
+
+# ---------------------------------------------------------------- Route 53 (course section 10)
+
+def r53_dns_resolution():
+    d = Diagram("r53-01-dns-resolution", 960, 600, "How a DNS query reaches Route 53 (the authoritative name server)")
+    d.box("br", 20, 60, 170, 70, "Browser / client\nwants example.com", "white", size=11, icon="client")
+    d.box("res", 260, 60, 220, 70, "DNS resolver (recursive)\nyour ISP or company,\ncaches answers for the TTL", "yellow", size=11)
+    d.edge("br", "res", "1 example.com?")
+    d.box("root", 560, 50, 380, 52, "Root name server (managed by IANA, part of ICANN)\nanswer: ask the .com servers", "gray", size=11)
+    d.box("tld", 560, 116, 380, 52, "TLD name server (.com, run by the registry)\nanswer: NS records for example.com", "gray", size=11)
+    d.box("r53", 560, 182, 380, 64, "Route 53 = AUTHORITATIVE name server\nfor example.com (your hosted zone)\nanswer: A 9.10.11.12, TTL 300", "orange", size=11, icon="route53", icon_size=36)
+    d.edge("res", "root", "2", points=[(510, 95), (510, 76)])
+    d.edge("res", "tld", "3", points=[(510, 95), (510, 142)])
+    d.edge("res", "r53", "4", points=[(510, 95), (510, 214)])
+    d.box("web", 260, 180, 220, 60, "Web server\n9.10.11.12", "white", size=11, icon="ec2-instance", icon_size=28)
+    d.edge("br", "web", "5 HTTP to the IP", points=[(105, 210)])
+    d.text("fq", 20, 262, 920, 26, "Anatomy of a name:  http :// api . www . example . com .", size=13, bold=True)
+    d.box("f1", 20, 292, 180, 62, "Protocol\nhttp", "white", size=11)
+    d.box("f2", 210, 292, 180, 62, "Subdomain\napi.www", "white", size=11)
+    d.box("f3", 400, 292, 180, 62, "Second-level domain (SLD)\nexample", "white", size=11)
+    d.box("f4", 590, 292, 170, 62, "Top-level domain (TLD)\n.com .us .in .gov .org", "white", size=10)
+    d.box("f5", 770, 292, 170, 62, "Root\nthe final dot \".\"", "white", size=11)
+    d.text("fqdn", 20, 358, 920, 22, "FQDN (fully qualified domain name) = api.www.example.com.  (every label up to the root)", size=11, italic=True)
+    d.box("jobs", 20, 392, 460, 192,
+          "Route 53 does three jobs (any combination)\n1. Domain registration (it is a registrar)\n2. DNS routing: authoritative DNS for your\n   hosted zones; you update the records\n"
+          "3. Health checking of your resources\nGlobal service · name = DNS port 53\n100% availability SLA (course; see section 1)", "blue", size=11, align="left")
+    d.box("terms", 500, 392, 440, 192,
+          "Terms\n• Registrar: sells names (Route 53, GoDaddy, Cloudflare)\n• Registry: owns a TLD, keeps its database\n• Zone file / hosted zone: holds the DNS records\n"
+          "• Name server: answers DNS queries; either\n  authoritative (Route 53) or recursive (resolver)\n• Records: A, AAAA, CNAME, NS, MX, TXT, ...", "white", size=11, align="left")
+    return d
+
+
+def r53_records_zones():
+    d = Diagram("r53-02-records-hosted-zones", 960, 600, "Records, hosted zones and TTL")
+    d.box("rec", 20, 50, 440, 170,
+          "A record has 5 parts\n• Name: example.com or app.example.com\n• Type: A, AAAA, CNAME, NS, ...\n• Value: 12.34.56.78\n"
+          "• Routing policy: how Route 53 answers queries\n• TTL (time to live): seconds a resolver may cache it", "white", size=11, align="left")
+    d.box("types", 480, 50, 460, 170,
+          "Record types to know\nA → IPv4 · AAAA → IPv6\nCNAME → another hostname (never at the zone apex)\nNS → name servers of the hosted zone\n"
+          "Also: CAA DS HTTPS MX NAPTR PTR SOA SPF\nSRV SSHFP SVCB TLSA TXT (SPF: use TXT now)", "blue", size=11, align="left")
+    d.group("pub", 20, 236, 440, 180, "Public hosted zone: answers the internet", "green", icon="r53-hosted-zone")
+    d.box("pq", 40, 276, 180, 50, "Client on internet\napp.example.com?", "white", size=10, icon="users", icon_size=24)
+    d.box("pa", 250, 276, 190, 50, "Public IP / ALB /\nCloudFront / S3", "white", size=10)
+    d.edge("pq", "pa", "54.22.33.44")
+    d.text("pn", 40, 336, 400, 74, "e.g. application1.mypublicdomain.com\nRoute 53 gives 4 name servers; put them at\nyour registrar (any registrar works)", size=10)
+    d.group("pri", 480, 236, 460, 180, "Private hosted zone: answers only inside VPCs", "purple", icon="vpc")
+    d.box("vq", 500, 276, 190, 50, "EC2 in the VPC\ndb.example.internal?", "white", size=10, icon="ec2-instance", icon_size=24)
+    d.box("va", 720, 276, 200, 50, "Private IP\n10.0.0.35", "white", size=10)
+    d.edge("vq", "va")
+    d.text("vn", 500, 336, 420, 74, "e.g. application1.company.internal\none or more VPCs; VPC needs enableDnsHostnames\nand enableDnsSupport = true · $0.50/month per zone", size=10)
+    d.box("hi", 20, 432, 300, 150, "High TTL (e.g. 24 h)\n• less traffic to Route 53 (cheaper)\n• records may be out of date longer", "yellow", size=11, align="left")
+    d.box("lo", 330, 432, 300, 150, "Low TTL (e.g. 60 s)\n• more traffic to Route 53 ($$)\n• records out of date for less time\n• easy to change records", "orange", size=11, align="left")
+    d.box("ttl", 640, 432, 300, 150, "TTL rules\n• mandatory on every non-alias\n  record (no default)\n• alias: you can't set it\n• lower it before a change, wait\n  the old TTL, then change", "red", size=11, align="left")
+    return d
+
+
+def r53_cname_alias():
+    d = Diagram("r53-03-cname-vs-alias", 960, 600, "CNAME vs Alias: pointing a name at an AWS resource")
+    d.box("cn", 20, 50, 450, 200,
+          "CNAME (standard DNS)\n• hostname → ANY other hostname\n  app.mydomain.com → blabla.anything.com\n• NOT at the zone apex (root, mydomain.com)\n"
+          "• no other record may share its name\n• target must resolve (A/AAAA) · you set the TTL\n• queries are charged", "white", size=11, align="left")
+    d.box("al", 490, 50, 450, 200,
+          "Alias (Route 53 extension to DNS)\n• hostname → AWS resource or a record\n  in the same hosted zone\n• works at the ROOT and on subdomains\n"
+          "• type A/AAAA for AWS resources\n• follows the resource's IP changes itself\n• no TTL to set · free queries to AWS resources\n• health: Evaluate Target Health", "green", size=11, align="left")
+    d.box("ex", 20, 266, 920, 54,
+          "example.com   A   ALIAS → MyALB-123456789.us-east-1.elb.amazonaws.com   (AWS-managed; its IPs change, the alias keeps up)", "yellow", size=11)
+    d.text("tg", 20, 330, 920, 24, "Alias targets (AWS docs list)", size=13, bold=True)
+    targets = [("elb", "Elastic Load\nBalancer"), ("cloudfront", "CloudFront\ndistribution"), ("api-gateway", "API Gateway\nAPI"),
+               ("beanstalk", "Beanstalk\nenvironment"), ("s3", "S3 static\nwebsite bucket"), ("vpc-endpoints", "VPC interface\nendpoint"),
+               ("global-accelerator", "Global\nAccelerator"), ("route53", "Record in same\nhosted zone"), ("app-runner", "App Runner\nservice"),
+               ("appsync", "AppSync\ndomain name"), ("opensearch", "OpenSearch\nService")]
+    for i, (ic, lab) in enumerate(targets):
+        x = 20 + (i % 6) * 154
+        y = 360 + (i // 6) * 70
+        d.box(f"t{i}", x, y, 146, 60, lab, "blue", size=10, bold_first=False, icon=ic, icon_size=30)
+    d.box("no", 790, 430, 150, 60, "NOT an EC2\npublic DNS name", "red", size=11)
+    d.box("rule", 20, 506, 920, 78,
+          "Exam rule of thumb\nRoot domain (example.com) → AWS resource: Alias (CNAME is impossible at the apex).\n"
+          "Subdomain → non-AWS hostname: CNAME.   Subdomain → AWS resource: Alias preferred (free, auto-updates).", "orange", size=11, align="left")
+    return d
+
+
+def r53_health_checks():
+    d = Diagram("r53-04-health-checks", 960, 640, "Route 53 health checks: endpoint, calculated, CloudWatch alarm")
+    d.group("ep", 20, 46, 450, 330, "1. Endpoint health check (public endpoints)", "green")
+    for i, reg in enumerate(["us-east-1", "eu-west-1", "sa-east-1"]):
+        d.box(f"hc{i}", 40 + i * 140, 84, 130, 44, f"Health checker\n{reg}", "white", size=10)
+    d.box("alb", 150, 176, 190, 50, "Your endpoint\nALB / IP / domain", "white", size=11, icon="alb", icon_size=28)
+    for i in range(3):
+        d.edge(f"hc{i}", "alb")
+    d.text("ept", 30, 230, 430, 144,
+           "• checkers in many locations (course: about 15);\n  custom list = at least 3 Regions\n• interval 30 s, or 10 s (fast, extra cost)\n"
+           "• failure threshold: 3 by default\n• HTTP, HTTPS, TCP · healthy = 2xx or 3xx\n• connect in 4 s, respond in 2 s after connect\n"
+           "• optional string match in first 5,120 bytes\n• > 18% of checkers say healthy → HEALTHY", size=10, align="left")
+    d.group("calc", 490, 46, 450, 200, "2. Calculated health check", "blue")
+    d.box("par", 620, 80, 190, 40, "Parent health check", "white", size=11)
+    for i in range(3):
+        d.box(f"ch{i}", 510 + i * 145, 140, 130, 40, f"Child check {i + 1}", "white", size=10)
+        d.edge("par", f"ch{i}")
+    d.text("calct", 500, 186, 430, 58, "healthy if ALL (AND), ONE OR MORE (OR) or at least x of y\nchildren are healthy · up to 255/256 children\nuse: maintenance without failing every check", size=10, align="left")
+    d.group("cw", 490, 262, 450, 200, "3. CloudWatch alarm health check", "purple")
+    d.box("vpc", 510, 300, 170, 60, "Private resource\n(VPC / on-premises)", "white", size=10, icon="vpc", icon_size=28)
+    d.box("alarm", 720, 300, 200, 60, "CloudWatch metric\n+ alarm", "white", size=10, icon="cw-alarm", icon_size=28)
+    d.edge("vpc", "alarm", "metric")
+    d.text("cwt", 500, 366, 430, 94, "Health check watches the alarm's data stream:\nOK = healthy, ALARM = unhealthy (insufficient\ndata: choose healthy / unhealthy / last known)\nUse for private resources: checkers are outside the VPC", size=10, align="left")
+    d.box("fw", 20, 392, 450, 70, "Firewall: allow inbound from Route 53 health checker IPs\nip-ranges.json, service ROUTE53_HEALTHCHECKS\n(or prefix list com.amazonaws.<region>.route53-healthchecks)", "yellow", size=10, align="left")
+    d.box("use", 20, 478, 920, 146,
+          "How health checks drive DNS failover\n• Attach a health check to records (failover, weighted, latency, geolocation, geoproximity, multivalue...): unhealthy ones are left out.\n"
+          "• A record with no health check is always treated as healthy. If every record in the group is unhealthy, Route 53 treats them all as healthy.\n"
+          "• Alias records: set Evaluate Target Health = Yes so the alias follows the health of the ELB / records it points to.\n"
+          "• HTTPS checks don't validate the TLS certificate. Health checks run on a schedule, not when a query arrives. They publish CloudWatch metrics.", "orange", size=11, align="left")
+    return d
+
+
+def r53_policies_overview():
+    d = Diagram("r53-05-routing-policies", 960, 640, "Routing policies: how Route 53 chooses the answer (DNS answers, it does not route traffic)")
+    pols = [
+        ("Simple", "one record, one or many values\nall values in random order;\nclient picks one · values not\nhealth checked", "white"),
+        ("Weighted", "share = weight / sum of weights\nweights 0-255 · 0 = stop\nall 0 = all equal · health checks\nA/B tests, region split", "blue"),
+        ("Failover", "active-passive: primary +\nsecondary · primary needs a\nhealth check (or Evaluate\nTarget Health on an alias)", "red"),
+        ("Latency", "lowest latency between user\nand AWS Region (measured, not\ndistance) · health checks", "green"),
+        ("Geolocation", "user's continent / country /\nUS state · most specific wins\nadd a Default record or get\n\"no answer\" · health checks", "yellow"),
+        ("Geoproximity", "distance user ↔ resource,\nshifted by bias -99..+99\nAWS Region / Local Zone or\nlat-long · Traffic Flow not\nneeded since Jan 2024", "orange"),
+        ("IP-based", "client IP CIDR → location\n(CIDR collection) · ISP\nrouting, cut transit cost\nnot in private hosted zones", "purple"),
+        ("Multivalue answer", "up to 8 healthy records,\nrandom · health checks\nnot a substitute for an ELB\nno alias multivalue", "gray"),
+        ("AZ-affinity (newer)", "prefer resources in the same\nAZ / Zone Group / Region as\nthe caller (in the AWS docs,\nnot in the course)", "white"),
+    ]
+    for i, (h, b, col) in enumerate(pols):
+        x = 20 + (i % 3) * 312
+        y = 50 + (i // 3) * 150
+        d.box(f"p{i}", x, y, 300, 138, f"{h}\n{b}", col, size=11)
+    d.box("note", 20, 506, 920, 118,
+          "Exam picks\n• Send 10% to the new version → Weighted · DR site only when primary fails → Failover · fastest Region → Latency\n"
+          "• Show French site / respect distribution rights by country → Geolocation · move more users to one Region → Geoproximity bias\n"
+          "• Users from a known ISP / IP range → IP-based · several healthy IPs, client-side → Multivalue · one server → Simple\n"
+          "• Weighted, failover, latency, geolocation, geoproximity, multivalue: records share the same name and type", "yellow", size=11, align="left")
+    return d
+
+
+def r53_routing_examples_1():
+    d = Diagram("r53-06-weighted-failover-latency", 960, 600, "Weighted, failover and latency routing in pictures")
+    d.box("r1", 20, 60, 130, 60, "Route 53", "white", size=12, icon="route53", icon_size=30)
+    for i, (w, pct) in enumerate([(70, "70%"), (20, "20%"), (10, "10%")]):
+        d.box(f"w{i}", 260, 46 + i * 52, 180, 44, f"EC2 weight {w} → {pct}", "blue", size=11)
+        d.edge("r1", f"w{i}")
+    d.text("wt", 450, 46, 490, 150, "Weighted: traffic = 70 / (70+20+10).\nWeights need not add to 100. Max 100 weighted\nrecords with the same name and type.\nWeight 0 = no traffic (used only if every\nnonzero record is unhealthy); all 0 = equal.", size=11, align="left")
+    d.box("r2", 20, 236, 130, 60, "Route 53", "white", size=12, icon="route53", icon_size=30)
+    d.box("pri", 260, 220, 200, 44, "Primary (EC2)", "green", size=11, icon="ec2-instance", icon_size=26)
+    d.box("sec", 260, 280, 200, 44, "Secondary (DR)", "gray", size=11, icon="ec2-instance", icon_size=26)
+    d.edge("r2", "pri", "healthy?")
+    d.edge("r2", "sec", "if primary\nunhealthy", dashed=True)
+    d.text("ft", 480, 220, 460, 110, "Failover (active-passive): one primary and one\nsecondary record. Give the primary a health check\n(or Evaluate Target Health on an alias); without it\nRoute 53 assumes it is healthy and never fails over.\nWorks in private hosted zones too.", size=11, align="left")
+    d.box("u1", 20, 400, 150, 50, "User in Germany", "white", size=11, icon="users", icon_size=24)
+    d.box("u2", 20, 480, 150, 50, "User in India", "white", size=11, icon="users", icon_size=24)
+    d.box("ra", 300, 390, 200, 50, "ALB us-east-1", "green", size=11, icon="alb", icon_size=26)
+    d.box("rb", 300, 490, 200, 50, "ALB ap-southeast-1", "green", size=11, icon="alb", icon_size=26)
+    d.edge("u1", "ra", "lowest latency")
+    d.edge("u2", "rb")
+    d.text("lt", 520, 380, 420, 180, "Latency: Route 53 picks the Region with the\nlowest measured latency between the user and AWS\nRegions, not the nearest one. A German user can\nget a US Region. Latency data changes over time.\nAdd health checks for failover.", size=11, align="left")
+    return d
+
+
+def r53_routing_examples_2():
+    d = Diagram("r53-07-geo-ip-multivalue", 960, 620, "Geolocation, geoproximity, IP-based and multivalue routing")
+    d.group("geo", 20, 46, 450, 270, "Geolocation (where the USER is)", "yellow")
+    d.box("g1", 40, 84, 200, 44, "Country: Germany\nA 11.22.33.44", "white", size=10)
+    d.box("g2", 250, 84, 200, 44, "Continent: Europe\nA 55.66.77.88", "white", size=10)
+    d.box("g3", 40, 138, 200, 44, "US state: California\nA 22.33.44.55", "white", size=10)
+    d.box("g4", 250, 138, 200, 44, "Default (*)\nA 99.11.22.33", "white", size=10)
+    d.text("gt", 30, 190, 430, 124, "German user → Germany record (smallest region wins\nover Europe). No match and no Default → \"no answer\".\nDefault also catches IPs not mapped to a location.\nUse: localization, distribution rights, sticky\nper-location load balancing. Public + private zones.", size=10, align="left")
+    d.group("gp", 490, 46, 450, 270, "Geoproximity (distance user ↔ RESOURCE)", "orange")
+    d.box("gp1", 510, 84, 200, 50, "us-west-1\nbias 0", "white", size=10, icon="region", icon_size=26)
+    d.box("gp2", 720, 84, 200, 50, "us-east-1\nbias +50 (bigger area)", "white", size=10, icon="region", icon_size=26)
+    d.text("gpt", 500, 140, 430, 174, "Bias 1 to 99 expands a resource's area (more\ntraffic); -1 to -99 shrinks it (less traffic).\nbiased distance = distance × (1 - bias/100)\nAWS resource: Region or Local Zone Group.\nNon-AWS: latitude and longitude.\nSince Jan 2024: in the normal console/API;\nTraffic Flow needed only for the visual maps.", size=10, align="left")
+    d.group("ip", 20, 332, 450, 270, "IP-based (the client's IP range)", "purple")
+    d.box("cidr", 40, 370, 410, 70, "CIDR collection\nlocation-1: 203.0.113.0/24 → record 1.2.3.4\nlocation-2: 200.5.4.0/24 → record 5.6.7.8", "white", size=10, align="left")
+    d.text("ipt", 30, 446, 430, 154, "User 203.0.113.56 → 1.2.3.4; user 200.5.4.100 → 5.6.7.8.\nIPv4 prefixes /1-/24, IPv6 /1-/48; \"*\" = default\nlocation (0.0.0.0/0, ::/0). Use: send an ISP's users\nto one endpoint, optimise performance, cut network\ntransit cost, override geolocation.\nNot allowed in private hosted zones.", size=10, align="left")
+    d.group("mv", 490, 332, 450, 270, "Multivalue answer", "gray")
+    d.box("mv0", 510, 370, 120, 50, "Route 53", "white", size=11, icon="route53", icon_size=26)
+    for i in range(3):
+        d.box(f"mv{i + 1}", 700, 364 + i * 40, 220, 34, f"A 10.0.0.{i + 1}  + health check", "white", size=10)
+        d.edge("mv0", f"mv{i + 1}")
+    d.text("mvt", 500, 486, 430, 114, "Returns up to 8 healthy records, picked at random;\nclient chooses one. No health check = always healthy.\nAll unhealthy → up to 8 unhealthy records returned.\nNot a substitute for an ELB · no alias records.", size=10, align="left")
+    return d
+
+
+ROUTE53 = [r53_dns_resolution, r53_records_zones, r53_cname_alias, r53_health_checks,
+           r53_policies_overview, r53_routing_examples_1, r53_routing_examples_2]
+
+
 ALL = [iam_big_picture, policy_anatomy, policy_evaluation, access_methods, role_assume, mfa_password,
        security_tools, shared_responsibility,
        global_infra,
@@ -801,7 +991,7 @@ ALL = [iam_big_picture, policy_anatomy, policy_evaluation, access_methods, role_
        ec2_ips, placement_groups, eni_hibernate,
        storage_compare, ebs_snapshots_ami, ebs_volume_types, efs_classes,
        elb_types, alb_flow, asg,
-       rds_replicas_multiaz, aurora, rds_backup_proxy, elasticache]
+       rds_replicas_multiaz, aurora, rds_backup_proxy, elasticache] + ROUTE53
 
 if __name__ == "__main__":
     force = "--force" in sys.argv
