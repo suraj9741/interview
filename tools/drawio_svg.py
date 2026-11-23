@@ -37,6 +37,56 @@ LINE_H = 1.3   # line height, as a fraction of font size
 ICON_DIR = Path(__file__).resolve().parent / "aws-icons"  # vendored AWS Architecture Icons (see its README)
 
 
+# draw.io's own AWS library ("AWS 2025" / mxgraph.aws4) for each vendored icon.
+# In the draw.io model the icon is a native library shape, so draw.io shows it as a normal AWS shape
+# (recolour, resize, swap from the library). The SVG preview still embeds the official icon file,
+# so GitHub shows the same artwork. Icons not listed here stay plain embedded images.
+NETWORK, COMPUTE, STORAGE, DATABASE, MGMT, APPINT, GENERAL = (
+    "#8C4FFF", "#ED7100", "#7AA116", "#C925D1", "#E7157B", "#E7157B", "#232F3E")
+DRAWIO_AWS = {  # icon file name: (kind, mxgraph.aws4 name, fill colour); kind "service" = resourceIcon tile
+    "route53": ("service", "route_53", NETWORK), "cloudfront": ("service", "cloudfront", NETWORK),
+    "global-accelerator": ("service", "global_accelerator", NETWORK), "elb": ("service", "elastic_load_balancing", NETWORK),
+    "vpc": ("service", "vpc", NETWORK), "api-gateway": ("service", "api_gateway", APPINT),
+    "appsync": ("service", "appsync", APPINT), "ec2": ("service", "ec2", COMPUTE), "lambda": ("service", "lambda", COMPUTE),
+    "app-runner": ("service", "app_runner", COMPUTE), "beanstalk": ("service", "elastic_beanstalk", COMPUTE),
+    "s3": ("service", "s3", STORAGE), "efs": ("service", "elastic_file_system", STORAGE),
+    "ebs": ("service", "elastic_block_store", STORAGE), "rds": ("service", "rds", DATABASE),
+    "aurora": ("service", "aurora", DATABASE), "elasticache": ("service", "elasticache", DATABASE),
+    "opensearch": ("service", "elasticsearch_service", "#8C4FFF"), "cloudwatch": ("service", "cloudwatch_2", MGMT),
+    "alb": ("resource", "application_load_balancer", NETWORK), "nlb": ("resource", "network_load_balancer", NETWORK),
+    "gwlb": ("resource", "gateway_load_balancer", NETWORK), "clb": ("resource", "classic_load_balancer", NETWORK),
+    "edge-location": ("resource", "edge_location", NETWORK), "eni": ("resource", "elastic_network_interface", NETWORK),
+    "igw": ("resource", "internet_gateway", NETWORK), "nacl": ("resource", "network_access_control_list", NETWORK),
+    "r53-hosted-zone": ("resource", "hosted_zone", NETWORK), "vpc-endpoints": ("resource", "endpoints", NETWORK),
+    "ec2-ami": ("resource", "ami", COMPUTE), "ec2-eip": ("resource", "elastic_ip_address", COMPUTE),
+    "ec2-instance": ("resource", "instance2", COMPUTE), "ec2-instances": ("resource", "instances", COMPUTE),
+    "ec2-spot": ("resource", "spot_instance", COMPUTE), "ec2-autoscaling": ("resource", "auto_scaling2", COMPUTE),
+    "lambda-fn": ("resource", "lambda_function", COMPUTE), "ebs-gp3": ("resource", "elastic_block_store_volume_gp3", STORAGE),
+    "ebs-snapshot": ("resource", "snapshot", STORAGE), "ebs-volume": ("resource", "volume", STORAGE),
+    "efs-fs": ("resource", "file_system", STORAGE), "efs-ia": ("resource", "elastic_file_system_infrequent_access", STORAGE),
+    "efs-onezone": ("resource", "elastic_file_system_one_zone", STORAGE),
+    "efs-standard": ("resource", "elastic_file_system_standard", STORAGE),
+    "redis": ("resource", "elasticache_for_redis", DATABASE), "memcached": ("resource", "elasticache_for_memcached", DATABASE),
+    "rds-multiaz": ("resource", "rds_multi_az", DATABASE), "rds-proxy": ("resource", "rds_proxy", DATABASE),
+    "aurora-instance": ("resource", "aurora_instance", DATABASE), "cw-alarm": ("resource", "alarm", MGMT),
+    "client": ("resource", "client", GENERAL), "users": ("resource", "users", GENERAL),
+    "corp-dc": ("resource", "corporate_data_center", GENERAL), "internet": ("resource", "internet_alt1", GENERAL),
+    "server": ("resource", "traditional_server", GENERAL),
+}
+
+
+def drawio_aws_style(name: str) -> str | None:
+    """draw.io library style for a vendored icon, or None if it has no library match."""
+    if name not in DRAWIO_AWS:
+        return None
+    kind, shape, fill = DRAWIO_AWS[name]
+    common = ("sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;dashed=0;verticalLabelPosition=bottom;"
+              "verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;")
+    if kind == "service":
+        return common + f"fillColor={fill};strokeColor=#ffffff;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.{shape};"
+    return common + f"fillColor={fill};strokeColor=none;pointerEvents=1;shape=mxgraph.aws4.{shape};"
+
+
 def icon_b64(name: str) -> str:
     """Base64 of tools/aws-icons/<name>.svg, for embedding (no external links, so GitHub renders it)."""
     return base64.b64encode((ICON_DIR / f"{name}.svg").read_bytes()).decode("ascii")
@@ -133,7 +183,7 @@ class Diagram:
     def icon(self, id, x, y, name, size=40):
         """An AWS Architecture Icon on its own (an image cell in draw.io)."""
         v = self._by_id.get(self.box(id, x, y, size, size, "", "none"))
-        v["shape"], v["image"] = "image", icon_b64(name)
+        v["shape"], v["image"], v["drawio_style"] = "image", icon_b64(name), drawio_aws_style(name)
         return id
 
     def text(self, id, x, y, w, h, label, *, size=12, bold=False, italic=False, align="center"):
@@ -225,6 +275,8 @@ class Diagram:
     @staticmethod
     def _mx_vertex_style(v) -> str:
         fill, stroke = PALETTE[v["color"]]
+        if v["shape"] == "image" and v.get("drawio_style"):
+            return v["drawio_style"]  # native draw.io AWS library shape (SVG preview keeps the icon file)
         if v["shape"] == "image":
             return ("shape=image;html=1;imageAspect=0;aspect=fixed;verticalLabelPosition=bottom;"
                     f"verticalAlign=top;image=data:image/svg+xml,{v['image']};")
