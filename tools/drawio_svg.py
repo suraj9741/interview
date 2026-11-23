@@ -75,6 +75,15 @@ DRAWIO_AWS = {  # icon file name: (kind, mxgraph.aws4 name, fill colour); kind "
 }
 
 
+# draw.io AWS *group* shapes (the containers in draw.io's AWS "Groups" panel: Region, VPC, subnets, ASG, ...).
+# A group() whose icon is listed here becomes that container shape in the draw.io model (icon in its corner);
+# a lone icon() of one of these becomes a borderless group shape, so only its corner icon shows.
+DRAWIO_AWS_GROUP = {
+    "region": "group_region", "vpc": "group_vpc2", "asg-group": "group_auto_scaling_group",
+    "spot-fleet": "group_spot_fleet", "private-subnet": "group_security_group", "public-subnet": "group_security_group",
+}
+
+
 def drawio_aws_style(name: str) -> str | None:
     """draw.io library style for a vendored icon, or None if it has no library match."""
     if name not in DRAWIO_AWS:
@@ -177,13 +186,21 @@ class Diagram:
     def group(self, id, x, y, w, h, label, color="gray", *, dashed=False, size=13,
               valign="top", align="center", icon=None, icon_size=24):
         """A labelled region. Add it BEFORE the boxes inside it, so it is drawn behind them."""
-        return self.box(id, x, y, w, h, label, color, size=size, bold=True, dashed=dashed,
-                        valign=valign, align=align, icon=icon, icon_size=icon_size)
+        gid = self.box(id, x, y, w, h, label, color, size=size, bold=True, dashed=dashed,
+                       valign=valign, align=align, icon=icon, icon_size=icon_size)
+        if icon in DRAWIO_AWS_GROUP:  # draw.io: use its AWS container shape; the separate icon cell is SVG-only
+            self._by_id[gid]["drawio_group"] = DRAWIO_AWS_GROUP[icon]
+            self._by_id[f"{gid}-icon"]["svg_only"] = True
+        return gid
 
     def icon(self, id, x, y, name, size=40):
         """An AWS Architecture Icon on its own (an image cell in draw.io)."""
         v = self._by_id.get(self.box(id, x, y, size, size, "", "none"))
-        v["shape"], v["image"], v["drawio_style"] = "image", icon_b64(name), drawio_aws_style(name)
+        style = drawio_aws_style(name)
+        if style is None and name in DRAWIO_AWS_GROUP:  # borderless group shape = just its corner icon
+            style = ("sketch=0;outlineConnect=0;html=1;dashed=0;fillColor=none;strokeColor=none;grStroke=0;"
+                     f"shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.{DRAWIO_AWS_GROUP[name]};")
+        v["shape"], v["image"], v["drawio_style"] = "image", icon_b64(name), style
         return id
 
     def text(self, id, x, y, w, h, label, *, size=12, bold=False, italic=False, align="center"):
@@ -275,6 +292,13 @@ class Diagram:
     @staticmethod
     def _mx_vertex_style(v) -> str:
         fill, stroke = PALETTE[v["color"]]
+        if v.get("drawio_group"):  # draw.io AWS container: icon top-left, label beside it
+            fill, stroke = PALETTE[v["color"]]
+            style = (f"sketch=0;outlineConnect=0;html=1;whiteSpace=wrap;shape=mxgraph.aws4.group;"
+                     f"grIcon=mxgraph.aws4.{v['drawio_group']};grStroke=0;fillColor={fill};strokeColor={stroke};"
+                     f"strokeWidth=1.5;fontSize={v['size']};fontColor={INK};fontStyle=1;fontFamily=Helvetica;"
+                     f"align={v['align']};verticalAlign=top;spacingLeft=30;spacingTop=4;")
+            return style + ("dashed=1;dashPattern=6 4;" if v["dashed"] else "dashed=0;")
         if v["shape"] == "image" and v.get("drawio_style"):
             return v["drawio_style"]  # native draw.io AWS library shape (SVG preview keeps the icon file)
         if v["shape"] == "image":
@@ -311,6 +335,8 @@ class Diagram:
     def to_mxfile(self) -> str:
         cells = ['<mxCell id="0"/>', '<mxCell id="1" parent="0"/>']
         for v in self.vertices:
+            if v.get("svg_only"):
+                continue
             value = self._mx_value(v["lines"], v["bold_first"] and not v["bold"], v["italic"])
             cells.append(f'<mxCell id="v-{_q(v["id"])}" value="{_q(value)}" style="{_q(self._mx_vertex_style(v))}" '
                          f'vertex="1" parent="1"><mxGeometry x="{v["x"]}" y="{v["y"]}" width="{v["w"]}" '
