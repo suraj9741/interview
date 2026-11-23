@@ -37,6 +37,65 @@ LINE_H = 1.3   # line height, as a fraction of font size
 ICON_DIR = Path(__file__).resolve().parent / "aws-icons"  # vendored AWS Architecture Icons (see its README)
 
 
+# draw.io's own AWS library ("AWS 2025" / mxgraph.aws4) for each vendored icon.
+# In the draw.io model the icon is a native library shape, so draw.io shows it as a normal AWS shape
+# (recolour, resize, swap from the library). The SVG preview still embeds the official icon file,
+# so GitHub shows the same artwork. Icons not listed here stay plain embedded images.
+NETWORK, COMPUTE, STORAGE, DATABASE, MGMT, APPINT, GENERAL = (
+    "#8C4FFF", "#ED7100", "#7AA116", "#C925D1", "#E7157B", "#E7157B", "#232F3E")
+DRAWIO_AWS = {  # icon file name: (kind, mxgraph.aws4 name, fill colour); kind "service" = resourceIcon tile
+    "route53": ("service", "route_53", NETWORK), "cloudfront": ("service", "cloudfront", NETWORK),
+    "global-accelerator": ("service", "global_accelerator", NETWORK), "elb": ("service", "elastic_load_balancing", NETWORK),
+    "vpc": ("service", "vpc", NETWORK), "api-gateway": ("service", "api_gateway", APPINT),
+    "appsync": ("service", "appsync", APPINT), "ec2": ("service", "ec2", COMPUTE), "lambda": ("service", "lambda", COMPUTE),
+    "app-runner": ("service", "app_runner", COMPUTE), "beanstalk": ("service", "elastic_beanstalk", COMPUTE),
+    "s3": ("service", "s3", STORAGE), "efs": ("service", "elastic_file_system", STORAGE),
+    "ebs": ("service", "elastic_block_store", STORAGE), "rds": ("service", "rds", DATABASE),
+    "aurora": ("service", "aurora", DATABASE), "elasticache": ("service", "elasticache", DATABASE),
+    "opensearch": ("service", "elasticsearch_service", "#8C4FFF"), "cloudwatch": ("service", "cloudwatch_2", MGMT),
+    "alb": ("resource", "application_load_balancer", NETWORK), "nlb": ("resource", "network_load_balancer", NETWORK),
+    "gwlb": ("resource", "gateway_load_balancer", NETWORK), "clb": ("resource", "classic_load_balancer", NETWORK),
+    "edge-location": ("resource", "edge_location", NETWORK), "eni": ("resource", "elastic_network_interface", NETWORK),
+    "igw": ("resource", "internet_gateway", NETWORK), "nacl": ("resource", "network_access_control_list", NETWORK),
+    "r53-hosted-zone": ("resource", "hosted_zone", NETWORK), "vpc-endpoints": ("resource", "endpoints", NETWORK),
+    "ec2-ami": ("resource", "ami", COMPUTE), "ec2-eip": ("resource", "elastic_ip_address", COMPUTE),
+    "ec2-instance": ("resource", "instance2", COMPUTE), "ec2-instances": ("resource", "instances", COMPUTE),
+    "ec2-spot": ("resource", "spot_instance", COMPUTE), "ec2-autoscaling": ("resource", "auto_scaling2", COMPUTE),
+    "lambda-fn": ("resource", "lambda_function", COMPUTE), "ebs-gp3": ("resource", "elastic_block_store_volume_gp3", STORAGE),
+    "ebs-snapshot": ("resource", "snapshot", STORAGE), "ebs-volume": ("resource", "volume", STORAGE),
+    "efs-fs": ("resource", "file_system", STORAGE), "efs-ia": ("resource", "elastic_file_system_infrequent_access", STORAGE),
+    "efs-onezone": ("resource", "elastic_file_system_one_zone", STORAGE),
+    "efs-standard": ("resource", "elastic_file_system_standard", STORAGE),
+    "redis": ("resource", "elasticache_for_redis", DATABASE), "memcached": ("resource", "elasticache_for_memcached", DATABASE),
+    "rds-multiaz": ("resource", "rds_multi_az", DATABASE), "rds-proxy": ("resource", "rds_proxy", DATABASE),
+    "aurora-instance": ("resource", "aurora_instance", DATABASE), "cw-alarm": ("resource", "alarm", MGMT),
+    "client": ("resource", "client", GENERAL), "users": ("resource", "users", GENERAL),
+    "corp-dc": ("resource", "corporate_data_center", GENERAL), "internet": ("resource", "internet_alt1", GENERAL),
+    "server": ("resource", "traditional_server", GENERAL),
+}
+
+
+# draw.io AWS *group* shapes (the containers in draw.io's AWS "Groups" panel: Region, VPC, subnets, ASG, ...).
+# A group() whose icon is listed here becomes that container shape in the draw.io model (icon in its corner);
+# a lone icon() of one of these becomes a borderless group shape, so only its corner icon shows.
+DRAWIO_AWS_GROUP = {
+    "region": "group_region", "vpc": "group_vpc2", "asg-group": "group_auto_scaling_group",
+    "spot-fleet": "group_spot_fleet", "private-subnet": "group_security_group", "public-subnet": "group_security_group",
+}
+
+
+def drawio_aws_style(name: str) -> str | None:
+    """draw.io library style for a vendored icon, or None if it has no library match."""
+    if name not in DRAWIO_AWS:
+        return None
+    kind, shape, fill = DRAWIO_AWS[name]
+    common = ("sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;dashed=0;verticalLabelPosition=bottom;"
+              "verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;")
+    if kind == "service":
+        return common + f"fillColor={fill};strokeColor=#ffffff;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.{shape};"
+    return common + f"fillColor={fill};strokeColor=none;pointerEvents=1;shape=mxgraph.aws4.{shape};"
+
+
 def icon_b64(name: str) -> str:
     """Base64 of tools/aws-icons/<name>.svg, for embedding (no external links, so GitHub renders it)."""
     return base64.b64encode((ICON_DIR / f"{name}.svg").read_bytes()).decode("ascii")
@@ -127,13 +186,21 @@ class Diagram:
     def group(self, id, x, y, w, h, label, color="gray", *, dashed=False, size=13,
               valign="top", align="center", icon=None, icon_size=24):
         """A labelled region. Add it BEFORE the boxes inside it, so it is drawn behind them."""
-        return self.box(id, x, y, w, h, label, color, size=size, bold=True, dashed=dashed,
-                        valign=valign, align=align, icon=icon, icon_size=icon_size)
+        gid = self.box(id, x, y, w, h, label, color, size=size, bold=True, dashed=dashed,
+                       valign=valign, align=align, icon=icon, icon_size=icon_size)
+        if icon in DRAWIO_AWS_GROUP:  # draw.io: use its AWS container shape; the separate icon cell is SVG-only
+            self._by_id[gid]["drawio_group"] = DRAWIO_AWS_GROUP[icon]
+            self._by_id[f"{gid}-icon"]["svg_only"] = True
+        return gid
 
     def icon(self, id, x, y, name, size=40):
         """An AWS Architecture Icon on its own (an image cell in draw.io)."""
         v = self._by_id.get(self.box(id, x, y, size, size, "", "none"))
-        v["shape"], v["image"] = "image", icon_b64(name)
+        style = drawio_aws_style(name)
+        if style is None and name in DRAWIO_AWS_GROUP:  # borderless group shape = just its corner icon
+            style = ("sketch=0;outlineConnect=0;html=1;dashed=0;fillColor=none;strokeColor=none;grStroke=0;"
+                     f"shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.{DRAWIO_AWS_GROUP[name]};")
+        v["shape"], v["image"], v["drawio_style"] = "image", icon_b64(name), style
         return id
 
     def text(self, id, x, y, w, h, label, *, size=12, bold=False, italic=False, align="center"):
@@ -225,6 +292,15 @@ class Diagram:
     @staticmethod
     def _mx_vertex_style(v) -> str:
         fill, stroke = PALETTE[v["color"]]
+        if v.get("drawio_group"):  # draw.io AWS container: icon top-left, label beside it
+            fill, stroke = PALETTE[v["color"]]
+            style = (f"sketch=0;outlineConnect=0;html=1;whiteSpace=wrap;shape=mxgraph.aws4.group;"
+                     f"grIcon=mxgraph.aws4.{v['drawio_group']};grStroke=0;fillColor={fill};strokeColor={stroke};"
+                     f"strokeWidth=1.5;fontSize={v['size']};fontColor={INK};fontStyle=1;fontFamily=Helvetica;"
+                     f"align={v['align']};verticalAlign=top;spacingLeft=30;spacingTop=4;")
+            return style + ("dashed=1;dashPattern=6 4;" if v["dashed"] else "dashed=0;")
+        if v["shape"] == "image" and v.get("drawio_style"):
+            return v["drawio_style"]  # native draw.io AWS library shape (SVG preview keeps the icon file)
         if v["shape"] == "image":
             return ("shape=image;html=1;imageAspect=0;aspect=fixed;verticalLabelPosition=bottom;"
                     f"verticalAlign=top;image=data:image/svg+xml,{v['image']};")
@@ -259,6 +335,8 @@ class Diagram:
     def to_mxfile(self) -> str:
         cells = ['<mxCell id="0"/>', '<mxCell id="1" parent="0"/>']
         for v in self.vertices:
+            if v.get("svg_only"):
+                continue
             value = self._mx_value(v["lines"], v["bold_first"] and not v["bold"], v["italic"])
             cells.append(f'<mxCell id="v-{_q(v["id"])}" value="{_q(value)}" style="{_q(self._mx_vertex_style(v))}" '
                          f'vertex="1" parent="1"><mxGeometry x="{v["x"]}" y="{v["y"]}" width="{v["w"]}" '
