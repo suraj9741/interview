@@ -1245,6 +1245,247 @@ S3 = [s3_big_picture, s3_security, s3_versioning_replication, s3_storage_classes
       s3_performance, s3_encryption, s3_protection, s3_access_points]
 
 
+def cf_how_it_works():
+    d = Diagram("cf-01-how-it-works", 960, 600, "Amazon CloudFront: a CDN that caches your content at the edge")
+    d.box("u1", 20, 70, 150, 50, "User in Mumbai", "white", size=11, icon="users", icon_size=28)
+    d.box("u2", 20, 150, 150, 50, "User in São Paulo", "white", size=10, icon="users", icon_size=28)
+    d.box("e1", 240, 62, 210, 66, "Edge location (POP)\nMumbai · local cache\nHIT → answer at once", "blue", size=10, icon="edge-location", icon_size=30)
+    d.box("e2", 240, 142, 210, 66, "Edge location (POP)\nSão Paulo · local cache\nMISS → ask the next layer", "blue", size=10, icon="edge-location", icon_size=30)
+    d.box("rec", 520, 102, 190, 66, "Regional edge cache\n(15 RECs) bigger cache,\nbetween POPs and origin", "purple", size=10)
+    d.box("org", 780, 92, 160, 86, "Origin\nS3, ALB, NLB,\nEC2, any HTTP\nserver", "green", size=10, icon="s3-bucket", icon_size=28)
+    d.edge("u1", "e1", "GET /beach.jpg")
+    d.edge("u2", "e2", "GET /beach.jpg")
+    d.edge("e2", "rec", "miss")
+    d.edge("rec", "org", "miss: fetch,\nthen cache")
+    d.edge("e1", "rec", dashed=True)
+    d.text("skip", 470, 190, 470, 44, "PUT, POST, PATCH, OPTIONS, DELETE and dynamic requests skip the REC\nand go from the POP straight to the origin (they are not cached).", size=10, align="left")
+    d.box("ttl", 20, 246, 450, 120,
+          "TTL: how long a file stays cached\nDefault 24 hours (86,400 s) · minimum 0 s · no maximum.\n"
+          "After the TTL, the edge asks the origin again.\nCourse: \"cached for a TTL (maybe a day)\".\nIf you change the origin, CloudFront doesn't know until the TTL\nends → use an invalidation (diagram 5).", "yellow", size=10, align="left")
+    d.box("num", 490, 246, 450, 120,
+          "Size of the network (aws.amazon.com/cloudfront/features, Nov 2026)\n750+ POPs in 100+ cities, 50+ countries\n"
+          "+ 1,140+ embedded POPs (inside ISP networks), 300+ cities\n15 regional edge caches\nCourse: \"hundreds of Points of Presence (edge locations, caches)\"", "white", size=10, align="left")
+    d.box("shield", 20, 384, 300, 80, "AWS Shield Standard\nfree, automatic: layer 3/4 DDoS\nprotection on every distribution", "red", size=10, icon="shield", icon_size=30)
+    d.box("waf", 340, 384, 300, 80, "AWS WAF (web ACL)\noptional: layer 7 rules\n(SQL injection, rate limits, geo)", "red", size=10, icon="waf", icon_size=30)
+    d.box("cf", 660, 384, 280, 80, "Distribution\nxxxx.cloudfront.net or your\ndomain (Route 53 alias)", "blue", size=10, icon="cloudfront", icon_size=30)
+    d.box("why", 20, 482, 920, 100,
+          "Why use it\n• Improves READ performance: content is cached at the edge, close to users → better user experience, less load on the origin.\n"
+          "• Works for static content (images, video, JS/CSS, downloads) AND dynamic content (APIs, whole sites, WebSocket) over HTTP/HTTPS.\n"
+          "• DDoS protection because it is worldwide: attacks are absorbed at hundreds of edge locations, with Shield and WAF integration.", "orange", size=11, align="left")
+    return d
+
+
+def cf_origins():
+    d = Diagram("cf-02-origins", 960, 620, "CloudFront origins: where the edge fetches content from")
+    d.group("g1", 20, 46, 300, 330, "1. S3 bucket", "green")
+    d.box("cf1", 40, 84, 260, 46, "CloudFront", "white", size=11, icon="cloudfront", icon_size=28)
+    d.box("b1", 40, 190, 260, 50, "Private S3 bucket\n(Block Public Access ON)", "white", size=10, icon="s3-bucket", icon_size=28)
+    d.edge("cf1", "b1", "OAC (signed\nrequests)")
+    d.text("t1", 30, 246, 280, 126, "• Distribute files and cache them at the edge\n• Upload files to S3 THROUGH CloudFront\n  (PUT/DELETE, works with OAC)\n• Secured with Origin Access Control\n  + a bucket policy that allows\n  cloudfront.amazonaws.com for\n  this distribution ARN only", size=10, align="left")
+    d.group("g2", 330, 46, 300, 330, "2. VPC origin (Nov 2024)", "purple")
+    d.box("cf2", 350, 84, 260, 46, "CloudFront", "white", size=11, icon="cloudfront", icon_size=28)
+    d.group("sub", 350, 160, 260, 110, "Private subnet", "white", icon="private-subnet", size=11)
+    d.box("alb2", 360, 192, 76, 66, "ALB", "white", size=10, icon="alb", icon_size=26, valign="top")
+    d.box("nlb2", 442, 192, 76, 66, "NLB", "white", size=10, icon="nlb", icon_size=26, valign="top")
+    d.box("ec22", 524, 192, 76, 66, "EC2", "white", size=10, icon="ec2-instance", icon_size=26, valign="top")
+    d.edge("cf2", "sub", "private path")
+    d.text("t2", 340, 276, 280, 96, "• Apps in VPC private subnets: no need\n  to expose them on the internet\n• Private ALB / NLB / EC2 instances\n• No extra cost · cross-account (Nov 2025)\n• Dual-stack IPv6 (Oct 2026)", size=10, align="left")
+    d.group("g3", 640, 46, 300, 330, "3. Custom origin (HTTP)", "orange")
+    d.box("cf3", 660, 84, 260, 46, "CloudFront", "white", size=11, icon="cloudfront", icon_size=28)
+    d.box("web", 660, 166, 125, 66, "S3 website\nendpoint", "white", size=10)
+    d.box("pub", 795, 166, 125, 66, "Public ALB /\nEC2 / any\nHTTP server", "white", size=10)
+    d.edge("cf3", "web")
+    d.edge("cf3", "pub")
+    d.text("t3", 650, 240, 280, 132, "• S3 website: first enable static\n  website hosting on the bucket;\n  it is a custom origin, so NO OAC\n  (bucket must be public)\n• Any public HTTP backend you want\n• Also: API Gateway, Lambda function\n  URL, MediaPackage, MediaStore", size=10, align="left")
+    d.text("oh", 20, 386, 920, 24, "OAC vs OAI (how CloudFront proves itself to a private S3 bucket)", size=13, bold=True, align="left")
+    rows = [("", "Origin Access Control (OAC)", "Origin Access Identity (OAI)"),
+            ("Status", "recommended (current)", "legacy, not recommended"),
+            ("SSE-KMS objects", "yes", "no"),
+            ("All Regions (opt-in, after 2022)", "yes", "no"),
+            ("Writes (PUT / DELETE)", "yes", "no"),
+            ("Bucket policy Principal", "Service: cloudfront.amazonaws.com + AWS:SourceArn", "the OAI's IAM user ARN")]
+    for i, (a, b, c) in enumerate(rows):
+        y = 414 + i * 32
+        hdr = i == 0
+        d.box(f"oa{i}", 20, y, 260, 30, a, "gray", size=10, bold=True)
+        d.box(f"ob{i}", 284, y, 380, 30, b, "green" if hdr else "white", size=10, bold=hdr)
+        d.box(f"oc{i}", 668, y, 272, 30, c, "red" if hdr else "white", size=10, bold=hdr)
+    return d
+
+
+def cf_alb_ec2_origin():
+    d = Diagram("cf-03-alb-ec2-origin", 960, 560, "ALB or EC2 as an origin: public network vs VPC origins")
+    d.group("pub", 20, 46, 450, 380, "Old way: public network", "orange")
+    d.box("u", 40, 86, 120, 46, "Users", "white", size=11, icon="users", icon_size=26)
+    d.box("e", 190, 86, 260, 46, "Edge location (public IPs)", "white", size=10, icon="edge-location", icon_size=26)
+    d.edge("u", "e")
+    d.box("ec2p", 40, 180, 190, 70, "EC2 instance\nMUST be public\nSG: allow edge IPs", "white", size=10, icon="ec2-instance", icon_size=26)
+    d.box("albp", 260, 180, 190, 70, "ALB\nMUST be public\nSG: allow edge IPs", "white", size=10, icon="alb", icon_size=26)
+    d.edge("e", "ec2p", "internet")
+    d.edge("e", "albp", "internet")
+    d.box("ec2b", 260, 290, 190, 60, "EC2 behind ALB\ncan be private\nSG: allow ALB's SG", "white", size=10, icon="ec2-instance", icon_size=26)
+    d.edge("albp", "ec2b")
+    d.text("pt", 30, 356, 430, 66, "Edge IPs: AWS-managed prefix list\ncom.amazonaws.global.cloudfront.origin-facing (or ip-ranges.json).\nRisk: the origin still has a public address anyone can try.", size=10, align="left")
+    d.group("vpc", 490, 46, 450, 380, "New way: VPC origins (recommended)", "purple")
+    d.box("u2", 510, 86, 120, 46, "Users", "white", size=11, icon="users", icon_size=26)
+    d.box("cf", 660, 86, 260, 46, "CloudFront + VPC origin", "white", size=10, icon="cloudfront", icon_size=26)
+    d.edge("u2", "cf")
+    d.group("ps", 510, 168, 410, 120, "VPC · private subnet only", "white", icon="private-subnet", size=11)
+    d.box("a", 524, 204, 120, 64, "Private ALB", "white", size=10, icon="alb", icon_size=26)
+    d.box("n", 652, 204, 120, 64, "Private NLB", "white", size=10, icon="nlb", icon_size=26)
+    d.box("i", 780, 204, 128, 64, "Private EC2", "white", size=10, icon="ec2-instance", icon_size=26)
+    d.edge("cf", "ps", "AWS private path")
+    d.text("vt", 500, 296, 430, 126, "• No public IP on the origin: only CloudFront can reach it\n• CloudFront creates the security group\n  CloudFront-VPCOrigins-Service-SG (don't edit it)\n• The VPC still needs an internet gateway attached\n  (not used for this traffic)\n• Not supported: Gateway LB, NLB with TLS listener, gRPC", size=10, align="left")
+    d.box("ex", 20, 440, 920, 100,
+          "Exam pattern\n• \"Serve a private app in private subnets through CloudFront without exposing it\" → VPC origin.\n"
+          "• Older questions (before VPC origins): public ALB/EC2 whose security group allows only CloudFront's IP ranges, or a custom header check.\n"
+          "• S3 private content → OAC. Private ALB/NLB/EC2 → VPC origin. Public HTTP server → custom origin.", "yellow", size=11, align="left")
+    return d
+
+
+def cf_vs_crr():
+    d = Diagram("cf-04-cloudfront-vs-crr", 960, 470, "CloudFront vs S3 Cross-Region Replication: both give low latency, in different ways")
+    d.group("cf", 20, 46, 450, 300, "CloudFront (cache)", "blue", icon="cloudfront")
+    d.box("o", 160, 86, 170, 46, "1 origin bucket", "white", size=11, icon="s3-bucket", icon_size=26)
+    for i, c in enumerate(["Edge", "Edge", "Edge", "Edge"]):
+        d.box(f"e{i}", 36 + i * 108, 176, 96, 44, f"{c} {i + 1}", "white", size=10, icon="edge-location", icon_size=22)
+        d.edge("o", f"e{i}")
+    d.text("ct", 30, 230, 430, 112, "• Global edge network (hundreds of locations)\n• Files are cached for a TTL (maybe a day):\n  users may see an old copy until it expires\n• Great for STATIC content that must be\n  available everywhere", size=11, align="left")
+    d.group("cr", 490, 46, 450, 300, "S3 Cross-Region Replication (copy)", "green", icon="s3-replication")
+    d.box("s", 520, 86, 170, 46, "Source bucket", "white", size=11, icon="s3-bucket", icon_size=26)
+    d.box("t1", 740, 76, 180, 40, "Bucket eu-west-1", "white", size=10, icon="s3-bucket", icon_size=22)
+    d.box("t2", 740, 126, 180, 40, "Bucket ap-south-1", "white", size=10, icon="s3-bucket", icon_size=22)
+    d.edge("s", "t1")
+    d.edge("s", "t2")
+    d.text("rt", 500, 176, 430, 166, "• Must be set up for EACH Region you want\n• Files are updated in near real time\n  (asynchronous; with RTC 99.99% in 15 min)\n• Read only (replicas are for reading)\n• Great for DYNAMIC content that needs low\n  latency in a FEW Regions", size=11, align="left")
+    d.box("rule", 20, 360, 920, 90,
+          "How to choose\n• Everywhere + static + OK to be a bit stale → CloudFront.\n• A few Regions + must be fresh (near real time) → CRR (plus apps in those Regions).\n"
+          "• They combine well: CloudFront in front of a bucket that is itself replicated (origin failover with an origin group).", "yellow", size=11, align="left")
+    return d
+
+
+def cf_geo_invalidation():
+    d = Diagram("cf-05-geo-invalidation", 960, 600, "Geo restriction and cache invalidation")
+    d.group("geo", 20, 46, 450, 330, "Geo restriction (country level)", "orange")
+    d.box("al", 40, 84, 200, 70, "Allow list\nonly these countries\nmay access", "green", size=10)
+    d.box("bl", 250, 84, 200, 70, "Block list\nthese countries are\nblocked", "red", size=10)
+    d.box("v1", 40, 180, 200, 46, "Viewer in allowed country", "white", size=10)
+    d.box("v2", 250, 180, 200, 46, "Viewer in blocked country", "white", size=10)
+    d.box("ok", 40, 250, 200, 36, "200: content served", "green", size=10)
+    d.box("no", 250, 250, 200, 36, "403 Forbidden", "red", size=10)
+    d.edge("v1", "ok")
+    d.edge("v2", "no")
+    d.text("gt", 30, 292, 430, 80, "Country = third-party Geo-IP database (~99.8% accurate);\nunknown location → served. Use case: copyright /\nlicensing laws. Finer than country (city, ZIP)? Use a\nthird-party geolocation service or AWS WAF geo rules.", size=10, align="left")
+    d.group("inv", 490, 46, 450, 330, "Cache invalidation", "blue")
+    d.box("s3", 510, 84, 150, 50, "Origin: you\nupdate index.html", "white", size=10, icon="s3-bucket", icon_size=24)
+    d.box("cf", 760, 84, 160, 50, "CloudFront", "white", size=10, icon="cloudfront", icon_size=24)
+    d.edge("s3", "cf", "invalidate\n/index.html, /images/*")
+    d.box("ed1", 510, 190, 190, 50, "Edge cache: old copy\nremoved", "white", size=10, icon="edge-location", icon_size=24)
+    d.box("ed2", 730, 190, 190, 50, "Regional edge cache:\nold copy removed", "white", size=10)
+    d.edge("cf", "ed1")
+    d.edge("cf", "ed2")
+    d.text("it", 500, 248, 430, 124, "Without it: new content only after the TTL ends.\nInvalidation = force a full or partial refresh,\nbypassing the TTL: all files /* or a path /images/*\n* must be the LAST character of the path\nNext request → edge fetches the fresh copy", size=10, align="left")
+    d.box("cost", 20, 392, 920, 190,
+          "Invalidation cost and limits (CloudFront docs)\n• First 1,000 invalidation PATHS per month are free (per AWS account, all distributions together); each path after that is charged.\n"
+          "• A wildcard path (/images/* or /*) counts as ONE path, even if it removes thousands of files.\n"
+          "• In progress at once: up to 3,000 files per distribution, or up to 15 wildcard paths.\n"
+          "• Best practice for frequent updates: versioned file names (app.v2.js, logo_2026.png) + long TTL. New name = new cache key, no invalidation\n  needed, no charge, and users never get a mix of old and new files.\n"
+          "• Exam: \"users still see the old file after a deploy\" → create an invalidation (or use versioned names).", "yellow", size=11, align="left")
+    return d
+
+
+def ga_anycast():
+    d = Diagram("ga-01-anycast-flow", 960, 600, "AWS Global Accelerator: enter the AWS network at the nearest edge, via anycast IPs")
+    d.group("old", 20, 46, 450, 250, "Without: public internet all the way", "red")
+    d.box("c1", 40, 86, 120, 46, "User India", "white", size=10, icon="client", icon_size=24)
+    d.box("h1", 190, 86, 80, 46, "hop", "white", size=10)
+    d.box("h2", 280, 86, 80, 46, "hop", "white", size=10)
+    d.box("alb1", 300, 150, 160, 60, "Public ALB\nus-east-1", "white", size=10, icon="alb", icon_size=26)
+    d.edge("c1", "h1")
+    d.edge("h1", "h2")
+    d.edge("h2", "alb1", "many hops")
+    d.text("ot", 30, 226, 430, 66, "Every ISP hop adds latency, jitter and packet loss.\nClient caches the DNS answer: after a failover it can\nkeep using a dead IP until the TTL ends.", size=10, align="left")
+    d.group("ip", 490, 46, 450, 250, "Unicast vs anycast", "gray")
+    d.box("uni", 510, 86, 410, 70, "Unicast IP\none server holds one IP address\n(12.34.56.78 → one machine)", "white", size=10)
+    d.box("any", 510, 166, 410, 70, "Anycast IP\nALL servers hold the SAME IP address and the\nclient is routed to the NEAREST one", "green", size=10)
+    d.text("ipt", 500, 244, 430, 48, "Global Accelerator announces its static IPs\nfrom many AWS edge locations at once.", size=10, align="left")
+    d.group("new", 20, 310, 920, 270, "With Global Accelerator", "blue", icon="global-accelerator")
+    d.box("c2", 40, 360, 140, 50, "User India", "white", size=10, icon="client", icon_size=24)
+    d.box("ips", 220, 350, 200, 70, "2 static anycast IPv4\n(dual-stack: +2 IPv6 = 4)\nor your own IPs (BYOIP)", "yellow", size=10)
+    d.box("edge", 480, 350, 170, 70, "Nearest edge\nlocation (Mumbai)\nTCP ends here", "white", size=10, icon="edge-location", icon_size=26)
+    d.box("alb2", 720, 350, 200, 70, "ALB / NLB / EC2 / EIP\nus-east-1 (can be\ninternal / private)", "white", size=10, icon="alb", icon_size=26)
+    d.edge("c2", "ips")
+    d.edge("ips", "edge", "short hop")
+    d.edge("edge", "alb2", "AWS private\nglobal network")
+    d.text("nt", 40, 430, 880, 146,
+           "• Uses the AWS internal network to reach your app: 2 anycast IPs are created → traffic goes to the nearest edge location → the edge sends it to your app.\n"
+           "• The edge terminates the client's TCP connection and opens a new one to your endpoint almost at once (faster handshakes).\n"
+           "• The IPs stay the same for the life of the accelerator (even if disabled); you lose them only when you delete it. DNS name: xxxx.awsglobalaccelerator.com.\n"
+           "• The two IPv4 addresses come from two separate network zones (if one zone fails, the other IP still works).\n"
+           "• AWS: up to 60% better performance for TCP and UDP traffic (FAQ). Pricing: fixed hourly fee per accelerator + Data Transfer-Premium per GB.", size=10, align="left")
+    return d
+
+
+def ga_components():
+    d = Diagram("ga-02-components-failover", 960, 640, "Global Accelerator parts: listener → endpoint groups (one per Region) → endpoints")
+    d.box("acc", 20, 50, 300, 70, "Accelerator (standard)\n2 static IPv4 (or 4 dual-stack)\nhealth checks + failover", "blue", size=10, icon="global-accelerator", icon_size=30)
+    d.box("lis", 360, 50, 260, 70, "Listener\nTCP, UDP or both\nport or port range (e.g. 443, 80)", "yellow", size=10)
+    d.box("aff", 660, 50, 280, 70, "Client affinity\nNone (default) or Source IP:\nsame user → same endpoint", "white", size=10)
+    d.edge("acc", "lis")
+    d.edge("lis", "aff", dashed=True)
+    d.group("r1", 20, 150, 450, 250, "Endpoint group: us-east-1 · traffic dial 100%", "white", icon="region", align="left", size=11)
+    d.box("a1", 40, 196, 200, 56, "ALB (internet-facing\nor internal) · weight 128", "white", size=10, icon="alb", icon_size=26)
+    d.box("a2", 250, 196, 200, 56, "EC2 instance\nweight 128", "white", size=10, icon="ec2-instance", icon_size=26)
+    d.box("hc1", 40, 266, 410, 50, "Healthy → gets new connections (closest Region, by weight)", "green", size=10)
+    d.text("r1t", 40, 324, 410, 72, "Traffic dial 0-100%: share of this Region's traffic\n(e.g. 0% for maintenance, blue/green between Regions).\nWeight 0-255 (default 128): share inside the group.", size=10, align="left")
+    d.group("r2", 490, 150, 450, 250, "Endpoint group: eu-west-1 · traffic dial 100%", "white", icon="region", align="left", size=11)
+    d.box("b1", 510, 196, 200, 56, "NLB\nweight 128", "white", size=10, icon="nlb", icon_size=26)
+    d.box("b2", 720, 196, 200, 56, "Elastic IP\nweight 128", "white", size=10, icon="ec2-eip", icon_size=26)
+    d.box("hc2", 510, 266, 410, 50, "Unhealthy → new connections go to the next Region", "red", size=10)
+    d.text("r2t", 510, 324, 410, 72, "Failover in under 1 minute (FAQ), no DNS change, so no\nclient DNS cache problem. Existing connections are\nnot moved. All unhealthy → it fails open (routes to all).", size=10, align="left")
+    d.edge("lis", "r1")
+    d.edge("lis", "r2")
+    d.box("hc", 20, 414, 450, 106, "Health checks\nGA checks EC2 / Elastic IP endpoints itself (settings in GA).\nFor ALB / NLB it uses the load balancer's own health checks\n(set in the ELB console). Great for disaster recovery.", "white", size=10, align="left")
+    d.box("ipp", 490, 414, 450, 106, "Client IP preservation\nSupported: ALB, EC2, NLB with security groups.\nNot supported: Elastic IP endpoints, NLB without SG.\nDual-stack accelerators need it on every endpoint.", "white", size=10, align="left")
+    d.box("sec", 20, 534, 920, 86,
+          "Security and types\n• Only 2 IPs for clients to allowlist (firewalls, corporate proxies) · AWS Shield DDoS protection · endpoints can stay internal.\n"
+          "• Custom routing accelerator: maps each user to one specific EC2 instance + port in VPC subnets (game sessions); no health checks or failover.", "orange", size=11, align="left")
+    return d
+
+
+def cf_vs_ga():
+    d = Diagram("cfga-01-comparison", 960, 640, "CloudFront vs Global Accelerator: same edge network, different jobs")
+    d.box("both", 20, 46, 920, 64,
+          "Both: use the AWS global network and its edge locations around the world · both integrate with AWS Shield for DDoS protection\n"
+          "Both: help global users get low latency to an app in one or more AWS Regions", "gray", size=11, align="left", bold_first=False)
+    d.box("hcf", 260, 124, 330, 50, "CloudFront", "blue", size=13, bold=True, icon="cloudfront", icon_size=32)
+    d.box("hga", 610, 124, 330, 50, "Global Accelerator", "green", size=13, bold=True, icon="global-accelerator", icon_size=32)
+    rows = [
+        ("What it is", "CDN: caches content at the edge", "network-layer proxy: packets go over AWS backbone"),
+        ("Protocols", "HTTP / HTTPS (and WebSocket)", "any TCP or UDP (HTTP too)"),
+        ("Caching", "YES: content served FROM the edge", "NO caching: every request reaches your app"),
+        ("Content", "cacheable (images, video) + dynamic (APIs, sites)", "non-HTTP: gaming (UDP), IoT (MQTT), VoIP"),
+        ("Entry point", "DNS name (d123.cloudfront.net); IPs change", "2 static anycast IPs (4 dual-stack), BYOIP"),
+        ("Failover", "origin groups (per request, origin failover)", "deterministic, fast Regional failover (<1 min)"),
+        ("Origins / endpoints", "S3, VPC origins, ALB, NLB, EC2, any HTTP", "ALB, NLB, EC2, Elastic IP (can be internal)"),
+        ("Extras", "WAF, geo restriction, OAC, signed URLs, invalid.", "traffic dials, endpoint weights, client affinity"),
+        ("Pricing", "per GB out + per request (or flat-rate plan)", "fixed hourly fee + Data Transfer-Premium per GB"),
+    ]
+    for i, (k, a, b) in enumerate(rows):
+        y = 182 + i * 38
+        d.box(f"k{i}", 20, y, 230, 34, k, "gray", size=11, bold=True)
+        d.box(f"a{i}", 260, y, 330, 34, a, "white", size=10)
+        d.box(f"b{i}", 610, y, 330, 34, b, "white", size=10)
+    d.box("pick", 20, 532, 920, 92,
+          "Exam keyword → answer\n• \"cache\", \"static content\", \"images/videos worldwide\", \"S3 + edge\", \"geo-block\" → CloudFront.\n"
+          "• \"static IP\", \"allowlist IPs\", \"UDP\", \"gaming\", \"IoT/MQTT\", \"VoIP\", \"fast Regional failover without DNS\" → Global Accelerator.\n"
+          "• HTTP app that needs fixed IPs or deterministic failover → Global Accelerator (even though it is HTTP).", "yellow", size=11, align="left")
+    return d
+
+
+CLOUDFRONT = [cf_how_it_works, cf_origins, cf_alb_ec2_origin, cf_vs_crr, cf_geo_invalidation, ga_anycast, ga_components, cf_vs_ga]
+
+
 ALL = [iam_big_picture, policy_anatomy, policy_evaluation, access_methods, role_assume, mfa_password,
        security_tools, shared_responsibility,
        global_infra,
@@ -1252,7 +1493,7 @@ ALL = [iam_big_picture, policy_anatomy, policy_evaluation, access_methods, role_
        ec2_ips, placement_groups, eni_hibernate,
        storage_compare, ebs_snapshots_ami, ebs_volume_types, efs_classes,
        elb_types, alb_flow, asg,
-       rds_replicas_multiaz, aurora, rds_backup_proxy, elasticache] + ROUTE53 + S3
+       rds_replicas_multiaz, aurora, rds_backup_proxy, elasticache] + ROUTE53 + S3 + CLOUDFRONT
 
 if __name__ == "__main__":
     force = "--force" in sys.argv
