@@ -43,6 +43,7 @@ ICON_DIR = Path(__file__).resolve().parent / "aws-icons"  # vendored AWS Archite
 # so GitHub shows the same artwork. Icons not listed here stay plain embedded images.
 NETWORK, COMPUTE, STORAGE, DATABASE, MGMT, APPINT, GENERAL = (
     "#8C4FFF", "#ED7100", "#7AA116", "#C925D1", "#E7157B", "#E7157B", "#232F3E")
+SECURITY, ANALYTICS = "#DD344C", "#8C4FFF"
 DRAWIO_AWS = {  # icon file name: (kind, mxgraph.aws4 name, fill colour); kind "service" = resourceIcon tile
     "route53": ("service", "route_53", NETWORK), "cloudfront": ("service", "cloudfront", NETWORK),
     "global-accelerator": ("service", "global_accelerator", NETWORK), "elb": ("service", "elastic_load_balancing", NETWORK),
@@ -72,6 +73,26 @@ DRAWIO_AWS = {  # icon file name: (kind, mxgraph.aws4 name, fill colour); kind "
     "client": ("resource", "client", GENERAL), "users": ("resource", "users", GENERAL),
     "corp-dc": ("resource", "corporate_data_center", GENERAL), "internet": ("resource", "internet_alt1", GENERAL),
     "server": ("resource", "traditional_server", GENERAL),
+    # S3 section (09-s3.md), checked against draw.io Sidebar-AWS4.js on 24 Nov 2026
+    "s3-bucket": ("resource", "bucket", STORAGE), "s3-object": ("resource", "object", STORAGE),
+    "s3-bucket-objects": ("resource", "bucket_with_objects", STORAGE), "s3-standard-ia": ("resource", "standard_ia", STORAGE),
+    "s3-onezone-ia": ("resource", "one_zone_ia", STORAGE),
+    "s3-glacier-ir": ("resource", "simple_storage_service_s3_glacier_instant_retrieval", STORAGE),
+    "s3-glacier-fr": ("resource", "glacier", STORAGE), "s3-glacier-da": ("resource", "glacier_deep_archive", STORAGE),
+    "s3-intelligent-tiering": ("resource", "intelligent_tiering", STORAGE), "s3-replication": ("resource", "replication", STORAGE),
+    "s3-batch-ops": ("resource", "s3_batch_operations", STORAGE), "s3-storage-lens": ("resource", "s3_storage_lens", STORAGE),
+    "s3-object-lock": ("resource", "s3_object_lock", STORAGE), "s3-mrap": ("resource", "s3_multi_region_access_points", STORAGE),
+    "s3-access-points": ("resource", "general_access_points", STORAGE), "s3-vpc-access-points": ("resource", "vpc_access_points", STORAGE),
+    "s3-object-lambda": ("resource", "s3_object_lambda", STORAGE),
+    "s3-object-lambda-ap": ("resource", "s3_object_lambda_access_points", STORAGE), "glacier-vault": ("resource", "vault", STORAGE),
+    "sns-topic": ("resource", "topic", APPINT), "sqs-queue": ("resource", "queue", APPINT),
+    "iam-role": ("resource", "role", SECURITY), "iam-mfa": ("resource", "mfa_token", SECURITY),
+    "iam-permissions": ("resource", "permissions", SECURITY), "kms-data-key": ("resource", "data_encryption_key", SECURITY),
+    "encrypted-data": ("resource", "encrypted_data", SECURITY), "user": ("resource", "user", GENERAL),
+    "kms": ("service", "key_management_service", SECURITY), "eventbridge": ("service", "eventbridge", APPINT),
+    "athena": ("service", "athena", ANALYTICS), "cloudtrail": ("service", "cloudtrail", MGMT),
+    "iam": ("service", "identity_and_access_management", SECURITY), "sns": ("service", "sns", APPINT),
+    "sqs": ("service", "sqs", APPINT),
 }
 
 

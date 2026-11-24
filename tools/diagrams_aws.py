@@ -984,6 +984,267 @@ ROUTE53 = [r53_dns_resolution, r53_records_zones, r53_cname_alias, r53_health_ch
            r53_policies_overview, r53_routing_examples_1, r53_routing_examples_2]
 
 
+# ---------------------------------------------------------------- S3 (09-s3.md)
+def s3_big_picture():
+    d = Diagram("s3-01-buckets-objects", 960, 600, "Amazon S3: buckets live in a Region, objects live in buckets")
+    d.group("reg", 20, 46, 560, 330, "Region: eu-west-1 (a bucket is created in ONE Region)", "white", icon="region", align="left")
+    d.box("b", 40, 92, 520, 52, "Bucket: my-bucket\nglobal-looking service, regional bucket", "green", size=11, icon="s3-bucket", icon_size=32)
+    d.box("o1", 40, 160, 520, 44, "Key: my_file.txt   →   s3://my-bucket/my_file.txt", "white", size=11, icon="s3-object", icon_size=26)
+    d.box("o2", 40, 214, 520, 62, "Key: my_folder/another_folder/my_file.txt\nprefix = my_folder/another_folder/  +  object name = my_file.txt\n(no real folders: the key is the FULL path)", "white", size=10, icon="s3-object", icon_size=26)
+    d.text("ob", 40, 284, 520, 88, "Each object: value (body, max 50 TB since Dec 2025, was 5 TB) · metadata\n(system + user key/value) · tags (up to 10, Unicode) · version ID (if versioning on)\nSingle PUT up to 5 GB → bigger needs multipart upload (recommended > 100 MB)", size=10, align="left")
+    d.group("nm", 600, 46, 340, 330, "Bucket names", "yellow")
+    d.text("nmt", 610, 76, 320, 296, "Shared global namespace (default):\nunique across ALL accounts and Regions\n(in the partition)\n\nAccount regional namespace (Mar 2026):\nname ends -<accountId>-<region>-an,\nonly your account can create it, so the\nsame prefix can be \"reused\" per Region\n\n3-63 chars · lowercase, digits, . and -\nstart/end with letter or digit\nnot an IP · no uppercase, no underscore\nno prefix xn--, sthree-, amzn-s3-demo-\nno suffix -s3alias, --ol-s3, .mrap,\n--x-s3, --table-s3", size=10, align="left")
+    d.text("uh", 20, 386, 920, 24, "Use cases", size=13, bold=True)
+    uses = ["Backup and\nstorage", "Disaster\nrecovery", "Archive", "Hybrid cloud\nstorage", "Application\nhosting", "Media\nhosting",
+            "Data lakes,\nanalytics", "Software\ndelivery", "Static\nwebsite"]
+    for i, u in enumerate(uses):
+        d.box(f"u{i}", 20 + i * 103, 414, 96, 52, u, "blue", size=10, bold_first=False)
+    d.box("ex", 20, 482, 920, 100,
+          "Exam reminders\n• \"One of the main building blocks of AWS\": object storage. Objects, not files or blocks (no mounting; you replace an object to change it).\n"
+          "• Bucket names: lowercase, globally unique unless you choose the account regional namespace. The name cannot be changed later.\n"
+          "• Max object 50 TB (older questions say 5 TB). Multipart: up to 10,000 parts, 5 MiB-5 GiB each (last part can be smaller).\n"
+          "• Tags (10 per object, key 128 / value 256 Unicode chars) drive lifecycle rules and IAM conditions; metadata is set at upload.", "orange", size=11, align="left")
+    return d
+
+
+def s3_security():
+    d = Diagram("s3-02-security", 960, 550, "S3 security: who can access an object?")
+    d.group("ub", 20, 46, 300, 180, "User-based", "blue")
+    d.box("iam", 40, 84, 260, 60, "IAM policies\nwhich API calls a user/role\nmay make", "white", size=10, icon="iam-permissions", icon_size=28)
+    d.box("role", 40, 154, 260, 56, "EC2 instance → IAM role\n(the right way for AWS services)", "white", size=10, icon="iam-role", icon_size=28)
+    d.group("rb", 340, 46, 600, 180, "Resource-based", "orange")
+    d.box("bp", 360, 84, 270, 60, "Bucket policy (JSON)\nbucket-wide rules, allows\ncross-account and public", "white", size=10, icon="s3-bucket", icon_size=28)
+    d.box("acl", 650, 84, 270, 60, "Object ACL / Bucket ACL\nfiner grain / less common\nDISABLED by default (Apr 2023)", "white", size=10)
+    d.box("bpa", 360, 154, 560, 56, "Block Public Access: ON by default for new buckets (can be set at account level too).\nLeave it on unless the bucket must be public (e.g. static website).", "red", size=10, align="left")
+    d.box("rule", 20, 240, 920, 76,
+          "Decision rule (same account)\nAn IAM principal can access an object if (its IAM policy ALLOWS it  OR  the resource policy ALLOWS it)  AND  there is no explicit DENY.\n"
+          "Cross-account: the bucket policy must allow the other account AND that account's IAM policy must allow its user.", "yellow", size=11, align="left")
+    lines = ["{", "  \"Version\": \"2012-10-17\",", "  \"Statement\": [", "    {", "      \"Sid\": \"PublicRead\",",
+             "      \"Effect\": \"Allow\",", "      \"Principal\": \"*\",", "      \"Action\": [\"s3:GetObject\"],",
+             "      \"Resource\": [\"arn:aws:s3:::examplebucket/*\"]", "    }", "  ]", "}"]
+    d.box("json", 20, 332, 460, 200, "\n".join(l.replace(" ", " ") for l in lines), "gray", size=11, align="left", bold_first=False)
+    d.text("jt", 500, 332, 440, 200,
+           "Bucket policy parts\n• Resource: bucket and/or objects (arn:aws:s3:::bucket/*)\n• Effect: Allow / Deny\n• Action: set of APIs to allow or deny\n"
+           "• Principal: the account or user it applies to (\"*\" = anyone)\n\nUse a bucket policy to:\n• grant public access to the bucket\n• force objects to be encrypted at upload\n"
+           "• grant access to another account (cross-account)\n\nYour notes had \"version\" and \"Principle\": the keys are\n\"Version\" and \"Principal\" (case and spelling matter).", size=11, align="left")
+    return d
+
+
+def s3_versioning_replication():
+    d = Diagram("s3-03-versioning-replication", 960, 570, "Versioning and replication (CRR / SRR)")
+    d.group("v", 20, 46, 420, 300, "Versioning (bucket level)", "green")
+    for i, (lab, col) in enumerate([("version 1  (first upload)", "white"), ("version 2  (same key overwritten)", "white"), ("version 3  (latest)", "green")]):
+        d.box(f"v{i}", 40, 84 + i * 48, 380, 40, f"my-file.docx  {lab}", col, size=10, icon="s3-object", icon_size=24)
+    d.text("vt", 30, 232, 400, 112, "• Protects against unintended deletes (DELETE adds a\n  delete marker; old versions stay) · easy rollback\n• Objects from before versioning have version ID null\n• Suspending keeps old versions; you can never go back\n  to \"unversioned\" · best practice: turn it on", size=10, align="left")
+    d.group("r", 460, 46, 480, 300, "Replication (asynchronous)", "blue")
+    d.box("src", 480, 90, 170, 56, "Source bucket\neu-west-1", "white", size=10, icon="s3-bucket", icon_size=26)
+    d.box("crr", 750, 82, 170, 56, "Target (CRR)\nus-east-2", "white", size=10, icon="s3-bucket", icon_size=26)
+    d.box("srr", 750, 150, 170, 56, "Target (SRR)\neu-west-1", "white", size=10, icon="s3-bucket", icon_size=26)
+    d.edge("src", "crr", "CRR")
+    d.edge("src", "srr", "SRR")
+    d.text("rt", 470, 214, 460, 130, "• Versioning ON in source AND destination · IAM role for S3\n• Buckets can be in different accounts\n• CRR: compliance, lower latency, cross-account copies\n• SRR: log aggregation, live prod → test replication\n• Only NEW objects after you enable it; existing and\n  failed ones → S3 Batch Replication", size=10, align="left")
+    d.box("b1", 20, 366, 170, 50, "Bucket 1", "white", size=11, icon="s3-bucket", icon_size=26)
+    d.box("b2", 260, 366, 170, 50, "Bucket 2", "white", size=11, icon="s3-bucket", icon_size=26)
+    d.box("b3", 500, 366, 170, 50, "Bucket 3", "white", size=11, icon="s3-bucket", icon_size=26)
+    d.edge("b1", "b2", "replicates")
+    d.edge("b2", "b3", "replicates")
+    d.text("ch", 680, 360, 260, 64, "No chaining: objects made in bucket 1\ndo NOT reach bucket 3 (replicas are\nnot replicated again by default)", size=10, align="left")
+    d.box("del", 20, 436, 920, 116,
+          "DELETE operations and replication\n• Delete markers: replicated only if you turn on the optional \"delete marker replication\" setting.\n"
+          "• DELETE with a version ID (permanent delete of a version): never replicated, to avoid malicious deletes.\n"
+          "• Types are CRR (different Regions) and SRR (same Region). \"Batch\" is not a third type: S3 Batch Replication is how you copy\n  objects that existed before the rule, objects that failed, or replicas (on demand, as a Batch Operations job).\n"
+          "• SRR has no data transfer charge; CRR pays inter-Region transfer.", "orange", size=11, align="left")
+    return d
+
+
+def s3_storage_classes():
+    d = Diagram("s3-04-storage-classes", 960, 600, "Storage classes: all 11 nines durable; they differ in availability, minimum days and retrieval")
+    rows = [
+        ("s3-bucket", "S3 Standard", "99.99%", "none", "ms", "frequent access · ≥3 AZs, survives an AZ loss", "green"),
+        ("s3-intelligent-tiering", "Intelligent-Tiering", "99.9%", "none", "ms*", "unknown pattern · auto tiers · monitoring fee, no retrieval fee", "blue"),
+        ("s3-standard-ia", "Standard-IA", "99.9%", "30 days", "ms", "infrequent but fast · DR, backups · retrieval fee", "blue"),
+        ("s3-onezone-ia", "One Zone-IA", "99.5%", "30 days", "ms", "ONE AZ: data lost if the AZ is destroyed · re-creatable copies", "yellow"),
+        ("s3-glacier-ir", "Glacier Instant Retrieval", "99.9%", "90 days", "ms", "archive read about once a quarter", "purple"),
+        ("s3-glacier-fr", "Glacier Flexible Retrieval", "99.99%**", "90 days", "1 min-12 h", "Expedited 1-5 min · Standard 3-5 h · Bulk 5-12 h (free)", "purple"),
+        ("s3-glacier-da", "Glacier Deep Archive", "99.99%**", "180 days", "12-48 h", "Standard within 12 h · Bulk within 48 h · cheapest, long-term", "gray"),
+    ]
+    hx = [20, 260, 360, 450, 550, 640]
+    for x, h in zip(hx, ["Class", "Availability", "Min duration", "First byte", "Use / retrieval"]):
+        d.text(f"h{x}", x, 46, 240 if x == 20 else (390 if x == 550 else 100), 24, h, size=12, bold=True, align="left")
+    for i, (ic, name, av, mn, fb, use, col) in enumerate(rows):
+        y = 74 + i * 56
+        d.box(f"c{i}", 20, y, 230, 48, name, col, size=11, bold=True, icon=ic, icon_size=30)
+        d.box(f"a{i}", 260, y, 90, 48, av, "white", size=11)
+        d.box(f"m{i}", 360, y, 80, 48, mn, "white", size=11)
+        d.box(f"f{i}", 450, y, 90, 48, fb, "white", size=11)
+        d.box(f"u{i}", 550, y, 390, 48, use, "white", size=10, align="left")
+    d.box("note", 20, 474, 920, 110,
+          "Durability vs availability\n• Durability 99.999999999% (11 nines) for every class: store 10,000,000 objects → expect to lose one about every 10,000 years (course figure).\n"
+          "• Availability = how readily the data can be read; it varies by class (table). * Intelligent-Tiering optional archive tiers take hours.\n"
+          "• ** Glacier Flexible / Deep Archive: availability applies after you restore the object. Min billable size 128 KB (IA classes, Glacier IR).\n"
+          "• Glacier classes = storage price + retrieval cost. Move between classes manually or with lifecycle rules.\n"
+          "• Standard \"sustains 2 concurrent facility failures\" is the course wording; the docs say resilient to the loss of an entire AZ.", "orange", size=11, align="left")
+    return d
+
+
+def s3_lifecycle_it():
+    d = Diagram("s3-05-lifecycle-tiering", 960, 490, "Lifecycle rules and S3 Intelligent-Tiering")
+    d.text("lh", 20, 44, 920, 24, "Lifecycle rule example (filter by prefix, tags or object size)", size=13, bold=True, align="left")
+    steps = [("s3-bucket", "Day 0\nS3 Standard", "green"), ("s3-standard-ia", "Day 60\nStandard-IA", "blue"),
+             ("s3-glacier-fr", "Day 180\nGlacier Flexible", "purple"), ("s3-object", "Day 365\nexpire (delete)", "red")]
+    for i, (ic, lab, col) in enumerate(steps):
+        d.box(f"l{i}", 20 + i * 240, 74, 190, 56, lab, col, size=11, icon=ic, icon_size=30)
+        if i:
+            d.edge(f"l{i - 1}", f"l{i}", "transition" if i < 3 else "expiration")
+    d.text("lt", 20, 136, 920, 80,
+           "• Transition actions: move objects to another class (e.g. Standard-IA 60 days after creation, Glacier for archiving after 6 months).\n"
+           "• Expiration actions: delete after a time (e.g. access log files after 365 days), plus old versions (noncurrent) and incomplete multipart uploads.\n"
+           "• Rules can target a prefix, object tags, or object size. Since Jul 2026 objects can move to Standard-IA / One Zone-IA from day 0\n  (the old 30-day wait is gone). Objects under 128 KB don't transition by default.", size=11, align="left")
+    d.group("it", 20, 226, 920, 250, "S3 Intelligent-Tiering: moves each object by its own access pattern", "blue", icon="s3-intelligent-tiering")
+    tiers = [("Frequent Access", "default tier\n(automatic)", "green"), ("Infrequent Access", "not accessed\n30 days (auto)", "blue"),
+             ("Archive Instant", "not accessed\n90 days (auto)", "purple"), ("Archive Access", "optional: 90 to\n730 days", "gray"),
+             ("Deep Archive Access", "optional: 180 to\n730 days", "gray")]
+    for i, (h, b, col) in enumerate(tiers):
+        d.box(f"t{i}", 40 + i * 180, 266, 160, 70, f"{h}\n{b}", col, size=10)
+        if i:
+            d.edge(f"t{i - 1}", f"t{i}")
+    d.text("itt", 40, 344, 880, 128,
+           "• Small monthly monitoring and auto-tiering fee per object · NO retrieval charges · no minimum storage duration.\n"
+           "• Accessing an object in an infrequent / archive-instant tier moves it back to Frequent Access automatically.\n"
+           "• Archive Access (3-5 h) and Deep Archive Access (within 12 h) must be switched on (opt-in) and need a restore.\n"
+           "• Your notes said \"700+ days\": the docs give a maximum of 730 days for both optional tiers.\n"
+           "• Objects under 128 KB are not monitored and always stay in Frequent Access (no monitoring fee).", size=11, align="left")
+    return d
+
+
+def s3_events():
+    d = Diagram("s3-06-event-notifications", 960, 510, "S3 event notifications: direct targets or EventBridge")
+    d.box("s3", 20, 150, 170, 70, "S3 bucket\nevents: Created,\nRemoved, Restore,\nReplication...", "white", size=10, icon="s3", icon_size=30)
+    tg = [("sns", "SNS topic", 60), ("sqs", "SQS queue\n(standard, not FIFO)", 130), ("lambda", "Lambda function", 200)]
+    for ic, lab, y in tg:
+        d.box(f"t-{ic}", 330, y, 210, 56, lab, "white", size=10, icon=ic, icon_size=30)
+        d.edge("s3", f"t-{ic}")
+    d.text("pol", 560, 60, 380, 200,
+           "Permissions are RESOURCE policies on the target:\n• SNS resource (access) policy\n• SQS resource (access) policy\n• Lambda resource policy (permission to invoke)\n"
+           "One policy per destination, allowing S3 to push.\nNot an IAM role on S3.\n\nFilter by name, e.g. suffix .jpg (prefix / suffix).\nAs many events as you want; typically delivered\nin seconds, sometimes a minute or longer.", size=10, align="left")
+    d.box("eb", 330, 300, 210, 60, "Amazon EventBridge\nALL events → rules", "white", size=10, icon="eventbridge", icon_size=30)
+    d.edge("s3", "eb", "all events")
+    d.box("ebt", 640, 300, 300, 60, "Over 18 AWS services as targets\n(Step Functions, Kinesis Streams / Firehose...)", "purple", size=10)
+    d.edge("eb", "ebt", "rules")
+    d.box("ebx", 20, 390, 920, 100,
+          "Why EventBridge\n• Advanced filtering with JSON rules (metadata, object size, name...).  • Multiple destinations per event.\n"
+          "• EventBridge capabilities: archive, replay events, reliable delivery.\n"
+          "• Turn it on once per bucket: every S3 event goes to EventBridge (you don't pick event types on the S3 side).\n"
+          "• Direct S3 notifications: one destination type per notification configuration; SQS FIFO and SNS FIFO are NOT supported targets.", "yellow", size=11, align="left")
+    return d
+
+
+def s3_performance():
+    d = Diagram("s3-07-performance-batch", 960, 640, "Performance, Batch Operations and Storage Lens")
+    d.group("pf", 20, 46, 450, 310, "Baseline performance (per prefix)", "green")
+    for i, p in enumerate(["bucket/folder1/sub1/file", "bucket/folder1/sub2/file", "bucket/1/file", "bucket/2/file"]):
+        d.box(f"p{i}", 40, 84 + i * 42, 410, 34, p, "white", size=10, icon="s3-object", icon_size=22)
+    d.text("pt", 30, 254, 430, 100, "Each prefix: at least 3,500 PUT/COPY/POST/DELETE and\n5,500 GET/HEAD per second (course) · docs now say\n11,000 GET/HEAD · latency ~100-200 ms · no limit on\nprefixes: 4 prefixes → 4 × the rate", size=10, align="left")
+    d.group("up", 490, 46, 450, 310, "Faster uploads and downloads", "blue")
+    d.box("mp", 510, 80, 410, 56, "Multipart upload\nrecommended > 100 MB, must > 5 GB · parallel parts", "white", size=10, icon="s3-bucket-objects", icon_size=28)
+    d.box("ta", 510, 146, 410, 70, "Transfer Acceleration\nfile → nearby edge location → AWS private network\n→ bucket in the target Region · works with multipart", "white", size=10, icon="edge-location", icon_size=28)
+    d.box("br", 510, 226, 410, 70, "Byte-range fetches\nparallel GETs of byte ranges · retry only a failed range\nspeed up downloads or read only part (file head)", "white", size=10, icon="s3-object", icon_size=28)
+    d.group("bo", 20, 372, 450, 250, "S3 Batch Operations", "purple", icon="s3-batch-ops")
+    d.box("inv", 40, 410, 120, 50, "S3 Inventory\n(object list)", "white", size=10)
+    d.box("ath", 180, 410, 120, 50, "Athena\nquery, filter", "white", size=10, icon="athena", icon_size=24)
+    d.box("job", 320, 410, 130, 50, "Batch job\n(one operation)", "white", size=10)
+    d.edge("inv", "ath")
+    d.edge("ath", "job")
+    d.text("bot", 30, 466, 430, 154, "Job = list of objects (manifest) + action + optional params\nCopy · modify metadata/tags · replace ACLs · restore from\nGlacier · invoke Lambda per object · Object Lock settings\n(un-encrypted → encrypted: copy / update encryption)\nS3 manages retries, tracks progress, notifies, reports", size=10, align="left")
+    d.group("sl", 490, 372, 450, 250, "S3 Storage Lens", "orange", icon="s3-storage-lens")
+    d.text("slt", 500, 406, 430, 214, "Org-wide view: Organization, accounts, Regions,\nbuckets, prefixes · default or custom dashboards\ndaily export to a bucket (CSV / Parquet)\n\nFree: summary, cost-optimization, data-protection,\naccess-management, event, performance metrics,\nqueryable 14 days\nAdvanced (paid): + activity, detailed status codes,\nadvanced cost / protection, CloudWatch publishing,\nprefix aggregation, queryable 15 months", size=10, align="left")
+    return d
+
+
+def s3_encryption():
+    d = Diagram("s3-08-encryption", 960, 610, "Object encryption: who holds the key, and which header")
+    rows = [
+        ("SSE-S3 (default)", "kms-data-key", "Key owned and managed by S3 · AES-256 (GCM)\nON by default for new objects since 5 Jan 2023", "x-amz-server-side-encryption: AES256", "green"),
+        ("SSE-KMS", "kms", "Key in AWS KMS: you control it, CloudTrail audits use\nupload → GenerateDataKey, download → Decrypt (KMS quota!)", "x-amz-server-side-encryption: aws:kms", "blue"),
+        ("DSSE-KMS", "kms", "Two layers: KMS data key, then a separate S3 AES-256 key\ncompliance needing multi-layer · more cost and latency", "x-amz-server-side-encryption: aws:kms:dsse", "purple"),
+        ("SSE-C", "encrypted-data", "Customer key outside AWS · S3 never stores it\nkey sent in headers on EVERY request · HTTPS only", "x-amz-server-side-encryption-customer-*", "yellow"),
+        ("Client-side", "user", "Client encrypts before upload, decrypts after download\nAmazon S3 Encryption Client · customer runs everything", "(none: S3 receives ciphertext)", "gray"),
+    ]
+    for i, (name, ic, desc, hdr, col) in enumerate(rows):
+        y = 50 + i * 76
+        d.box(f"n{i}", 20, y, 200, 66, name, col, size=12, bold=True, icon=ic, icon_size=30)
+        d.box(f"d{i}", 230, y, 410, 66, desc, "white", size=10, align="left", bold_first=False)
+        d.box(f"h{i}", 650, y, 290, 66, hdr, "white", size=10)
+    d.box("tr", 20, 438, 450, 150,
+          "In transit (SSL/TLS)\n• S3 has an HTTP endpoint (not encrypted) and an\n  HTTPS endpoint (encryption in flight)\n• HTTPS recommended; mandatory for SSE-C\n  (and for requests on SSE-KMS objects)\n"
+          "• Force it: bucket policy Deny when\n  \"aws:SecureTransport\": \"false\"", "blue", size=11, align="left")
+    d.box("pol", 490, 438, 450, 150,
+          "Default encryption vs bucket policies\n• Default encryption (SSE-S3, or your choice of\n  SSE-KMS / DSSE-KMS) applies to new objects\n• A bucket policy can REFUSE any PutObject without\n  the right encryption header ('force encryption')\n"
+          "• Bucket policies are evaluated before default encryption\n• SSE-C is disabled by default on new buckets (Apr 2026)", "orange", size=11, align="left")
+    return d
+
+
+def s3_protection():
+    d = Diagram("s3-09-protect-share", 960, 600, "Protect and share: MFA Delete, access logs, pre-signed URLs, WORM locks")
+    d.group("mfa", 20, 46, 450, 160, "MFA Delete", "red", icon="iam-mfa")
+    d.text("mfat", 30, 74, 430, 130, "MFA code required to:\n• permanently delete an object version\n• change the versioning state (suspend versioning)\nNOT needed to: enable versioning, list deleted versions\n"
+           "Versioning must be enabled · only the bucket owner\n(root account) can enable/disable it · CLI/API only,\nnot the console · can't be used with lifecycle rules", size=10, align="left")
+    d.group("log", 490, 46, 450, 160, "S3 server access logs", "gray")
+    d.box("mb", 510, 80, 170, 46, "Monitored bucket", "white", size=10, icon="s3-bucket", icon_size=26)
+    d.box("lb", 750, 80, 170, 46, "Logging bucket", "white", size=10, icon="s3-bucket", icon_size=26)
+    d.edge("mb", "lb", "every request")
+    d.text("logt", 500, 130, 430, 74, "Any request, any account, allowed or denied · analyse with\nAthena etc. · logging bucket in the SAME Region (and account)\nbest-effort delivery\nNever log a bucket into itself: logging loop, grows forever", size=10, align="left")
+    d.group("ps", 20, 222, 450, 176, "Pre-signed URLs", "blue")
+    d.box("u", 40, 256, 120, 44, "Signed-in\nuser / app", "white", size=10, icon="user", icon_size=24)
+    d.box("url", 190, 256, 120, 44, "pre-signed\nURL", "white", size=10)
+    d.box("v", 340, 256, 110, 44, "any holder\nof the URL", "white", size=10, icon="users", icon_size=22)
+    d.edge("u", "url")
+    d.edge("url", "v")
+    d.text("pst", 30, 304, 430, 90, "Console: 1 min to 720 min (12 h) · CLI --expires-in seconds\n(default 3600, max 604800 = 7 days) · never longer than the\nsigner's credentials · holder gets the SIGNER's rights for GET/PUT\ne.g. premium video download, ever-changing list of users", size=10, align="left")
+    d.group("wl", 490, 222, 450, 360, "WORM: write once, read many", "purple")
+    d.box("vl", 510, 256, 410, 66, "Glacier Vault Lock (legacy vaults)\nvault lock policy → lock it: can no longer be changed\nor deleted · compliance, retention", "white", size=10, icon="glacier-vault", icon_size=28)
+    d.box("ol", 510, 332, 410, 236, "S3 Object Lock (versioning required)\nblocks deleting an object VERSION for a set time\n\nCompliance mode: nobody, not even root, can overwrite\nor delete; mode can't change, period can't be shortened\n\nGovernance mode: most users can't; users with\ns3:BypassGovernanceRetention can change or delete\n\nRetention period: fixed time, can be extended\nLegal hold: indefinite, independent of retention;\nplace/remove with s3:PutObjectLegalHold", "white", size=10, align="left", icon="s3-object-lock", icon_size=28, valign="top")
+    d.box("rp", 20, 414, 450, 168,
+          "Requester Pays\n• Normally the bucket owner pays storage + requests\n  + data transfer.\n• Requester Pays: the REQUESTER pays the request\n  and the download; the owner still pays storage.\n"
+          "• Requester must be authenticated in AWS (no\n  anonymous access) and send x-amz-request-payer.", "yellow", size=11, align="left")
+    return d
+
+
+def s3_access_points():
+    d = Diagram("s3-10-access-points-lambda", 960, 640, "Access points, Multi-Region Access Points and Object Lambda")
+    d.group("ap", 20, 46, 450, 330, "S3 Access Points (one bucket, many doors)", "blue")
+    d.box("bk", 40, 300, 410, 52, "Bucket: finance/ sales/ analytics/\nbucket policy delegates to access points", "white", size=10, icon="s3-bucket", icon_size=28)
+    aps = [("Finance AP\nfinance/*", "s3-access-points"), ("Sales AP\nsales/*", "s3-access-points"), ("Analytics AP\nVPC origin", "s3-vpc-access-points")]
+    for i, (lab, ic) in enumerate(aps):
+        d.box(f"a{i}", 40 + i * 140, 200, 130, 60, lab, "white", size=10, icon=ic, icon_size=26)
+        d.edge(f"a{i}", "bk")
+    d.text("apt", 30, 80, 430, 116, "Each access point has its own DNS name (Internet or VPC\norigin) and its own access point policy (like a bucket\npolicy) → manage security at scale, per team / prefix.\nVPC origin: reachable only from that VPC, through a\nVPC endpoint (gateway or interface) whose endpoint\npolicy allows BOTH the access point and the bucket.", size=10, align="left")
+    d.group("mr", 490, 46, 450, 330, "Multi-Region Access Point", "green", icon="s3-mrap")
+    d.box("ge", 610, 86, 210, 44, "one global endpoint", "white", size=11)
+    d.box("m1", 510, 200, 160, 52, "Bucket us-east-1", "white", size=10, icon="s3-bucket", icon_size=26)
+    d.box("m2", 760, 200, 160, 52, "Bucket ap-south-1", "white", size=10, icon="s3-bucket", icon_size=26)
+    d.edge("ge", "m1", "nearest")
+    d.edge("ge", "m2")
+    d.edge("m1", "m2", "two-way CRR", both=True)
+    d.text("mrt", 500, 262, 430, 112, "Routes each request to the closest bucket (lowest latency)\nBi-directional replication rules keep data in sync\nFailover controls: shift traffic between Regions within\nminutes · active-active or active-passive", size=10, align="left")
+    d.group("ol", 20, 392, 920, 228, "S3 Object Lambda (closed to new customers since 7 Nov 2025)", "orange", icon="s3-object-lambda")
+    d.box("app", 40, 440, 150, 50, "Application", "white", size=10, icon="client", icon_size=24)
+    d.box("olap", 240, 440, 200, 50, "Object Lambda\nAccess Point", "white", size=10, icon="s3-object-lambda-ap", icon_size=26)
+    d.box("fn", 490, 440, 170, 50, "Lambda function\n(redact, convert)", "white", size=10, icon="lambda-fn", icon_size=26)
+    d.box("sap", 710, 440, 210, 50, "S3 Access Point\n→ ONE bucket", "white", size=10, icon="s3-access-points", icon_size=26)
+    d.edge("app", "olap", "GET")
+    d.edge("olap", "fn")
+    d.edge("fn", "sap", "original")
+    d.text("olt", 30, 500, 900, 116, "Change the object before the caller gets it, without keeping a second copy. Use cases: redact PII for analytics / non-prod,\n"
+           "convert XML → JSON, resize or watermark images per caller. Existing customers can keep using it; AWS adds no new features.\n"
+           "For new designs you need another way (e.g. transform in your app or in a Lambda you call yourself).", size=10, align="left")
+    return d
+
+
+S3 = [s3_big_picture, s3_security, s3_versioning_replication, s3_storage_classes, s3_lifecycle_it, s3_events,
+      s3_performance, s3_encryption, s3_protection, s3_access_points]
+
+
 ALL = [iam_big_picture, policy_anatomy, policy_evaluation, access_methods, role_assume, mfa_password,
        security_tools, shared_responsibility,
        global_infra,
@@ -991,7 +1252,7 @@ ALL = [iam_big_picture, policy_anatomy, policy_evaluation, access_methods, role_
        ec2_ips, placement_groups, eni_hibernate,
        storage_compare, ebs_snapshots_ami, ebs_volume_types, efs_classes,
        elb_types, alb_flow, asg,
-       rds_replicas_multiaz, aurora, rds_backup_proxy, elasticache] + ROUTE53
+       rds_replicas_multiaz, aurora, rds_backup_proxy, elasticache] + ROUTE53 + S3
 
 if __name__ == "__main__":
     force = "--force" in sys.argv
