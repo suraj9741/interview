@@ -11,11 +11,12 @@ the per-topic generator scripts refuse to overwrite an existing file unless --fo
 """
 from __future__ import annotations
 
-import base64
 import html
 import math
 import xml.etree.ElementTree as ET
 from pathlib import Path
+
+import drawio_aws4
 
 PALETTE = {  # name: (fill, stroke), the draw.io default colour set
     "blue": ("#dae8fc", "#6c8ebf"),
@@ -34,13 +35,11 @@ LINE = "#555555"
 FONT = "Helvetica, Arial, sans-serif"
 CHAR_W = 0.56  # rough average glyph width, as a fraction of font size (fit warnings only)
 LINE_H = 1.3   # line height, as a fraction of font size
-ICON_DIR = Path(__file__).resolve().parent / "aws-icons"  # vendored AWS Architecture Icons (see its README)
 
 
-# draw.io's own AWS library ("AWS 2025" / mxgraph.aws4) for each vendored icon.
-# In the draw.io model the icon is a native library shape, so draw.io shows it as a normal AWS shape
-# (recolour, resize, swap from the library). The SVG preview still embeds the official icon file,
-# so GitHub shows the same artwork. Icons not listed here stay plain embedded images.
+# draw.io's own AWS library (mxgraph.aws4) by short icon name. No icon files are stored: in the draw.io model
+# each icon is a native library shape, and the SVG preview draws the same draw.io stencil as vector paths
+# (tools/drawio_aws4.py), so GitHub and draw.io show the same shape. Use only names listed here.
 NETWORK, COMPUTE, STORAGE, DATABASE, MGMT, APPINT, GENERAL = (
     "#8C4FFF", "#ED7100", "#7AA116", "#C925D1", "#E7157B", "#E7157B", "#232F3E")
 SECURITY, ANALYTICS = "#DD344C", "#8C4FFF"
@@ -99,10 +98,12 @@ DRAWIO_AWS = {  # icon file name: (kind, mxgraph.aws4 name, fill colour); kind "
 # draw.io AWS *group* shapes (the containers in draw.io's AWS "Groups" panel: Region, VPC, subnets, ASG, ...).
 # A group() whose icon is listed here becomes that container shape in the draw.io model (icon in its corner);
 # a lone icon() of one of these becomes a borderless group shape, so only its corner icon shows.
-DRAWIO_AWS_GROUP = {
-    "region": "group_region", "vpc": "group_vpc2", "asg-group": "group_auto_scaling_group",
-    "spot-fleet": "group_spot_fleet", "private-subnet": "group_security_group", "public-subnet": "group_security_group",
+DRAWIO_AWS_GROUP = {  # icon name: (draw.io group icon stencil, AWS colour from draw.io's sidebar)
+    "region": ("group_region", "#00A4A6"), "vpc": ("group_vpc2", "#8C4FFF"),
+    "asg-group": ("group_auto_scaling_group", "#D86613"), "spot-fleet": ("group_spot_fleet", "#D86613"),
+    "private-subnet": ("group_security_group", "#00A4A6"), "public-subnet": ("group_security_group", "#7AA116"),
 }
+GROUP_ICON = 25  # draw.io draws a group's icon 25 x 25 at its top-left corner
 
 
 def drawio_aws_style(name: str) -> str | None:
@@ -117,9 +118,21 @@ def drawio_aws_style(name: str) -> str | None:
     return common + f"fillColor={fill};strokeColor=none;pointerEvents=1;shape=mxgraph.aws4.{shape};"
 
 
-def icon_b64(name: str) -> str:
-    """Base64 of tools/aws-icons/<name>.svg, for embedding (no external links, so GitHub renders it)."""
-    return base64.b64encode((ICON_DIR / f"{name}.svg").read_bytes()).decode("ascii")
+def icon_svg(name: str, x: float, y: float, w: float, h: float, defs: dict) -> str:
+    """Vector SVG of an icon, drawn the way draw.io draws its library shape (symbols collected in defs)."""
+    def use(shape, color, ux, uy, uw, uh):
+        sid, symbol = drawio_aws4.stencil_symbol(shape, color)
+        defs[sid] = symbol
+        return f'<use xlink:href="#{sid}" x="{ux:g}" y="{uy:g}" width="{uw:g}" height="{uh:g}"/>'
+
+    if name in DRAWIO_AWS_GROUP:
+        shape, color = DRAWIO_AWS_GROUP[name]
+        return use(shape, color, x, y, w, h)
+    kind, shape, fill = DRAWIO_AWS[name]
+    if kind == "service":  # mxgraph.aws4.resourceIcon: coloured tile, white stencil inset by 10%
+        return (f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="{fill}"/>'
+                + use(shape, "#ffffff", x + w * 0.1, y + h * 0.1, w * 0.8, h * 0.8))
+    return use(shape, fill, x, y, w, h)
 
 
 def _q(s: str) -> str:
@@ -189,7 +202,7 @@ class Diagram:
     def box(self, id, x, y, w, h, label, color="blue", *, shape="rect", size=12, bold=False,
             italic=False, dashed=False, valign="middle", align="center", bold_first=True,
             icon=None, icon_size=32):
-        """icon = name of an AWS icon in tools/aws-icons/ (without .svg), drawn at the left of the box."""
+        """icon = a DRAWIO_AWS / DRAWIO_AWS_GROUP name (draw.io aws4 library shape), drawn at the left of the box."""
         if id in self._by_id:
             raise ValueError(f"{self.name}: duplicate id {id!r}")
         pad = icon_size + 10 if icon else 0
@@ -209,19 +222,24 @@ class Diagram:
         """A labelled region. Add it BEFORE the boxes inside it, so it is drawn behind them."""
         gid = self.box(id, x, y, w, h, label, color, size=size, bold=True, dashed=dashed,
                        valign=valign, align=align, icon=icon, icon_size=icon_size)
-        if icon in DRAWIO_AWS_GROUP:  # draw.io: use its AWS container shape; the separate icon cell is SVG-only
-            self._by_id[gid]["drawio_group"] = DRAWIO_AWS_GROUP[icon]
-            self._by_id[f"{gid}-icon"]["svg_only"] = True
+        if icon in DRAWIO_AWS_GROUP:  # draw.io: its AWS container shape draws the icon itself, top-left, 25 px
+            v, ic = self._by_id[gid], self._by_id[f"{gid}-icon"]
+            v["drawio_group"], v["aws_stroke"] = DRAWIO_AWS_GROUP[icon]
+            ic["svg_only"] = True
+            ic.update(x=x, y=y, w=GROUP_ICON, h=GROUP_ICON)
         return gid
 
     def icon(self, id, x, y, name, size=40):
-        """An AWS Architecture Icon on its own (an image cell in draw.io)."""
+        """An AWS icon on its own: a native draw.io AWS library shape (vector paths in the SVG preview)."""
+        if name not in DRAWIO_AWS and name not in DRAWIO_AWS_GROUP:
+            raise KeyError(f"{self.name}: {name!r} is not in DRAWIO_AWS / DRAWIO_AWS_GROUP (draw.io aws4 library)")
         v = self._by_id.get(self.box(id, x, y, size, size, "", "none"))
         style = drawio_aws_style(name)
-        if style is None and name in DRAWIO_AWS_GROUP:  # borderless group shape = just its corner icon
-            style = ("sketch=0;outlineConnect=0;html=1;dashed=0;fillColor=none;strokeColor=none;grStroke=0;"
-                     f"shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.{DRAWIO_AWS_GROUP[name]};")
-        v["shape"], v["image"], v["drawio_style"] = "image", icon_b64(name), style
+        if style is None:  # group icon on its own: borderless group shape, so only its corner icon shows
+            shape, color = DRAWIO_AWS_GROUP[name]
+            style = ("sketch=0;outlineConnect=0;html=1;dashed=0;fillColor=none;grStroke=0;"
+                     f"strokeColor={color};grIconSize={size};shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.{shape};")
+        v["shape"], v["icon"], v["drawio_style"] = "image", name, style
         return id
 
     def text(self, id, x, y, w, h, label, *, size=12, bold=False, italic=False, align="center"):
@@ -257,16 +275,19 @@ class Diagram:
         return [_perimeter(s, *first), *e["points"], _perimeter(t, *last)]
 
     @staticmethod
-    def _svg_vertex(v) -> str:
+    def _svg_vertex(v, defs: dict) -> str:
         fill, stroke = PALETTE[v["color"]]
         x, y, w, h = v["x"], v["y"], v["w"], v["h"]
         dash = ' stroke-dasharray="6 4"' if v["dashed"] else ""
         paint = f'fill="{fill}" stroke="{stroke}" stroke-width="1.5"{dash}'
         out, inset = [], 0.0
         if v["shape"] == "image":
-            return (f'<image x="{x}" y="{y}" width="{w}" height="{h}" '
-                    f'href="data:image/svg+xml;base64,{v["image"]}"/>')
-        if v["shape"] == "rect":
+            return icon_svg(v["icon"], x, y, w, h, defs)
+        if v.get("drawio_group"):  # AWS container: square corners, AWS colour border (as draw.io draws it)
+            stroke = v["aws_stroke"]
+            paint = f'fill="{fill}" stroke="{stroke}" stroke-width="1.5"{dash}'
+            out.append(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" {paint}/>')
+        elif v["shape"] == "rect":
             out.append(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="8" ry="8" {paint}/>')
         elif v["shape"] == "ellipse":
             out.append(f'<ellipse cx="{x + w / 2}" cy="{y + h / 2}" rx="{w / 2}" ry="{h / 2}" {paint}/>')
@@ -316,15 +337,12 @@ class Diagram:
         if v.get("drawio_group"):  # draw.io AWS container: icon top-left, label beside it
             fill, stroke = PALETTE[v["color"]]
             style = (f"sketch=0;outlineConnect=0;html=1;whiteSpace=wrap;shape=mxgraph.aws4.group;"
-                     f"grIcon=mxgraph.aws4.{v['drawio_group']};grStroke=0;fillColor={fill};strokeColor={stroke};"
+                     f"grIcon=mxgraph.aws4.{v['drawio_group']};grStroke=1;fillColor={fill};strokeColor={v['aws_stroke']};"
                      f"strokeWidth=1.5;fontSize={v['size']};fontColor={INK};fontStyle=1;fontFamily=Helvetica;"
                      f"align={v['align']};verticalAlign=top;spacingLeft=30;spacingTop=4;")
             return style + ("dashed=1;dashPattern=6 4;" if v["dashed"] else "dashed=0;")
         if v["shape"] == "image" and v.get("drawio_style"):
             return v["drawio_style"]  # native draw.io AWS library shape (SVG preview keeps the icon file)
-        if v["shape"] == "image":
-            return ("shape=image;html=1;imageAspect=0;aspect=fixed;verticalLabelPosition=bottom;"
-                    f"verticalAlign=top;image=data:image/svg+xml,{v['image']};")
         common = (f"whiteSpace=wrap;html=1;fontSize={v['size']};fontColor={INK};fontFamily=Helvetica;"
                   f"align={v['align']};verticalAlign={v['valign']};")
         if v["shape"] == "text":
@@ -378,15 +396,17 @@ class Diagram:
 
     def to_svg(self) -> str:
         routes = [(e, self._route(e)) for e in self.edges]
-        body = ("".join(self._svg_vertex(v) for v in self.vertices)
+        defs: dict[str, str] = {}
+        body = ("".join(self._svg_vertex(v, defs) for v in self.vertices)
                 + "".join(self._svg_edge(e, pts) for e, pts in routes)
                 + "".join(self._svg_edge_label(e, pts) for e, pts in routes))
         w, h = self.width, self.height
-        return (f'<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="{w}" height="{h}" '
+        xlink = ' xmlns:xlink="http://www.w3.org/1999/xlink"' if defs else ""
+        return (f'<svg xmlns="http://www.w3.org/2000/svg"{xlink} version="1.1" width="{w}" height="{h}" '
                 f'viewBox="0 0 {w} {h}" content="{_q(self.to_mxfile())}">'
                 f'<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" '
                 f'markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="{LINE}"/>'
-                f'</marker></defs><rect x="0" y="0" width="{w}" height="{h}" fill="#ffffff"/>{body}</svg>')
+                f'</marker>{"".join(defs.values())}</defs><rect x="0" y="0" width="{w}" height="{h}" fill="#ffffff"/>{body}</svg>')
 
     # ---- output ---------------------------------------------------------------------
     def save(self, out_dir: Path, force: bool = False) -> Path | None:
