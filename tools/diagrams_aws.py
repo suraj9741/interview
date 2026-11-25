@@ -1486,6 +1486,179 @@ def cf_vs_ga():
 CLOUDFRONT = [cf_how_it_works, cf_origins, cf_alb_ec2_origin, cf_vs_crr, cf_geo_invalidation, ga_anycast, ga_components, cf_vs_ga]
 
 
+def sx_comparison():
+    d = Diagram("sx-01-storage-comparison", 960, 700, "AWS storage options: pick by data type and who mounts it")
+    cols = [("Object", "green", 20), ("Block", "orange", 260), ("File", "blue", 500), ("Hybrid / move data", "purple", 740)]
+    for name, col, x in cols:
+        d.group(f"g{x}", x, 46, 200, 470, name, col)
+    rows = {
+        20: [("s3", "S3\nobject storage", "s3"), ("gl", "S3 Glacier classes\nobject archival", "glacier-service")],
+        260: [("ebs", "EBS volume\nnetwork storage for ONE\nEC2 instance at a time\n(Multi-Attach: io1/io2)", "ebs"),
+              ("is", "Instance store\nphysical disk on host\nhigh IOPS, lost on stop", "ec2-instance")],
+        500: [("efs", "EFS\nNFS for Linux, POSIX\nmany instances", "efs"),
+              ("fw", "FSx for Windows\nSMB / NTFS, Active Dir.", "fsx-windows"),
+              ("fl", "FSx for Lustre\nHPC / ML Linux file\nsystem, S3 linked", "fsx-lustre"),
+              ("fo", "FSx for NetApp ONTAP\nNFS+SMB+iSCSI: high\nOS compatibility", "fsx-ontap"),
+              ("fz", "FSx for OpenZFS\nmanaged ZFS over NFS", "fsx-openzfs")],
+        740: [("sg", "Storage Gateway\nS3 File, Volume\n(cached / stored), Tape\n(FSx File GW: closed\nto new customers)", "storage-gateway"),
+              ("tf", "Transfer Family\nSFTP, FTPS, FTP, AS2 on\ntop of S3 or EFS", "transfer-family"),
+              ("ds", "DataSync\nscheduled sync on-prem\n/ other cloud → AWS,\nor AWS → AWS", "datasync"),
+              ("sn", "Snowball Edge\nphysical move\n(closed to new\ncustomers 7 Nov 2025)", "snowball-edge")],
+    }
+    for x, items in rows.items():
+        h = 440 / len(items) - 10 if len(items) > 2 else 120
+        for i, (bid, label, icon) in enumerate(items):
+            d.box(bid, x + 8, 80 + i * (h + 10), 184, h, label, "white", size=10, icon=icon, icon_size=28)
+    d.box("db", 20, 530, 920, 46, "Databases (RDS, Aurora, DynamoDB, ...): for specific workloads, usually with indexing and querying, not a place to keep files", "gray", size=11, bold_first=False)
+    d.box("ex", 20, 590, 920, 94,
+          "Exam keyword → answer\n• \"Windows / SMB / NTFS / Active Directory\" → FSx for Windows · \"HPC, ML, Lustre, read S3 as a file system\" → FSx for Lustre\n"
+          "• \"NFS + SMB + iSCSI, move NetApp/NAS\" → FSx for ONTAP · \"move ZFS\" → FSx for OpenZFS · \"Linux NFS shared, POSIX\" → EFS\n"
+          "• \"on-premises apps see S3 as files/volumes/tapes\" → Storage Gateway · \"partners send files over SFTP\" → Transfer Family · \"scheduled copy\" → DataSync", "yellow", size=10, align="left")
+    return d
+
+
+def sx_snowball():
+    d = Diagram("sx-02-snowball", 960, 720, "AWS Snowball: move data physically, or compute at the edge")
+    d.box("st", 20, 46, 920, 64,
+          "Status (AWS docs, 2026): Snowball Edge closed to NEW customers on 7 Nov 2025 (existing customers keep using it).\n"
+          "Snowcone discontinued 12 Nov 2024 · Snowmobile (100 PB truck) retired in 2024.\n"
+          "Alternatives: DataSync (online), Data Transfer Terminal (bring your own disks), Outposts (edge compute).",
+          "red", size=10, align="left")
+    d.group("tt", 20, 124, 450, 220, "Time to transfer over the network (course)", "gray")
+    rows = [("", "100 Mbps", "1 Gbps", "10 Gbps"), ("10 TB", "12 days", "30 hours", "3 hours"),
+            ("100 TB", "124 days", "12 days", "30 hours"), ("1 PB", "3 years", "124 days", "12 days")]
+    for i, r in enumerate(rows):
+        for j, c in enumerate(r):
+            d.box(f"t{i}{j}", 34 + j * 106, 158 + i * 34, 102, 30, c, "gray" if (i == 0 or j == 0) else "white", size=10, bold=(i == 0 or j == 0))
+    d.text("tr", 30, 296, 430, 44, "Rule of thumb: more than a WEEK over the network\n→ use a Snowball device.", size=11, bold=True, align="left")
+    d.group("ch", 490, 124, 450, 220, "Why offline? Network challenges", "gray")
+    d.text("cht", 500, 158, 430, 180, "• Limited connectivity\n• Limited bandwidth\n• High network cost\n• Shared bandwidth (can't maximise the line)\n• Connection stability\n\nSnowball = highly secure, portable device to collect and\nprocess data at the edge and migrate data INTO and OUT of AWS\n(up to petabytes; 16-node cluster up to 2.6 PB).", size=10, align="left")
+    d.group("fl", 20, 358, 920, 120, "Import flow", "green")
+    d.box("c", 40, 396, 140, 60, "Data center\n(client)", "white", size=10, icon="corp-dc", icon_size=26)
+    d.box("sb", 230, 396, 170, 60, "Snowball Edge\ncopy data locally", "white", size=10, icon="snowball-edge", icon_size=28)
+    d.box("ship", 450, 396, 120, 60, "Ship to AWS", "white", size=10)
+    d.box("imp", 620, 396, 120, 60, "AWS imports\ninto S3", "white", size=10)
+    d.box("b", 790, 396, 130, 60, "S3 bucket", "white", size=10, icon="s3-bucket", icon_size=26)
+    d.edge("c", "sb"); d.edge("sb", "ship"); d.edge("ship", "imp"); d.edge("imp", "b")
+    d.group("gl", 20, 492, 450, 110, "Snowball into Glacier", "blue")
+    d.box("g1", 34, 532, 110, 50, "Snowball", "white", size=10, icon="snowball", icon_size=24)
+    d.box("g2", 184, 532, 110, 50, "S3", "white", size=10, icon="s3", icon_size=24)
+    d.box("g3", 334, 532, 122, 50, "Glacier class", "white", size=10, icon="glacier-service", icon_size=24)
+    d.edge("g1", "g2", "import"); d.edge("g2", "g3", "lifecycle")
+    d.group("ed", 490, 492, 450, 110, "Edge computing", "orange")
+    d.text("edt", 500, 520, 430, 80, "Process data where it is created: truck, ship, mine underground\n(limited internet, no compute). Run EC2 instances or Lambda\n(IoT Greengrass) on the device. Use: preprocess, ML, transcode.", size=10, align="left")
+    rows2 = [("Device (current gen)", "vCPU", "Memory", "Storage"),
+             ("Snowball Edge Storage Optimized", "104", "416 GB", "210 TB NVMe"),
+             ("Snowball Edge Compute Optimized", "104", "416 GB", "28 TB NVMe")]
+    for i, r in enumerate(rows2):
+        for j, c in enumerate(r):
+            w = 380 if j == 0 else 176
+            x = 20 if j == 0 else 400 + (j - 1) * 180
+            d.box(f"d{i}{j}", x, 616 + i * 32, w, 30, c, "gray" if i == 0 else "white", size=10, bold=(i == 0))
+    return d
+
+
+def sx_fsx_overview():
+    d = Diagram("sx-03-fsx-overview", 960, 560, "Amazon FSx: fully managed third-party high-performance file systems")
+    items = [
+        ("w", 20, 46, "FSx for Windows File Server", "fsx-windows", "blue",
+         "• SMB 2.0-3.1.1, native Windows (NTFS), ACLs, user quotas\n• Microsoft Active Directory integration\n• Linux EC2 can mount it too (cifs-utils)\n• DFS Namespaces: group many file systems\n• Up to 12 GB/s, 350,000 IOPS, 64 TB per FS;\n  hundreds of PB with DFS\n• SSD (latency sensitive: DBs, media, analytics)\n  or HDD (home dirs, CMS)\n• On-prem access over VPN / Direct Connect\n• Single-AZ or Multi-AZ (standby, ~30 s failover)\n• Automatic daily backups to S3 (7 days default)"),
+        ("l", 490, 46, "FSx for Lustre", "fsx-lustre", "green",
+         "• Parallel distributed FS (Linux + cluster)\n• ML, HPC, video, financial modelling, EDA\n• TB/s throughput, millions of IOPS, sub-ms\n• SSD (small random files) / HDD (large sequential,\n  Persistent 1 only) / Intelligent-Tiering (new)\n• Link S3 buckets: read S3 as files, write results\n  back (data repository associations)\n• On-prem over VPN / Direct Connect\n• Scratch vs Persistent: diagram 4"),
+        ("o", 20, 300, "FSx for NetApp ONTAP", "fsx-ontap", "orange",
+         "• NFS, SMB, iSCSI (+ NVMe/TCP): high OS compatibility\n• Move ONTAP or NAS workloads to AWS\n• Linux, Windows, macOS, VMware Cloud on AWS,\n  WorkSpaces, AppStream 2.0, EC2, ECS, EKS\n• SSD tier + capacity pool that grows/shrinks\n  automatically\n• Snapshots, SnapMirror replication, compression,\n  deduplication, instant point-in-time clones\n• Single-AZ or Multi-AZ"),
+        ("z", 490, 300, "FSx for OpenZFS", "fsx-openzfs", "purple",
+         "• Managed OpenZFS, NFS v3, v4.0, v4.1, v4.2 only\n• Move ZFS workloads to AWS\n• Same clients as ONTAP (Linux, Windows, macOS ...)\n• Course: up to 1,000,000 IOPS, < 0.5 ms latency\n  Docs now: up to 2M IOPS (cached), 21 GB/s,\n  hundreds of microseconds\n• Snapshots, compression (LZ4/Zstd), low cost,\n  instant point-in-time clones (test new workloads)\n• Single-AZ (non-HA / HA) or Multi-AZ"),
+    ]
+    for bid, x, y, title, icon, col, body in items:
+        d.box(f"{bid}h", x, y, 450, 44, title, col, size=13, bold=True, icon=icon, icon_size=30)
+        d.box(f"{bid}b", x, y + 48, 450, 196, body, "white", size=11, align="left", valign="top", bold_first=False)
+    return d
+
+
+def sx_lustre_deploy():
+    d = Diagram("sx-04-fsx-lustre-deployment", 960, 520, "FSx for Lustre deployment options: Scratch vs Persistent")
+    for gx, title, col, fs, notes in [
+        (20, "Scratch file system", "orange", "FSx for Lustre\n(Scratch)",
+         "• Temporary storage, short-term processing\n• Data is NOT replicated: if a file server fails,\n  data is lost (immediate I/O error)\n• High burst: up to 6x the 200 MB/s per TiB baseline\n• No backups · cheapest · Use: optimise costs"),
+        (490, "Persistent file system", "green", "FSx for Lustre\n(Persistent 1 / 2)",
+         "• Long-term storage and processing, sensitive data\n• SSD/HDD: data replicated within the SAME AZ\n  (Intelligent-Tiering: across AZs)\n• Failed file server replaced within minutes\n• Daily backups to S3 · Persistent 2 = latest gen"),
+    ]:
+        d.group(f"r{gx}", gx, 46, 450, 330, title, col, icon="region", size=12)
+        d.box(f"az1{gx}", gx + 16, 86, 200, 64, "AZ 1: compute\ninstances", "white", size=10, icon="ec2-instances", icon_size=26)
+        d.box(f"az2{gx}", gx + 234, 86, 200, 64, "AZ 2: compute\ninstances", "white", size=10, icon="ec2-instances", icon_size=26)
+        d.box(f"fs{gx}", gx + 16, 186, 200, 64, fs, "white", size=10, icon="fsx-lustre", icon_size=28)
+        d.box(f"s3{gx}", gx + 234, 186, 200, 64, "S3 bucket\n(optional data\nrepository)", "white", size=10, icon="s3-bucket", icon_size=26)
+        d.edge(f"az1{gx}", f"fs{gx}", "ENI")
+        d.edge(f"az2{gx}", f"fs{gx}")
+        d.edge(f"fs{gx}", f"s3{gx}", both=True)
+        d.text(f"n{gx}", gx + 10, 262, 430, 110, notes, size=10, align="left")
+    d.box("s3i", 20, 390, 920, 110,
+          "Seamless S3 integration (both types)\n• Link a bucket with a data repository association: objects appear as files; content is loaded from S3 the first time you open the file.\n"
+          "• Write the output of computations back to S3 (automatic export or export tasks).\n"
+          "• Throughput per TiB (docs): Scratch 200 · Persistent 2 SSD 125/250/500/1000 · Persistent 1 SSD 50/100/200 · Persistent 1 HDD 12/40 MB/s.\n"
+          "• Exam: \"temporary, cheapest, short job\" → Scratch · \"long-running, must survive a server failure\" → Persistent.", "yellow", size=10, align="left")
+    return d
+
+
+def sx_storage_gateway():
+    d = Diagram("sx-05-storage-gateway", 960, 700, "AWS Storage Gateway: bridge on-premises apps to cloud storage")
+    d.box("why", 20, 46, 920, 60,
+          "Hybrid cloud: part on-prem, part AWS (long migrations, security, compliance, IT strategy). S3 is proprietary (not NFS like EFS), so how do on-prem apps use it?\n"
+          "Use cases: disaster recovery · backup & restore · tiered storage · on-premises cache & low-latency file access.", "gray", size=10, align="left", bold_first=False)
+    d.group("on", 20, 120, 300, 470, "On-premises", "gray", icon=None)
+    d.group("aws", 400, 120, 540, 470, "AWS Cloud (HTTPS, Internet or Direct Connect)", "white", icon="region", size=12)
+    rows = [
+        (150, "NFS / SMB\nfile shares", "S3 File Gateway\nlocal cache: most\nrecently used data", "s3-file-gateway",
+         "S3 Standard, Standard-IA, One Zone-IA,\nIntelligent-Tiering (written directly)\n→ Glacier only via lifecycle policy\nIAM role per gateway · SMB + AD auth", "s3-bucket"),
+        (290, "iSCSI\napp server", "Volume Gateway\ncached or\nstored volumes", "volume-gateway",
+         "Block storage backed by S3, backups as EBS snapshots (restore on-prem or as EBS)\ncached: data in S3, most recent data cached locally (1 GiB-32 TiB, x32 = 1 PiB)\nstored: ALL data on-prem, scheduled backups to S3 (1 GiB-16 TiB, x32 = 512 TiB)", "ebs-snapshot"),
+        (430, "iSCSI VTL\nbackup software", "Tape Gateway\n1 media changer\n+ 10 tape drives", "tape-gateway",
+         "Virtual tapes (100 GiB-15 TiB) in S3\neject → archive to Glacier Flexible\nRetrieval or Glacier Deep Archive\nsame tape processes, leading backup apps", "vtl"),
+    ]
+    for i, (y, src, gw, gicon, aws, aicon) in enumerate(rows):
+        d.box(f"s{i}", 34, y, 110, 110, src, "white", size=10)
+        d.box(f"g{i}", 160, y, 150, 110, gw, "green", size=10, icon=gicon, icon_size=26, valign="top")
+        d.box(f"a{i}", 414, y, 512, 110, aws, "white", size=10, icon=aicon, icon_size=30, align="left", bold_first=False)
+        d.edge(f"s{i}", f"g{i}")
+        d.edge(f"g{i}", f"a{i}", "HTTPS")
+    d.box("ft", 20, 604, 455, 80, "FSx File Gateway: on-prem SMB cache in front of FSx for\nWindows. No longer available to NEW customers (AWS\nrecommends using FSx for Windows directly).", "red", size=10, align="left")
+    d.box("dep", 485, 604, 455, 80, "Deploy as a VM (VMware ESXi, Hyper-V, Linux KVM,\nNutanix), an EC2 instance, VMware Cloud on AWS, or a\nhardware appliance. Data encrypted in transit (SSL/TLS).", "white", size=10, align="left", bold_first=False)
+    return d
+
+
+def sx_transfer_datasync():
+    d = Diagram("sx-06-transfer-family-datasync", 960, 560, "AWS Transfer Family vs AWS DataSync")
+    d.group("tf", 20, 46, 450, 370, "Transfer Family: managed file-transfer SERVER", "blue", icon=None)
+    d.box("u", 34, 86, 120, 60, "Users\n(FTP client)", "white", size=10, icon="users", icon_size=24)
+    d.box("ep", 184, 76, 156, 80, "Transfer Family\nSFTP, FTPS,\nFTP, AS2", "white", size=10, icon="transfer-family", icon_size=28)
+    d.box("s3", 370, 76, 86, 36, "S3", "white", size=10, icon="s3", icon_size=22)
+    d.box("efs", 370, 120, 86, 36, "EFS", "white", size=10, icon="efs", icon_size=22)
+    d.edge("u", "ep")
+    d.edge("ep", "s3")
+    d.edge("ep", "efs")
+    d.text("tft", 30, 166, 430, 246,
+           "• Into and out of S3 or EFS, access via an IAM role\n• Endpoint: public or VPC hosted\n• Protocols: SFTP, FTPS, FTP, AS2 (+ browser web apps)\n• FTP is clear text: VPC (internal) endpoint only\n• Managed, scalable, reliable, highly available\n  (up to 3 AZs)\n• Pay per provisioned endpoint per hour + per GB\n• Users: stored in the service, or your existing\n  auth (Microsoft AD, LDAP, Okta, Cognito, custom)\n• Optional Route 53 name for the endpoint\n• Use: sharing files, public datasets, CRM, ERP", size=10, align="left")
+    d.group("ds", 490, 46, 450, 370, "DataSync: scheduled COPY / sync job", "green", icon=None)
+    d.box("src", 504, 86, 130, 80, "On-prem / other\ncloud: NFS, SMB,\nHDFS, object", "white", size=10)
+    d.box("ag", 646, 86, 104, 80, "DataSync\nagent", "white", size=10, icon="datasync-agent", icon_size=24)
+    d.box("dst", 776, 76, 150, 100, "S3 (all classes\nincl. Glacier)\nEFS · FSx (Win,\nLustre, ONTAP,\nOpenZFS)", "white", size=10)
+    d.edge("src", "ag")
+    d.edge("ag", "dst")
+    d.text("dst2", 500, 176, 430, 236,
+           "• Agent → AWS over TLS (encrypted in transit)\n• Needs an agent: on-prem storage, or EFS/FSx ↔ other clouds\n• No agent: AWS ↔ AWS (same or other account,\n  any Region), S3 ↔ other clouds' object storage\n• Schedule hourly, daily, weekly (or custom)\n• Preserves file permissions and metadata\n  (NFS POSIX, SMB ACLs, timestamps) + checksums\n• Per task: 10 Gbps with agent, 5 Gbps without;\n  set a bandwidth limit (throttle)\n• Basic vs Enhanced mode (Enhanced: virtually\n  unlimited files, faster)", size=10, align="left")
+    d.box("pick", 20, 430, 920, 114,
+          "How to choose (exam)\n• External partners PUSH or PULL files with an FTP/SFTP client → Transfer Family.\n"
+          "• Copy or keep in sync large data sets on a schedule (migration, replication between AWS storage services) → DataSync.\n"
+          "• Apps on-prem must keep using files / volumes / tapes with a local cache → Storage Gateway.\n"
+          "• Too much data for the network (more than a week) → Snowball (existing customers) or Data Transfer Terminal / partner devices.\n"
+          "• Hybrid pattern: DataSync for the initial migration, then Storage Gateway (S3 File Gateway) for ongoing on-prem access.", "yellow", size=10, align="left")
+    return d
+
+
+STORAGE_EXTRAS = [sx_comparison, sx_snowball, sx_fsx_overview, sx_lustre_deploy, sx_storage_gateway, sx_transfer_datasync]
+
+
 ALL = [iam_big_picture, policy_anatomy, policy_evaluation, access_methods, role_assume, mfa_password,
        security_tools, shared_responsibility,
        global_infra,
@@ -1493,7 +1666,7 @@ ALL = [iam_big_picture, policy_anatomy, policy_evaluation, access_methods, role_
        ec2_ips, placement_groups, eni_hibernate,
        storage_compare, ebs_snapshots_ami, ebs_volume_types, efs_classes,
        elb_types, alb_flow, asg,
-       rds_replicas_multiaz, aurora, rds_backup_proxy, elasticache] + ROUTE53 + S3 + CLOUDFRONT
+       rds_replicas_multiaz, aurora, rds_backup_proxy, elasticache] + ROUTE53 + S3 + CLOUDFRONT + STORAGE_EXTRAS
 
 if __name__ == "__main__":
     force = "--force" in sys.argv

@@ -97,6 +97,21 @@ DRAWIO_AWS = {  # icon file name: (kind, mxgraph.aws4 name, fill colour); kind "
     "cloudfront-functions": ("resource", "cloudfront_functions", NETWORK), "globe": ("resource", "globe", GENERAL),
     "mobile-client": ("resource", "mobile_client", GENERAL), "iot-core": ("service", "iot_core", "#7AA116"),
     "gamelift": ("service", "gamelift", COMPUTE),
+    # Storage extras section (11-storage-extras.md), stencil names checked against the aws4 set 25 Nov 2026
+    "snowball": ("service", "snowball", STORAGE), "snowball-edge": ("service", "snowball_edge", STORAGE),
+    "snowcone": ("service", "snowcone", STORAGE), "snowmobile": ("service", "snowmobile", STORAGE),
+    "fsx": ("service", "fsx", STORAGE), "fsx-lustre": ("service", "fsx_for_lustre", STORAGE),
+    "fsx-windows": ("service", "fsx_for_windows_file_server", STORAGE),
+    "fsx-ontap": ("service", "fsx_for_netapp_ontap", STORAGE), "fsx-openzfs": ("service", "fsx_for_openzfs", STORAGE),
+    "storage-gateway": ("service", "storage_gateway", STORAGE), "s3-file-gateway": ("resource", "s3_file_gateway", STORAGE),
+    "fsx-file-gateway": ("resource", "fsx_file_gateway", STORAGE), "volume-gateway": ("resource", "volume_gateway", STORAGE),
+    "tape-gateway": ("resource", "tape_gateway", STORAGE), "cached-volume": ("resource", "cached_volume", STORAGE),
+    "stored-volume": ("resource", "non_cached_volume", STORAGE), "vtl": ("resource", "virtual_tape_library", STORAGE),
+    "transfer-family": ("service", "transfer_family", "#7AA116"), "datasync": ("service", "datasync", "#7AA116"),
+    "datasync-agent": ("resource", "agent", "#7AA116"), "data-transfer-terminal": ("resource", "data_transfer_terminal", "#7AA116"),
+    "direct-connect": ("service", "direct_connect", NETWORK), "site-to-site-vpn": ("service", "site_to_site_vpn", NETWORK),
+    "outposts": ("service", "outposts", COMPUTE), "hdfs": ("resource", "hdfs_cluster", ANALYTICS),
+    "glacier-service": ("service", "glacier", STORAGE),
 }
 
 
