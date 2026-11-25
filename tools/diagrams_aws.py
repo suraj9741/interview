@@ -1659,6 +1659,280 @@ def sx_transfer_datasync():
 STORAGE_EXTRAS = [sx_comparison, sx_snowball, sx_fsx_overview, sx_lustre_deploy, sx_storage_gateway, sx_transfer_datasync]
 
 
+def msg_decoupling():
+    d = Diagram("msg-01-decoupling", 960, 560, "Application communication: synchronous vs asynchronous (decoupled)")
+    d.group("sy", 20, 46, 450, 200, "1) Synchronous: application → application", "red")
+    d.box("b1", 40, 96, 150, 64, "Buying service", "white", size=11, icon="generic-app", icon_size=26)
+    d.box("s1", 300, 96, 150, 64, "Shipping service", "white", size=11, icon="generic-app", icon_size=26)
+    d.edge("b1", "s1", "direct call")
+    d.text("syt", 30, 172, 430, 70, "Problem: a sudden spike (1,000 videos to encode\ninstead of the usual 10) hits the receiver directly.\nIf it is slow or down, the caller fails too.", size=10, align="left")
+    d.group("as", 490, 46, 450, 200, "2) Asynchronous / event based: app → queue → app", "green")
+    d.box("b2", 504, 96, 130, 64, "Buying\nservice", "white", size=11, icon="generic-app", icon_size=24)
+    d.box("q2", 654, 96, 130, 64, "Queue", "white", size=11, icon="sqs-queue", icon_size=28)
+    d.box("s2", 804, 96, 126, 64, "Shipping\nservice", "white", size=11, icon="generic-app", icon_size=24)
+    d.edge("b2", "q2"); d.edge("q2", "s2")
+    d.text("ast", 500, 172, 430, 70, "The queue absorbs the spike. Each side scales\nindependently of the other: decoupled.", size=10, align="left")
+    models = [("sqs", "SQS: queue model", "sqs", "Consumers PULL messages.\nOne message → one consumer.\nDeleted after processing."),
+              ("sns", "SNS: pub/sub model", "sns", "Topic PUSHES to every\nsubscriber. One message →\nmany receivers."),
+              ("kin", "Kinesis: real-time streaming", "kinesis-data-streams", "Ordered stream of records,\nkept for days, many readers,\nreplay possible."),
+              ("mq", "Amazon MQ: managed broker", "mq", "ActiveMQ / RabbitMQ with\nopen protocols (MQTT, AMQP,\nSTOMP, OpenWire, WSS).")]
+    for i, (bid, title, icon, body) in enumerate(models):
+        x = 20 + i * 235
+        d.box(f"{bid}h", x, 266, 220, 50, title, "blue", size=10, bold=True, icon=icon, icon_size=26)
+        d.box(f"{bid}b", x, 320, 220, 80, body, "white", size=10, bold_first=False)
+    d.box("sc", 20, 416, 920, 50, "These services scale independently from your application. SQS, SNS and Kinesis are \"cloud-native\" (AWS APIs);\nAmazon MQ is for apps that already speak open protocols (added: your notes skipped MQ).", "gray", size=10, bold_first=False)
+    d.box("ex", 20, 480, 920, 64, "Exam keywords\n\"decouple tiers / buffer writes / absorb spikes\" → SQS · \"send one event to many\" → SNS (+ SQS fan-out)\n"
+          "\"real-time big data, replay, ordering per key\" → Kinesis Data Streams · \"load stream into S3/Redshift\" → Data Firehose · \"lift-and-shift JMS/AMQP/MQTT\" → MQ", "yellow", size=10, align="left")
+    return d
+
+
+def msg_sqs_basics():
+    d = Diagram("msg-02-sqs-standard", 960, 640, "SQS Standard queue: producers send, consumers poll, process, delete")
+    d.box("p1", 20, 80, 150, 50, "Producer\n(SDK SendMessage)", "white", size=10, icon="generic-app", icon_size=22)
+    d.box("p2", 20, 150, 150, 50, "Producer", "white", size=10, icon="generic-app", icon_size=22)
+    d.box("p3", 20, 220, 150, 50, "Producer", "white", size=10, icon="generic-app", icon_size=22)
+    d.box("q", 290, 120, 240, 110, "SQS Standard queue\nmessage persisted until a\nconsumer DELETES it\nretention 4 days (1 min-14 d)", "white", size=10, icon="sqs-queue", icon_size=36)
+    for p in ("p1", "p2", "p3"):
+        d.edge(p, "q")
+    d.box("c1", 640, 80, 150, 50, "Consumer (EC2)", "white", size=10, icon="ec2-instance", icon_size=22)
+    d.box("c2", 640, 150, 150, 50, "Consumer (Lambda)", "white", size=10, icon="lambda-fn", icon_size=22)
+    d.box("c3", 640, 220, 150, 50, "Consumer (server)", "white", size=10, icon="server", icon_size=22)
+    for c in ("c1", "c2", "c3"):
+        d.edge("q", c, "poll")
+    d.box("db", 820, 150, 120, 50, "RDS insert", "white", size=10, icon="rds", icon_size=22)
+    d.edge("c2", "db")
+    d.box("msg", 20, 292, 450, 130, "A message (example: an order to process)\n• order id, customer id, any attributes you want\n• max size 1 MiB (1,048,576 bytes); larger payloads: Extended\n  Client Library puts the body in S3 (up to 2 GB)\n• publish and receive latency < 10 ms (course)\n• unlimited throughput, unlimited messages in the queue", "white", size=10, align="left", icon="sqs-message", icon_size=26)
+    d.box("con", 490, 292, 450, 130, "Consumer loop\n1. ReceiveMessage: up to 10 messages per call\n2. Process (example: insert into an RDS database)\n3. DeleteMessage (else the message comes back)\n• consumers work in parallel; scale them horizontally\n• at-least-once delivery, best-effort ordering", "white", size=10, align="left")
+    d.group("asg", 20, 440, 920, 110, "SQS + Auto Scaling Group: scale consumers on queue length", "orange")
+    d.box("aq", 40, 476, 150, 56, "SQS queue", "white", size=10, icon="sqs-queue", icon_size=24)
+    d.box("am", 230, 476, 240, 56, "CloudWatch metric (queue length)\nApproximateNumberOfMessages", "white", size=10, icon="cloudwatch", icon_size=24)
+    d.box("aa", 510, 476, 170, 56, "CloudWatch alarm\n(breach)", "white", size=10, icon="cw-alarm", icon_size=24)
+    d.box("ag", 720, 476, 200, 56, "ASG adds / removes\nEC2 consumers", "white", size=10, icon="ec2-autoscaling", icon_size=24)
+    d.edge("aq", "am"); d.edge("am", "aa"); d.edge("aa", "ag", "scale")
+    d.box("buf", 20, 564, 920, 60, "Patterns: SQS as a BUFFER to database writes (front end enqueues, workers dequeue and insert, so no transaction is lost under load)\n"
+          "and SQS to DECOUPLE tiers (web tier SendMessage → queue → back-end processing tier ReceiveMessage, each tier in its own ASG).", "yellow", size=10, align="left", bold_first=False)
+    return d
+
+
+def msg_sqs_visibility():
+    d = Diagram("msg-03-sqs-visibility-polling-dlq", 960, 640, "SQS: visibility timeout, long polling, dead-letter queue")
+    d.group("vt", 20, 46, 920, 230, "Message visibility timeout (default 30 s, 0 s-12 h)", "blue")
+    d.box("tl", 40, 150, 880, 6, "", "gray")
+    labels = [(40, "ReceiveMessage\nmessage returned"), (250, "ReceiveMessage\nNOT returned"), (460, "ReceiveMessage\nNOT returned"), (700, "ReceiveMessage\nreturned AGAIN")]
+    for i, (x, lab) in enumerate(labels):
+        d.box(f"r{i}", x, 84, 170, 48, lab, "green" if i in (0, 3) else "white", size=10, bold_first=False)
+    d.box("win", 120, 160, 540, 30, "invisible to other consumers for the visibility timeout", "orange", size=10)
+    d.text("tm", 860, 160, 70, 30, "time →", size=10)
+    d.text("vtt", 40, 196, 880, 76, "• Not deleted before the timeout ends → visible again → processed TWICE.   • Need more time? call ChangeMessageVisibility.\n"
+           "• Timeout too HIGH (hours) and the consumer crashes → re-processing waits a long time.   • Too LOW (seconds) → duplicates.\n"
+           "• The 12 h maximum counts from the first receive; extending does not reset it.", size=10, align="left")
+    d.group("lp", 20, 290, 450, 220, "Long polling", "green")
+    d.box("lc", 40, 330, 130, 56, "Consumer", "white", size=10, icon="generic-app", icon_size=22)
+    d.box("lq", 300, 330, 150, 56, "SQS queue", "white", size=10, icon="sqs-queue", icon_size=24)
+    d.edge("lc", "lq", "wait up to 20 s")
+    d.text("lpt", 30, 396, 430, 110, "• Empty queue? The receive call WAITS for a message\n  instead of returning empty at once (short polling).\n• Fewer API calls, lower cost, lower latency.\n• Wait 1-20 s (20 s preferable). Queue level:\n  ReceiveMessageWaitTimeSeconds · API level: WaitTimeSeconds\n• Preferable to short polling.", size=10, align="left")
+    d.group("dl", 490, 290, 450, 220, "Dead-letter queue (added from docs)", "red")
+    d.box("sq", 504, 330, 150, 56, "Source queue", "white", size=10, icon="sqs-queue", icon_size=24)
+    d.box("dq", 774, 330, 150, 56, "DLQ", "white", size=10, icon="sqs-queue", icon_size=24)
+    d.edge("sq", "dq", "after maxReceiveCount")
+    d.edge("dq", "sq", "redrive", points=[(849, 400), (579, 400)])
+    d.text("dlt", 500, 410, 430, 96, "• maxReceiveCount = receives allowed before the message\n  is moved to the DLQ (poison messages).\n• Same account, Region and TYPE (FIFO → FIFO DLQ).\n• Standard: expiry uses the ORIGINAL enqueue time, so\n  give the DLQ a longer retention. Redrive moves them back.", size=10, align="left")
+    d.box("dly", 20, 524, 920, 100, "Also (docs): delay queues / message timers 0-15 min (default 0) · batches of up to 10 messages for send, receive, delete\n"
+          "• Security: in flight HTTPS · at rest SSE-SQS (SQS-owned keys) or SSE-KMS · client-side encryption if the client encrypts/decrypts itself\n"
+          "• Access: IAM policies for the SQS API · SQS access policies (like S3 bucket policies) for cross-account access and to let SNS, S3... write to the queue\n"
+          "• About 120,000 in-flight (received, not deleted) messages per standard queue", "yellow", size=10, align="left", bold_first=False)
+    return d
+
+
+def msg_fifo():
+    d = Diagram("msg-04-standard-vs-fifo", 960, 520, "SQS Standard vs SQS FIFO")
+    d.group("st", 20, 46, 450, 330, "Standard queue", "blue")
+    d.box("sp", 40, 86, 110, 50, "Producer", "white", size=10)
+    d.box("sq", 180, 86, 140, 50, "4 1 3 2 2", "white", size=12, icon="sqs-queue", icon_size=26)
+    d.box("sc", 350, 86, 100, 50, "Consumer", "white", size=10)
+    d.edge("sp", "sq"); d.edge("sq", "sc")
+    d.text("stt", 30, 150, 430, 220, "• Nearly unlimited API calls per second, per action\n• Unlimited number of messages\n• At-least-once delivery: duplicates can happen\n• Best-effort ordering: can arrive out of order\n• Any queue name\n• Use when throughput matters and the app\n  is idempotent (tolerates duplicates)", size=11, align="left")
+    d.group("ff", 490, 46, 450, 330, "FIFO queue (name must end in .fifo)", "green")
+    d.box("fp", 504, 86, 110, 50, "Producer", "white", size=10)
+    d.box("fq", 644, 86, 140, 50, "4 3 2 1", "white", size=12, icon="sqs-queue", icon_size=26)
+    d.box("fc", 814, 86, 110, 50, "Consumer", "white", size=10)
+    d.edge("fp", "fq"); d.edge("fq", "fc")
+    d.text("fft", 500, 150, 430, 220, "• First In First Out: processed in order\n• Ordering per Message Group ID (mandatory):\n  in order inside one group, groups in parallel\n• Exactly-once processing: duplicates removed by\n  Deduplication ID or content-based (SHA-256 of\n  body) within a 5-minute interval\n• 300 msg/s without batching, 3,000 msg/s with\n  batching (10 per call), per API action\n• High-throughput mode: tens of thousands TPS\n  (docs: up to 30,000; varies by Region)", size=11, align="left")
+    d.box("ex", 20, 390, 920, 114, "Exam\n• \"Order must be kept\" or \"no duplicates\" → FIFO. \"Highest throughput, order not important\" → Standard.\n"
+          "• Order per customer/user but scale → FIFO with Message Group ID = customer id (one consumer per group at a time).\n"
+          "• You cannot convert a Standard queue to FIFO: create a new .fifo queue.\n"
+          "• S3 event notifications can't target a FIFO queue (Standard queues only).", "yellow", size=10, align="left")
+    return d
+
+
+def msg_sns():
+    d = Diagram("msg-05-sns-pubsub", 960, 660, "Amazon SNS: publish once to a topic, every subscriber gets it")
+    d.group("pub", 20, 46, 220, 400, "Publishers (examples)", "gray")
+    pubs = [("cw", "CloudWatch alarms", "cw-alarm"), ("asg", "ASG notifications", "ec2-autoscaling"), ("s3e", "S3 bucket events", "s3-bucket"),
+            ("lam", "Lambda / your app", "lambda-fn"), ("ddb", "DynamoDB, RDS events", "dynamodb"), ("bud", "Budgets, CFN, DMS", "generic-app")]
+    for i, (bid, lab, ic) in enumerate(pubs):
+        d.box(bid, 34, 80 + i * 60, 192, 48, lab, "white", size=10, icon=ic, icon_size=24)
+    d.box("t", 330, 210, 170, 80, "SNS topic\n(standard)", "white", size=12, icon="sns-topic", icon_size=36)
+    for i, (bid, *_) in enumerate(pubs):
+        d.edge(bid, "t", points=[(280, 104 + i * 60), (300, 250)])
+    d.group("sub", 590, 46, 350, 400, "Subscribers (each gets ALL messages)", "green")
+    subs = [("q", "SQS queue", "sqs-queue"), ("l", "Lambda", "lambda-fn"), ("f", "Data Firehose", "firehose"),
+            ("h", "HTTP(S) endpoint", "http-notification"), ("e", "Email / email-JSON", "email-notification"), ("m", "SMS & mobile push", "mobile-client")]
+    for i, (bid, lab, ic) in enumerate(subs):
+        d.box(bid, 604, 80 + i * 60, 322, 48, lab, "white", size=10, icon=ic, icon_size=24)
+        d.edge("t", bid, points=[(530, 250), (570, 104 + i * 60)])
+    d.box("lim", 20, 460, 455, 100, "Limits (docs)\n• 12,500,000 subscriptions per standard topic\n• 100,000 standard topics per account\n• Message 256 KiB default, up to 1 MiB (topic setting);\n  bigger via Extended Client Library (S3, 2 GB)", "white", size=10, align="left")
+    d.box("how", 485, 460, 455, 100, "How to publish\n• Topic publish (SDK): create topic → create subscription(s)\n  → publish to the topic\n• Direct publish (mobile apps SDK): create platform application\n  → platform endpoint → publish. FCM (ex-GCM), APNs, ADM, Baidu, WNS", "white", size=10, align="left")
+    d.box("sec", 20, 574, 920, 70, "Security (same as SQS): in flight HTTPS · at rest KMS keys · client-side encryption\n"
+          "Access: IAM policies for the SNS API · SNS access policies (like S3 bucket policies) for cross-account access and to let other services (S3...) publish", "yellow", size=10, align="left")
+    return d
+
+
+def msg_fanout():
+    d = Diagram("msg-06-sns-sqs-fanout", 960, 700, "SNS + SQS fan-out, S3 events to many queues, SNS FIFO, filtering")
+    d.group("fo", 20, 46, 450, 250, "Fan-out: push once to SNS, every SQS queue gets it", "green")
+    d.box("bs", 34, 136, 110, 56, "Buying\nservice", "white", size=10)
+    d.box("ft", 174, 136, 120, 56, "SNS topic", "white", size=10, icon="sns-topic", icon_size=26)
+    d.box("fq1", 324, 86, 136, 50, "SQS → Fraud", "white", size=10, icon="sqs-queue", icon_size=22)
+    d.box("fq2", 324, 190, 136, 50, "SQS → Shipping", "white", size=10, icon="sqs-queue", icon_size=22)
+    d.edge("bs", "ft"); d.edge("ft", "fq1"); d.edge("ft", "fq2")
+    d.text("fot", 30, 244, 430, 50, "Fully decoupled, no data loss; SQS adds persistence, delayed\nprocessing, retries; add queues any time; works cross-Region.", size=10, align="left")
+    d.group("s3", 490, 46, 450, 250, "S3 event to multiple queues", "blue")
+    d.box("b", 504, 136, 110, 56, "S3: object\ncreated", "white", size=10, icon="s3-bucket", icon_size=24)
+    d.box("st", 644, 136, 120, 56, "SNS topic", "white", size=10, icon="sns-topic", icon_size=26)
+    d.box("sq1", 794, 80, 132, 44, "SQS queue", "white", size=10, icon="sqs-queue", icon_size=20)
+    d.box("sq2", 794, 142, 132, 44, "SQS queue", "white", size=10, icon="sqs-queue", icon_size=20)
+    d.box("sl", 794, 204, 132, 44, "Lambda", "white", size=10, icon="lambda-fn", icon_size=20)
+    d.edge("b", "st", "event"); d.edge("st", "sq1"); d.edge("st", "sq2"); d.edge("st", "sl")
+    d.text("s3t", 500, 252, 430, 44, "One event type + prefix (e.g. object create, images/) = one\nS3 event rule. Many targets for the same event → fan-out.", size=10, align="left")
+    d.group("kf", 20, 310, 450, 130, "SNS to S3 through Data Firehose", "orange")
+    d.box("k1", 34, 350, 100, 56, "Buying\nservice", "white", size=10)
+    d.box("k2", 160, 350, 90, 56, "SNS", "white", size=10, icon="sns-topic", icon_size=24)
+    d.box("k3", 276, 350, 100, 56, "Data\nFirehose", "white", size=10, icon="firehose", icon_size=24)
+    d.box("k4", 400, 340, 60, 76, "S3 or\nany\nKDF\ntarget", "white", size=9, bold_first=False)
+    d.edge("k1", "k2"); d.edge("k2", "k3"); d.edge("k3", "k4")
+    d.group("ff", 490, 310, 450, 130, "SNS FIFO topic (+ SQS FIFO = fan-out with order)", "purple")
+    d.text("fft", 500, 340, 430, 96, "• Ordering by Message Group ID; dedup by Deduplication ID\n  or content-based, 5-minute window\n• Subscribers: SQS FIFO AND SQS Standard queues only\n• 3,000 msg/s or 20 MB/s per topic (300/s per group);\n  high-throughput mode for more (docs)", size=10, align="left")
+    d.group("fl", 20, 454, 920, 230, "SNS message filtering (subscription filter policy, JSON)", "gray")
+    d.box("ms", 34, 530, 190, 90, "New transaction\nOrder: 1036\nProduct: Pencil · Qty: 4\nState: Placed", "white", size=10)
+    d.box("mt", 260, 545, 130, 60, "SNS topic", "white", size=10, icon="sns-topic", icon_size=26)
+    d.edge("ms", "mt")
+    rows = [("Filter State: Placed", "SQS (placed orders)", "green"), ("Filter State: Cancelled", "SQS (cancelled orders)", "white"),
+            ("Filter State: Cancelled", "Email (cancelled orders)", "white"), ("Filter State: Declined", "SQS (declined orders)", "white"),
+            ("No filter policy", "SQS (all) - gets EVERY message", "green")]
+    for i, (f, s, col) in enumerate(rows):
+        d.box(f"fp{i}", 440, 486 + i * 38, 190, 32, f, "yellow", size=10)
+        d.box(f"sub{i}", 650, 486 + i * 38, 270, 32, s, col, size=10)
+        d.edge("mt", f"fp{i}", points=[(415, 575), (420, 502 + i * 38)]); d.edge(f"fp{i}", f"sub{i}")
+    d.text("flt", 34, 630, 390, 50, "Scope: message attributes (default) or message body.\nYour notes said \"SQS - Message Filtering\": it is SNS.", size=10, align="left")
+    return d
+
+
+def msg_kinesis():
+    d = Diagram("msg-07-kinesis-data-streams", 960, 640, "Kinesis Data Streams: collect and store streaming data in real time")
+    d.group("pr", 20, 46, 200, 300, "Producers", "gray")
+    for i, (bid, lab, ic) in enumerate([("a", "Applications", "generic-app"), ("c", "Click streams", "users"), ("i", "IoT devices", "sensor"), ("m", "Metrics & logs\n(Kinesis Agent, KPL)", "server")]):
+        d.box(bid, 30, 80 + i * 64, 180, 52, lab, "white", size=10, icon=ic, icon_size=22)
+    d.group("ks", 260, 46, 420, 300, "Kinesis Data Stream", "purple", icon="kinesis-data-streams", icon_size=24)
+    for i in range(3):
+        d.box(f"sh{i}", 280, 90 + i * 58, 380, 46, f"Shard {i + 1}:  rec · rec · rec · rec  →", "white", size=11)
+    d.text("kst", 270, 268, 400, 76, "record = partition key + data blob (up to 1 MiB, can raise\nto 10 MiB per stream since Oct 2025). Same partition key\n→ same shard → ORDERED. Retention 24 h - 365 days.", size=10, align="left")
+    for bid, *_ in [("a",), ("c",), ("i",), ("m",)]:
+        d.edge(bid, "sh1")
+    d.group("co", 720, 46, 220, 300, "Consumers", "gray")
+    for i, (bid, lab, ic) in enumerate([("ca", "Apps (KCL)", "generic-app"), ("cl", "Lambda", "lambda-fn"), ("cf", "Data Firehose", "firehose"), ("cm", "Managed Service\nfor Apache Flink", "flink")]):
+        d.box(bid, 730, 80 + i * 64, 200, 52, lab, "white", size=10, icon=ic, icon_size=22)
+        d.edge("sh1", bid)
+    d.box("pv", 20, 360, 455, 160, "Provisioned mode\n• You choose the number of shards; scale manually\n  (split / merge shards)\n• Per shard: IN 1 MB/s or 1,000 records/s\n• Per shard: OUT 2 MB/s shared by all consumers\n  (enhanced fan-out: 2 MB/s per shard PER consumer)\n• Pay per shard provisioned per hour", "orange", size=10, align="left")
+    d.box("od", 485, 360, 455, 160, "On-demand mode\n• No capacity to provision or manage\n• Default 4 MB/s or 4,000 records/s in\n• Scales automatically to 2x the peak write seen in\n  the last 30 days (up to 200 MB/s; 10 GB/s in\n  N. Virginia, Oregon, Ireland)\n• Pay per stream per hour + data in/out per GB", "green", size=10, align="left")
+    d.box("fa", 20, 534, 920, 90, "Key facts\n• Consumers can REPROCESS (replay) data · data can't be deleted until it expires · at rest KMS, in flight HTTPS\n"
+          "• KPL (Kinesis Producer Library) = optimized producer app · KCL (Kinesis Client Library) = optimized consumer app\n"
+          "• Switch capacity mode at most twice per 24 h per stream", "yellow", size=10, align="left")
+    return d
+
+
+def msg_firehose():
+    d = Diagram("msg-08-firehose-vs-streams", 960, 712, "Amazon Data Firehose (ex Kinesis Data Firehose), and how it differs from Data Streams")
+    d.group("src", 20, 46, 200, 330, "Sources", "gray")
+    for i, (bid, lab, ic) in enumerate([("ap", "Apps / SDK\n(Direct PUT)", "generic-app"), ("kds", "Kinesis Data\nStreams", "kinesis-data-streams"), ("msk", "Amazon MSK", "msk"), ("cwl", "CloudWatch Logs,\nSNS, IoT, agent", "cloudwatch")]):
+        d.box(bid, 30, 80 + i * 72, 180, 60, lab, "white", size=10, icon=ic, icon_size=24)
+    d.box("fh", 280, 150, 210, 110, "Data Firehose\nbuffer by size (1-128 MB)\nor time (0-900 s)\nthen batch write", "white", size=10, icon="firehose", icon_size=32, valign="top")
+    for bid in ("ap", "kds", "msk", "cwl"):
+        d.edge(bid, "fh")
+    d.box("lt", 295, 290, 180, 60, "Lambda: optional\ntransform (CSV→JSON)", "white", size=10, icon="lambda-fn", icon_size=22)
+    d.edge("fh", "lt", both=True)
+    d.group("dst", 540, 46, 400, 330, "Destinations", "green")
+    for i, (bid, lab, ic) in enumerate([("s3", "Amazon S3 (+ S3 Tables / Iceberg)", "s3-bucket"), ("rs", "Amazon Redshift (via S3 COPY)", "redshift"), ("os", "Amazon OpenSearch Service", "opensearch"),
+                                         ("tp", "3rd party: Splunk, Snowflake, Datadog,\nMongoDB, New Relic, Dynatrace...", "generic-app"), ("he", "Custom HTTP endpoint", "http-notification")]):
+        d.box(bid, 552, 78 + i * 58, 376, 48, lab, "white", size=10, icon=ic, icon_size=22)
+        d.edge("fh", bid, points=[(515, 205), (530, 102 + i * 58)])
+    d.box("bk", 552, 380, 376, 40, "S3 backup bucket: all data, or only failed data", "orange", size=10)
+    d.edge("fh", "bk", dashed=True, points=[(515, 205), (515, 400)])
+    d.box("ff", 20, 390, 480, 110, "Firehose facts\n• Fully managed, automatic scaling, pay for what you use\n• NEAR real-time (buffering; 0 s interval = within seconds)\n• Record up to 1,024 KB (Direct PUT / KDS); formats CSV, JSON,\n  Parquet, Avro, raw text, binary · JSON → Parquet/ORC · gzip/zip/snappy", "white", size=10, align="left")
+    rows = [("", "Kinesis Data Streams", "Amazon Data Firehose"),
+            ("Job", "streaming data COLLECTION", "LOAD streaming data into S3 / Redshift /\nOpenSearch / 3rd party / custom HTTP"),
+            ("Code", "write producer & consumer code", "fully managed, no consumer code"),
+            ("Speed", "real time", "near real time (buffered)"),
+            ("Scaling", "provisioned or on-demand mode", "automatic"),
+            ("Storage", "keeps data 24 h - 365 days", "no data storage"),
+            ("Replay", "yes", "no")]
+    for i, r in enumerate(rows):
+        h = 40 if i == 1 else 24
+        y = 514 + (0 if i == 0 else 24 + (i - 1) * 24 + (16 if i > 1 else 0))
+        for j, c in enumerate(r):
+            w = [120, 360, 440][j]
+            x = [20, 140, 500][j]
+            d.box(f"t{i}{j}", x, y, w, h, c, "gray" if (i == 0 or j == 0) else "white", size=10, bold=(i == 0 or j == 0), bold_first=False)
+    return d
+
+
+def msg_mq():
+    d = Diagram("msg-09-amazon-mq", 960, 600, "Amazon MQ: managed ActiveMQ / RabbitMQ broker for open protocols (added: not in your notes)")
+    d.box("why", 20, 46, 920, 76, "Why it exists\nSQS and SNS are cloud-native, proprietary AWS APIs. Apps from on-premises often use open protocols: MQTT, AMQP, STOMP, OpenWire, WSS (+ JMS APIs).\n"
+          "Migrating them? Instead of re-engineering to SQS/SNS, use Amazon MQ: change the endpoint, keep the messaging code.", "gray", size=10, align="left")
+    d.group("ha", 20, 136, 560, 300, "ActiveMQ active/standby (high availability)", "white", icon="region", size=12)
+    d.box("cl", 40, 250, 110, 70, "Client\n(failover\nURL)", "white", size=10, icon=None)
+    d.group("az1", 190, 172, 220, 110, "AZ us-east-1a: ACTIVE", "green", size=11)
+    d.box("b1", 206, 206, 188, 60, "MQ broker", "white", size=10, icon="mq-broker", icon_size=28)
+    d.group("az2", 190, 300, 220, 110, "AZ us-east-1b: STANDBY", "white", size=11, dashed=True)
+    d.box("b2", 206, 334, 188, 60, "MQ broker", "white", size=10, icon="mq-broker", icon_size=28)
+    d.box("efs", 440, 250, 124, 70, "Amazon EFS\n(shared\nstorage)", "white", size=10, icon="efs", icon_size=24)
+    d.edge("cl", "b1"); d.edge("cl", "b2", "failover", dashed=True)
+    d.edge("b1", "efs"); d.edge("b2", "efs", dashed=True)
+    d.box("eng", 600, 136, 340, 300, "Engines and protocols (docs)\n• ActiveMQ: AMQP, MQTT, OpenWire, STOMP,\n  MQTT/STOMP over WebSocket (+ JMS)\n• RabbitMQ: AMQP 0-9-1\n\nDeployment\n• ActiveMQ: single-instance (1 AZ),\n  active/standby (2 AZs, EFS storage),\n  network of brokers (scale out)\n• RabbitMQ: single-instance or\n  3-node cluster across AZs\n• Storage: EFS (durable, multi-AZ) or\n  EBS (throughput, single-instance)", "white", size=10, align="left", valign="top")
+    d.box("fa", 20, 450, 920, 134, "Exam facts\n• Has QUEUE features (~SQS) and TOPIC features (~SNS) in one broker.\n"
+          "• Runs on broker instances (e.g. mq.m5.large): pay per instance hour + storage; it does NOT scale like SQS/SNS (scale = bigger instance or network of brokers).\n"
+          "• Multi-AZ with failover: active/standby; the standby takes over the shared EFS storage if the active broker or its AZ fails.\n"
+          "• Keyword: \"migrate an on-prem app that uses MQTT / AMQP / STOMP / JMS without code changes\" → Amazon MQ. \"New cloud app\" → SQS/SNS.", "yellow", size=10, align="left")
+    return d
+
+
+def msg_compare():
+    d = Diagram("msg-10-sqs-sns-kinesis-mq", 960, 560, "Which one? SQS vs SNS vs Kinesis Data Streams vs Amazon MQ")
+    rows = [("", "SQS", "SNS", "Kinesis Data Streams", "Amazon MQ"),
+            ("Model", "queue: consumers PULL", "pub/sub: PUSH to\nmany subscribers", "stream: PULL (standard)\nor PUSH (enhanced fan-out)", "broker: queues +\ntopics"),
+            ("After read", "deleted once\nconsumed", "not persisted: lost\nif not delivered", "kept until it expires\n(24 h - 365 days), replay", "kept until consumed\n(broker storage)"),
+            ("Scale", "no provisioning,\nas many workers as\nyou want", "no provisioning,\n12.5M subs/topic,\n100k topics", "provisioned shards or\non-demand; 2 MB/s per\nshard (per consumer w/ EFO)", "instance size; does\nnot scale like\nSQS/SNS"),
+            ("Ordering", "FIFO queues only", "FIFO topics\n(to SQS queues)", "per shard\n(partition key)", "per queue\n(engine-dependent)"),
+            ("Extras", "per-message delay,\nDLQ, long polling", "fan-out with SQS,\nfilter policies", "real-time big data,\nanalytics, ETL", "open protocols:\nMQTT, AMQP, STOMP..."),
+            ("Pick when", "decouple tiers,\nbuffer work", "notify many systems\nat once", "real-time analytics,\nreplay, ordered stream", "migrate existing\nbroker apps")]
+    widths = [110, 200, 200, 230, 180]
+    xs = [20, 130, 330, 530, 760]
+    y = 46
+    for i, r in enumerate(rows):
+        h = 34 if i == 0 else 72
+        for j, c in enumerate(r):
+            col = "gray" if i == 0 or j == 0 else "white"
+            if i == 0 and j > 0:
+                col = ["blue", "purple", "orange", "green"][j - 1]
+            d.box(f"c{i}{j}", xs[j], y, widths[j], h, c, col, size=10, bold=(i == 0 or j == 0), bold_first=False)
+        y += h + 4
+    return d
+
+
+MESSAGING = [msg_decoupling, msg_sqs_basics, msg_sqs_visibility, msg_fifo, msg_sns, msg_fanout, msg_kinesis, msg_firehose, msg_mq, msg_compare]
+
+
 ALL = [iam_big_picture, policy_anatomy, policy_evaluation, access_methods, role_assume, mfa_password,
        security_tools, shared_responsibility,
        global_infra,
@@ -1666,7 +1940,7 @@ ALL = [iam_big_picture, policy_anatomy, policy_evaluation, access_methods, role_
        ec2_ips, placement_groups, eni_hibernate,
        storage_compare, ebs_snapshots_ami, ebs_volume_types, efs_classes,
        elb_types, alb_flow, asg,
-       rds_replicas_multiaz, aurora, rds_backup_proxy, elasticache] + ROUTE53 + S3 + CLOUDFRONT + STORAGE_EXTRAS
+       rds_replicas_multiaz, aurora, rds_backup_proxy, elasticache] + ROUTE53 + S3 + CLOUDFRONT + STORAGE_EXTRAS + MESSAGING
 
 if __name__ == "__main__":
     force = "--force" in sys.argv
