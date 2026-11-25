@@ -92,6 +92,11 @@ DRAWIO_AWS = {  # icon file name: (kind, mxgraph.aws4 name, fill colour); kind "
     "athena": ("service", "athena", ANALYTICS), "cloudtrail": ("service", "cloudtrail", MGMT),
     "iam": ("service", "identity_and_access_management", SECURITY), "sns": ("service", "sns", APPINT),
     "sqs": ("service", "sqs", APPINT),
+    # CloudFront + Global Accelerator section (10-cloudfront-global-accelerator.md), stencil names checked 24 Nov 2026
+    "waf": ("service", "waf", SECURITY), "shield": ("service", "shield", SECURITY),
+    "cloudfront-functions": ("resource", "cloudfront_functions", NETWORK), "globe": ("resource", "globe", GENERAL),
+    "mobile-client": ("resource", "mobile_client", GENERAL), "iot-core": ("service", "iot_core", "#7AA116"),
+    "gamelift": ("service", "gamelift", COMPUTE),
 }
 
 
