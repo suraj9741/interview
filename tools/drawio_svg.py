@@ -112,6 +112,15 @@ DRAWIO_AWS = {  # icon file name: (kind, mxgraph.aws4 name, fill colour); kind "
     "direct-connect": ("service", "direct_connect", NETWORK), "site-to-site-vpn": ("service", "site_to_site_vpn", NETWORK),
     "outposts": ("service", "outposts", COMPUTE), "hdfs": ("resource", "hdfs_cluster", ANALYTICS),
     "glacier-service": ("service", "glacier", STORAGE),
+    # Integration & messaging section (12-integration-messaging.md), stencil names checked against the aws4 set 25 Nov 2026
+    "kinesis-data-streams": ("service", "kinesis_data_streams", ANALYTICS),
+    "firehose": ("service", "kinesis_data_firehose", ANALYTICS), "mq": ("service", "mq", APPINT),
+    "mq-broker": ("resource", "mq_broker", APPINT), "sqs-message": ("resource", "message", APPINT),
+    "email-notification": ("resource", "email_notification", APPINT),
+    "http-notification": ("resource", "http_notification", APPINT), "redshift": ("service", "redshift", ANALYTICS),
+    "flink": ("service", "managed_service_for_apache_flink", ANALYTICS),
+    "msk": ("service", "managed_streaming_for_kafka", ANALYTICS), "dynamodb": ("service", "dynamodb", DATABASE),
+    "generic-app": ("resource", "generic_application", GENERAL), "sensor": ("resource", "sensor", GENERAL),
 }
 
 
