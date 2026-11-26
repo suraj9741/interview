@@ -2011,6 +2011,278 @@ def eks_worker_nodes():
 EKS = [eks_worker_nodes]
 
 
+# ---- Containers (13-containers.md) -----------------------------------------------------------------------
+def ctr_docker():
+    d = Diagram("ctr-01-docker-basics", 960, 640, "Docker: package once, run anywhere; images live in a registry")
+    d.group("why", 20, 46, 300, 262, "What is Docker?", "aws-compute", aws=True, icon="container", size=12)
+    d.text("wt", 34, 78, 280, 224, "• Software development platform to deploy apps\n• Apps are packaged in CONTAINERS that\n  run on any OS\n• Apps run the same wherever they run:\n  any machine, no compatibility issues,\n  predictable behavior, less work,\n  easier to maintain and deploy,\n  any language / OS / technology\n• Use cases: microservices architecture,\n  lift-and-shift apps from on-premises\n  to the AWS cloud", size=10, align="left", valign="top")
+    d.group("vm", 340, 46, 290, 262, "Virtual machines", "aws-gen", aws=True, icon="server", size=12)
+    for i, lab in enumerate(["Apps", "Guest OS (VM)"]):
+        for j in range(3):
+            d.box(f"vm{i}{j}", 354 + j * 90, 80 + i * 40, 84, 34, lab if i == 0 else "Guest OS\n(VM)", "card" if i == 0 else "aws-gen", size=9, bold_first=False, auto_icon=False)
+            square(d, f"vm{i}{j}")
+    for k, lab in enumerate(["Hypervisor", "Host OS", "Infrastructure"]):
+        d.box(f"vml{k}", 354, 164 + k * 40, 264, 34, lab, "aws-gen" if k else "aws-compute", size=10, bold_first=False, auto_icon=False)
+        square(d, f"vml{k}")
+    d.group("dk", 650, 46, 290, 262, "Docker containers", "aws-compute", aws=True, icon="container", size=12)
+    for j in range(4):
+        node(d, f"ct{j}", 668 + j * 68, 84, "container", "app", size=36, w=60)
+    for k, lab in enumerate(["Docker daemon", "Host OS (EC2 instance)", "Infrastructure"]):
+        d.box(f"dkl{k}", 664, 164 + k * 40, 264, 34, lab, "aws-compute" if k == 0 else "aws-gen", size=10, bold_first=False, auto_icon=False)
+        square(d, f"dkl{k}")
+    d.text("dkt", 664, 136, 264, 24, "no guest OS: resources shared with the host", size=9, italic=True)
+    d.group("flow", 20, 324, 920, 170, "Getting started: build → push → pull → run", "white", aws=True, size=12)
+    node(d, "df", 60, 380, "generic-app", "Dockerfile", size=44, w=110)
+    node(d, "im", 250, 380, "container-image", "Image", size=44, w=110)
+    node(d, "hub", 470, 362, "internet", "Docker Hub (public)", size=36, w=170)
+    node(d, "ecr", 470, 428, "ecr", "Amazon ECR (private / public)", size=36, w=190)
+    node(d, "run", 820, 380, "container", "Container\n(run)", size=44, w=110)
+    d.edge("df", "im", "build"); d.edge("im", "hub", "push"); d.edge("im", "ecr", "push")
+    d.edge("hub", "run", "pull"); d.edge("ecr", "run", "pull")
+    d.box("reg", 20, 508, 455, 116, "Where are images stored? Docker repositories\n• Docker Hub (hub.docker.com): public repository; base\n  images for many technologies or OS (Ubuntu, MySQL...)\n• Amazon ECR: private repository + public repository\n  (Amazon ECR Public Gallery, gallery.ecr.aws)", "card", size=10, align="left", icon="ecr", icon_size=30)
+    d.box("vs", 485, 508, 455, 116, "Docker vs virtual machines\n• Docker is \"sort of\" a virtualization technology, but not exactly\n• Resources are shared with the host → MANY containers\n  on one server\n• A VM carries a full guest OS; a container only the app\n  and its libraries (shares the host kernel)", "exam", size=10, align="left")
+    return d
+
+
+def ctr_services():
+    d = Diagram("ctr-02-ecs-launch-types", 960, 690, "Containers on AWS: ECS, EKS, Fargate, ECR, and the ECS launch types")
+    svcs = [("ecs", "Amazon ECS", "AWS's own container platform"), ("eks", "Amazon EKS", "managed Kubernetes\n(open source)"),
+            ("fargate", "AWS Fargate", "serverless containers; works\nwith ECS and EKS"), ("ecr", "Amazon ECR", "stores container images")]
+    for i, (ic, t, b) in enumerate(svcs):
+        x = 20 + i * 232
+        d.box(f"s{i}", x, 46, 222, 70, f"{t}\n{b}", "card", size=10, align="left", icon=ic, icon_size=40)
+        square(d, f"s{i}")
+    d.group("ec2", 20, 132, 450, 330, "EC2 launch type: YOU provision + maintain the EC2 instances", "aws-compute", aws=True, icon="ecs", size=11)
+    d.group("ec2c", 36, 166, 418, 200, "ECS cluster", "white", aws=True, icon="ecs", size=11)
+    for i in range(3):
+        x = 52 + i * 134
+        d.group(f"ei{i}", x, 198, 122, 152, "EC2 instance", "white", aws=True, icon="ec2-instance", size=10)
+        node(d, f"et{i}", x + 18, 230, "ecs-task", "task", size=34, w=50)
+        node(d, f"et{i}b", x + 70, 230, "ecs-task", "task", size=34, w=50)
+        d.box(f"ea{i}", x + 10, 300, 102, 34, "ECS agent", "aws-compute", size=10, bold_first=False, auto_icon=False)
+    d.text("ec2t", 34, 372, 430, 84, "• Launch Docker containers on AWS = launch ECS TASKS on ECS CLUSTERS\n• Each EC2 instance runs the ECS agent to register in the cluster\n• AWS takes care of starting / stopping containers\n• You patch, scale and pay for the instances", size=10, align="left", valign="top")
+    d.group("fg", 490, 132, 450, 330, "Fargate launch type: NO EC2 instances to manage", "aws-compute", aws=True, icon="fargate", size=11)
+    d.group("fgc", 506, 166, 418, 200, "AWS Fargate / ECS cluster", "white", aws=True, icon="fargate", size=11)
+    for i in range(5):
+        node(d, f"ft{i}", 530 + i * 78, 230, "ecs-task", "task", size=40, w=60)
+    d.text("fgc2", 520, 300, 390, 50, "each task gets its own ENI (awsvpc) and isolation boundary", size=10, italic=True)
+    d.text("fgt", 504, 372, 430, 84, "• It's all serverless: you just create TASK DEFINITIONS\n• AWS runs tasks for the CPU / RAM you ask for\n  (0.25-32 vCPU, 0.5-244 GB, docs)\n• To scale: just increase the number of tasks", size=10, align="left", valign="top")
+    d.group("mi", 20, 478, 920, 110, "Newer than the course slides' text (docs, 2025-2026)", "aws-gen", aws=True, size=11)
+    d.text("mit", 34, 508, 900, 106, "• ECS Managed Instances: EC2 instances that AWS provisions, patches and scales for you (\"Fargate simplicity, EC2 flexibility\":\n  choose instance types, GPUs). Listed by the docs as a launch type AND a capacity provider type.\n"
+           "• EXTERNAL launch type = ECS Anywhere (your own servers / VMs).\n"
+           "• Capacity providers (Fargate, Fargate Spot, Auto Scaling group, Managed Instances) are the recommended way to launch tasks.\n"
+           "• ECS Express Mode: one image → a Fargate web service with load balancer (AWS App Runner is closed to new customers).", size=10, align="left", valign="top")
+    d.box("ex", 20, 602, 920, 72, "Exam\n• \"Don't want to manage servers / serverless containers\" → Fargate. \"Need control of the instance (GPU, custom AMI, daemon)\" → EC2 launch type.\n"
+          "• ECS = AWS API; EKS = Kubernetes API. Both can run on EC2 or Fargate. ECR is the registry for both.", "exam", size=10, align="left")
+    return d
+
+
+def ctr_iam():
+    d = Diagram("ctr-03-ecs-iam-roles", 960, 646, "ECS IAM roles: instance profile (agent), task execution role, task role (app)")
+    d.group("inst", 20, 46, 470, 350, "EC2 instance (EC2 launch type)", "white", aws=True, icon="ec2-instance", size=12)
+    d.box("ag", 40, 90, 160, 50, "ECS agent", "aws-compute", size=11, bold_first=False, icon="ecs", icon_size=30)
+    d.box("ip", 214, 90, 260, 50, "EC2 instance profile\n(container instance role)", "aws-security", size=10, icon="iam-role", icon_size=30)
+    d.box("xr", 214, 180, 260, 50, "Task EXECUTION role (docs)\nused by the agent for each task", "aws-security", size=10, dashed=True, icon="iam-role", icon_size=30)
+    d.box("ta", 40, 257, 160, 50, "Task A", "card", size=11, bold_first=False, icon="ecs-task", icon_size=30)
+    d.box("tra", 214, 257, 260, 50, "ECS task A role\n(in task definition A)", "aws-security", size=10, icon="iam-role", icon_size=30)
+    d.box("tb", 40, 327, 160, 50, "Task B", "card", size=11, bold_first=False, icon="ecs-task", icon_size=30)
+    d.box("trb", 214, 327, 260, 50, "ECS task B role\n(in task definition B)", "aws-security", size=10, icon="iam-role", icon_size=30)
+    d.edge("ag", "ip"); d.edge("ag", "xr", dashed=True, points=[(120, 205)])
+    tg = [("ecsapi", "ECS API", "ecs", 60), ("ecrr", "ECR (pull image)", "ecr", 114), ("cwl", "CloudWatch Logs", "logs", 168),
+          ("sec", "Secrets Manager /\nSSM Parameter Store", "secrets-manager", 222), ("s3", "S3", "s3", 260), ("ddb", "DynamoDB", "dynamodb", 330)]
+    tg[4] = ("s3", "S3", "s3", 260)
+    for bid, lab, ic, y in tg:
+        row(d, bid, 730, y if bid != "s3" else 260, 210, ic, lab, h=44, isize=34)
+    d.edge("ip", "ecsapi", points=[(580, 115), (580, 82)]); d.edge("ip", "ecrr", points=[(600, 115), (600, 136)])
+    d.edge("ip", "cwl", points=[(620, 115), (620, 190)]); d.edge("ip", "sec", points=[(640, 115), (640, 244)])
+    d.edge("xr", "ecrr", dashed=True, points=[(660, 205), (660, 136)]); d.edge("xr", "cwl", dashed=True, points=[(680, 205), (680, 190)])
+    d.edge("xr", "sec", dashed=True, points=[(700, 205), (700, 244)])
+    d.edge("tra", "s3"); d.edge("trb", "ddb")
+    d.text("leg", 20, 400, 920, 30, "solid = course slide · dashed = docs: on Fargate there is no instance profile, so the task execution role does the image pulls, logs and secrets", size=9, italic=True)
+    d.group("doc", 20, 436, 920, 196, "Docs: there are THREE roles, not two", "aws-security", aws=True, icon="iam", size=12)
+    d.text("doct", 34, 466, 900, 162, "Course: the instance profile (EC2 launch type only) is used by the ECS agent to call the ECS API, send container logs to CloudWatch Logs, pull images\n"
+           "from ECR and read secrets from Secrets Manager / SSM Parameter Store. The task role gives each task its own permissions.\n"
+           "1. Container instance role (instance profile, ecsInstanceRole, AmazonEC2ContainerServiceforEC2Role): lets the ECS agent and Docker daemon call AWS APIs.\n"
+           "   EC2 and external (Anywhere) instances only. Never Fargate.\n"
+           "2. Task EXECUTION role (ecsTaskExecutionRole, AmazonECSTaskExecutionRolePolicy): used by the ECS / Fargate agent to PULL images from private ECR,\n"
+           "   SEND logs to CloudWatch Logs (awslogs) and FETCH secrets (Secrets Manager / SSM Parameter Store) for the task. Containers can't use it.\n"
+           "3. Task role (in the task definition; trust ecs-tasks.amazonaws.com): permissions for YOUR APP code (S3, DynamoDB...). Credentials from\n"
+           "   169.254.170.2, rotated, valid 6 h by default. One role per task definition / service = least privilege.\n"
+           "Exam: \"container can't read the S3 bucket\" → fix the TASK role. \"Task fails: can't pull image / can't fetch secret\" → fix the task EXECUTION role.", size=10, align="left", valign="top")
+    return d
+
+
+def ctr_lb_volumes():
+    d = Diagram("ctr-04-ecs-lb-volumes", 960, 690, "ECS load balancer integration and data volumes (EFS, S3 Files)")
+    d.group("lb", 20, 46, 920, 250, "Load balancer integration", "white", aws=True, icon="elb", size=12)
+    node(d, "u", 50, 140, "users", "Users", size=44, w=80)
+    node(d, "alb", 210, 140, "alb", "Application\nLoad Balancer", size=48, w=120)
+    d.edge("u", "alb", "80/443")
+    d.group("cl", 340, 80, 300, 200, "ECS cluster", "white", aws=True, icon="ecs", size=11)
+    for i in range(2):
+        d.group(f"i{i}", 356, 110 + i * 84, 268, 76, "EC2 instance", "white", aws=True, icon="ec2-instance", size=10)
+        for j in range(2):
+            d.box(f"t{i}{j}", 380 + j * 120, 138 + i * 84, 110, 34, "ECS task", "card", size=10, bold_first=False, icon="ecs-task", icon_size=22)
+        d.edge("alb", f"i{i}")
+    d.text("lbt", 654, 80, 280, 210, "• ALB: supported, works for most use\n  cases; dynamic host port mapping.\n  RECOMMENDED by the docs.\n• NLB: only for high throughput / high\n  performance, or to pair with\n  AWS PrivateLink.\n• GWLB: supported (virtual appliances, docs).\n• Classic LB: supported but NOT\n  recommended (no advanced features,\n  no Fargate). Docs now list only\n  ALB / NLB / GWLB.\n• Fargate: target type ip (awsvpc).", size=10, align="left", valign="top")
+    d.group("efs", 20, 312, 450, 280, "Data volumes: Amazon EFS", "aws-storage", aws=True, icon="efs", size=12)
+    d.group("ec", 36, 344, 418, 100, "ECS cluster", "white", aws=True, icon="ecs", size=10)
+    node(d, "e1", 100, 368, "ec2-instance", "EC2 instance", size=40, w=110)
+    node(d, "e2", 330, 368, "fargate", "Fargate", size=40, w=110)
+    node(d, "efsfs", 215, 460, "efs-fs", "Amazon EFS file system", size=44, w=180)
+    d.edge("e1", "efsfs", "mount"); d.edge("e2", "efsfs", "mount")
+    d.text("efst", 34, 522, 430, 66, "• Mount EFS onto ECS tasks; EC2 AND Fargate launch types\n• Tasks in ANY AZ share the same data · Fargate + EFS = serverless\n• Use case: persistent multi-AZ shared storage for containers", size=10, align="left")
+    d.group("s3f", 490, 312, 450, 280, "Data volumes: Amazon S3 Files (new)", "aws-storage", aws=True, icon="s3", size=12)
+    d.group("sc", 506, 344, 418, 100, "ECS cluster", "white", aws=True, icon="ecs", size=10)
+    node(d, "m1", 540, 368, "ec2-instance", "Managed\nInstances", size=40, w=100)
+    node(d, "m2", 695, 368, "fargate", "Fargate", size=40, w=100)
+    node(d, "m3", 850, 368, "ec2", "EC2 (docs: yes)", size=40, w=110)
+    node(d, "s3fs", 690, 460, "s3-bucket", "S3 Files file system ↔ S3 bucket", size=44, w=220)
+    d.edge("m1", "s3fs", "mount"); d.edge("m2", "s3fs", "mount"); d.edge("m3", "s3fs", "mount", dashed=True)
+    d.text("s3t", 504, 522, 430, 66, "• S3 bucket exposed as a file system; changes sync to the bucket\n• Course: Fargate + Managed Instances, EC2 NOT supported.\n  Docs (GA): Fargate, Managed Instances AND EC2. Needs a task role.", size=10, align="left")
+    d.box("ex", 20, 606, 920, 70, "Exam\n• \"Shared persistent storage across AZs for Fargate tasks\" → EFS. \"Containers need file access to data already in S3\" → S3 Files.\n"
+          "• Fargate also has 20 GiB+ ephemeral storage and can attach EBS volumes (one task, one AZ) — not shared.", "exam", size=10, align="left")
+    return d
+
+
+def ctr_scaling():
+    d = Diagram("ctr-05-ecs-auto-scaling", 960, 596, "ECS auto scaling: tasks (Application Auto Scaling) and instances (capacity provider + ASG)")
+    d.group("svc", 20, 46, 920, 230, "ECS Service Auto Scaling (task level)", "aws-compute", aws=True, icon="ecs-service", size=12)
+    node(d, "cw", 50, 96, "cloudwatch", "CloudWatch metric\n(ECS service CPU)", size=44, w=150)
+    node(d, "al", 240, 96, "cw-alarm", "CloudWatch alarm", size=44, w=130)
+    node(d, "aas", 430, 96, "app-autoscaling", "Application\nAuto Scaling", size=44, w=130)
+    d.group("sa", 590, 76, 330, 110, "ECS service A", "white", aws=True, icon="ecs-service", size=11)
+    for i, lab in enumerate(["Task 1", "Task 2", "Task 3 (new)"]):
+        node(d, f"tk{i}", 616 + i * 106, 108, "ecs-task", lab, size=36, w=100)
+    d.edge("cw", "al", "trigger"); d.edge("al", "aas"); d.edge("aas", "sa", "desired count +1")
+    d.text("svt", 34, 196, 900, 76, "Metrics: ECS service average CPU · average memory (scale on RAM) · ALB request count per target (from the ALB)\n"
+           "Policies: TARGET TRACKING (keep a metric at a target) · STEP SCALING (on a CloudWatch alarm) · SCHEDULED (date/time) · docs add PREDICTIVE\n"
+           "and SQS backlog per task. Fargate auto scaling is much easier to set up (serverless: nothing below the tasks to scale).", size=10, align="left", valign="top")
+    d.group("cap", 20, 292, 920, 206, "EC2 launch type: scale the instances under the tasks", "aws-compute", aws=True, icon="ec2-autoscaling", size=12)
+    d.box("asgs", 36, 326, 430, 92, "Option 1: Auto Scaling Group scaling\n• scale the ASG on CPU utilization\n• adds EC2 instances over time (slower, not task-aware)", "card", size=10, align="left", icon="ec2-autoscaling", icon_size=30)
+    d.box("cps", 494, 326, 430, 92, "Option 2: ECS cluster capacity provider (recommended)\n• automatically provisions and scales infrastructure for tasks\n• paired with an ASG; adds EC2 when CPU / RAM is missing", "aws-compute", size=10, align="left", icon="ecs", icon_size=30)
+    d.text("cpt", 34, 426, 900, 112, "How a capacity provider scales (docs): \"managed scaling\" makes ECS create a target tracking policy on the ASG using the metric\n"
+           "CapacityProviderReservation = instances needed / instances running × 100 (target capacity default 100%). Managed termination protection stops\n"
+           "the ASG terminating instances that still run tasks. Strategy: base (minimum tasks on one provider) + weight (ratio), e.g. base 2 on FARGATE,\n"
+           "weight 1 FARGATE : 3 FARGATE_SPOT. Fargate Spot: 2-minute warning (SIGTERM + EventBridge event), discounted, can be interrupted.", size=10, align="left", valign="top")
+    d.box("ex", 20, 512, 920, 70, "Exam\n• ECS Service Auto Scaling (number of TASKS) ≠ EC2 Auto Scaling (number of INSTANCES).\n"
+          "• \"Tasks stuck PROVISIONING / not enough CPU or memory on the cluster\" → capacity provider with managed scaling (or use Fargate).", "exam", size=10, align="left")
+    return d
+
+
+def ctr_patterns():
+    d = Diagram("ctr-06-ecs-event-patterns", 960, 700, "ECS with EventBridge and SQS: four application patterns")
+    d.group("p1", 20, 46, 920, 170, "1) ECS task invoked by EventBridge (S3 upload → process → DynamoDB)", "aws-appint", aws=True, icon="eventbridge", size=11)
+    node(d, "c", 40, 86, "client", "Client", size=40, w=80)
+    node(d, "b", 160, 86, "s3-bucket", "S3 bucket", size=40, w=90)
+    node(d, "eb", 300, 86, "eventbridge", "EventBridge\nrule: run ECS task", size=40, w=140)
+    d.group("f1", 460, 74, 270, 128, "Fargate (ECS cluster, VPC)", "white", aws=True, icon="fargate", size=10)
+    node(d, "t1", 480, 108, "ecs-task", "Task (new)", size=40, w=90)
+    d.box("r1", 580, 112, 140, 44, "Task role:\nS3 + DynamoDB", "aws-security", size=9, icon="iam-role", icon_size=22)
+    node(d, "dd", 820, 86, "dynamodb", "DynamoDB\n(save result)", size=40, w=110)
+    d.edge("c", "b", "upload"); d.edge("b", "eb", "event"); d.edge("eb", "t1", "run task")
+    d.edge("t1", "b", "get object", dashed=True, points=[(500, 196), (180, 196)]); d.edge("f1", "dd", "save")
+    d.group("p2", 20, 230, 450, 170, "2) Invoked by an EventBridge SCHEDULE", "aws-appint", aws=True, icon="eventbridge-scheduler", size=11)
+    node(d, "s", 50, 276, "eventbridge-scheduler", "EventBridge\nevery 1 hour", size=40, w=110)
+    node(d, "t2", 210, 276, "fargate", "Fargate task (new)\nbatch processing", size=40, w=140)
+    node(d, "s3b", 380, 276, "s3", "Amazon S3", size=40, w=90)
+    d.edge("s", "t2", "run task"); d.edge("t2", "s3b", "task role")
+    d.text("p2t", 34, 352, 430, 44, "Cron-style batch jobs without a server waiting all day.", size=10, align="left")
+    d.group("p3", 490, 230, 450, 170, "3) SQS queue example", "aws-appint", aws=True, icon="sqs", size=11)
+    node(d, "m", 510, 276, "sqs-message", "Messages", size=36, w=80)
+    node(d, "q", 610, 276, "sqs-queue", "SQS queue", size=40, w=90)
+    d.group("sv", 720, 262, 210, 90, "Service A", "white", aws=True, icon="ecs-service", size=10)
+    for i in range(3):
+        d.icon(f"q{i}", 736 + i * 64, 294, "ecs-task", 34)
+    d.edge("m", "q"); d.edge("sv", "q", "poll")
+    d.text("p3t", 504, 352, 430, 44, "ECS Service Auto Scaling adds tasks as the queue grows\n(docs: scale on backlog per task).", size=10, align="left")
+    d.group("p4", 20, 414, 920, 170, "4) Intercept STOPPED tasks with EventBridge", "aws-appint", aws=True, icon="eventbridge", size=11)
+    node(d, "et", 60, 460, "ecs-task", "ECS task\n(containers exited)", size=40, w=140)
+    node(d, "ep", 300, 460, "eventbridge-rule", "EventBridge\nevent pattern", size=40, w=120)
+    node(d, "sn", 520, 460, "sns-topic", "SNS topic", size=40, w=100)
+    node(d, "ad", 740, 460, "user", "Administrator\n(email)", size=40, w=110)
+    d.edge("et", "ep", "event"); d.edge("ep", "sn", "trigger"); d.edge("sn", "ad", "email")
+    d.text("p4t", 34, 536, 900, 44, "ECS sends task state change events to EventBridge; match lastStatus STOPPED (and stoppedReason / exit code) to alert.", size=10, align="left")
+    d.box("ex", 20, 598, 920, 88, "Exam\n• \"Run a container when a file lands in S3\" → S3 event → EventBridge rule → ECS RunTask (Fargate), task role for S3/DynamoDB.\n"
+          "• \"Run a container every hour / nightly\" → EventBridge schedule (Scheduler) → ECS task.   • \"Workers drain a queue\" → ECS service + SQS + service auto scaling.\n"
+          "• \"Notify when a task stops / crashes\" → EventBridge event pattern → SNS.", "exam", size=10, align="left")
+    return d
+
+
+def ctr_ecr():
+    d = Diagram("ctr-07-ecr", 960, 520, "Amazon ECR: private and public registry for container images")
+    d.group("repo", 20, 46, 430, 330, "ECR repository", "aws-compute", aws=True, icon="ecr", size=12)
+    node(d, "ia", 90, 84, "container-image", "Docker image A", size=44, w=120)
+    node(d, "ib", 300, 84, "container-image", "Docker image B", size=44, w=120)
+    d.group("cl", 60, 204, 350, 156, "ECS cluster", "white", aws=True, icon="ecs", size=11)
+    d.group("in", 80, 236, 310, 108, "EC2 instance", "white", aws=True, icon="ec2-instance", size=10)
+    d.box("ro", 150, 270, 170, 44, "IAM role", "aws-security", size=11, bold_first=False, icon="iam-role", icon_size=28)
+    d.edge("ia", "ro", "pull"); d.edge("ib", "ro", "pull")
+    d.group("ft", 470, 46, 470, 330, "Features", "card", aws=True, size=12)
+    d.text("ftt", 484, 76, 450, 296, "Course\n• Store and manage Docker images on AWS\n• Private and public repositories (ECR Public Gallery)\n• Fully integrated with ECS, backed by Amazon S3\n• Access controlled through IAM (permission error → policy)\n• Image vulnerability scanning, versioning, tags, lifecycle\n\nDocs\n• Scanning: BASIC (OS CVEs, manual or on push) or\n  ENHANCED (Amazon Inspector: OS + language packages,\n  on push or continuous)\n• Lifecycle policies expire old / untagged images\n• Cross-Region and cross-account replication (registry setting)\n• Pull through cache for upstream registries (Docker Hub...)\n• Tag immutability, encryption, repository policies", size=10, align="left", valign="top")
+    d.box("ex", 20, 390, 920, 116, "Exam\n• \"Private Docker registry on AWS, IAM controlled\" → ECR. \"Pull fails with AccessDenied\" → IAM policy (task execution role on Fargate,\n"
+          "  instance role on EC2) or the repository policy for cross-account.\n"
+          "• \"Find vulnerabilities in images\" → ECR scanning (enhanced = Amazon Inspector, continuous).\n"
+          "• \"Too many old images / storage cost\" → lifecycle policy. \"Same image in another Region / account\" → replication.\n"
+          "• \"Docker Hub rate limits\" → ECR pull through cache.", "exam", size=10, align="left")
+    return d
+
+
+def ctr_eks():
+    d = Diagram("ctr-08-eks-nodes-storage", 960, 590, "Amazon EKS: node types and data volumes")
+    types = [("Managed node groups", "ec2-autoscaling", "aws-compute", "• EKS creates and manages the nodes\n  (EC2 instances) for you\n• Nodes are part of an ASG\n  managed by EKS\n• On-Demand or Spot\n• Updates drain nodes,\n  respect PodDisruptionBudgets"),
+             ("Self-managed nodes", "ec2-instance", "aws-gen", "• Nodes created by YOU, registered\n  to the cluster, in your own ASG\n• Prebuilt Amazon EKS optimized\n  AMI (now AL2023 / Bottlerocket;\n  AL2 AMIs stopped 26 Nov 2025)\n• On-Demand or Spot\n• Most manual maintenance"),
+             ("AWS Fargate", "fargate", "aws-compute", "• No maintenance, no nodes\n• Fargate profile picks pods\n• Private subnets only, IP targets\n• No DaemonSets, privileged\n  pods, GPUs, EBS or Spot\n• EFS works (static only)")]
+    for i, (t, ic, col, b) in enumerate(types):
+        x = 20 + i * 232
+        d.group(f"n{i}", x, 46, 222, 190, t, col, aws=True, icon=ic, size=11)
+        d.text(f"n{i}t", x + 10, 78, 206, 152, b, size=10, align="left", valign="top")
+    d.group("new", 716, 46, 224, 190, "Newer (docs)", "aws-gen", aws=True, icon="eks", size=11)
+    d.text("newt", 726, 78, 208, 152, "• EKS Auto Mode: AWS runs\n  compute (Karpenter-based),\n  networking, LB, storage;\n  Bottlerocket nodes, max\n  21-day lifetime\n• Hybrid nodes: your on-prem\n  machines join an EKS cluster\n• Mix any of these in one\n  cluster", size=10, align="left", valign="top")
+    d.group("st", 20, 252, 920, 230, "EKS data volumes: StorageClass + CSI driver", "aws-storage", aws=True, icon="ebs", size=12)
+    node(d, "pod", 60, 320, "container", "Pod", size=44, w=80)
+    d.box("pvc", 170, 310, 150, 60, "PVC\n(claim)", "card", size=10, auto_icon=False)
+    d.box("sc", 350, 310, 170, 60, "StorageClass\n(manifest you specify)", "card", size=10, auto_icon=False)
+    d.box("csi", 550, 310, 150, 60, "CSI driver\n(Container Storage\nInterface)", "aws-storage", size=10, auto_icon=False)
+    d.edge("pod", "pvc"); d.edge("pvc", "sc"); d.edge("sc", "csi")
+    for i, (ic, lab) in enumerate([("ebs", "Amazon EBS"), ("efs", "Amazon EFS (+ Fargate)"), ("fsx-lustre", "FSx for Lustre"), ("fsx-ontap", "FSx for NetApp ONTAP")]):
+        row(d, f"sv{i}", 730, 270 + i * 46, 200, ic, lab, h=40, isize=30)
+        d.edge("csi", f"sv{i}", points=[(715, 340), (715, 290 + i * 46)])
+    d.text("stt", 34, 410, 900, 108, "Course list: EBS, EFS (works with Fargate), FSx for Lustre, FSx for NetApp ONTAP.\n"
+           "Docs add: FSx for OpenZFS, Amazon File Cache, Mountpoint for Amazon S3, S3 Files (through the EFS CSI driver, not on Fargate), instance store.\n"
+           "EBS = one AZ, one node (ReadWriteOnce) · EFS = many pods across AZs (ReadWriteMany) · Fargate pods: EFS only, no EBS.\n"
+           "Also: one EKS cluster per Region for multi-Region; logs and metrics with CloudWatch Container Insights.", size=10, align="left", valign="top")
+    d.box("ex", 20, 496, 920, 80, "Exam\n• \"Already use Kubernetes on-prem or in another cloud, move to AWS\" → EKS (Kubernetes is cloud-agnostic). Otherwise ECS is simpler.\n"
+          "• \"Least node management on EKS\" → Fargate (or Auto Mode). \"Spot nodes managed for me\" → managed node group with Spot capacity type.\n"
+          "• \"Shared storage for pods in several AZs\" → EFS CSI driver. \"Fast block storage for one pod\" → EBS CSI driver.", "exam", size=10, align="left")
+    return d
+
+
+def ctr_anywhere():
+    d = Diagram("ctr-09-ecs-eks-anywhere", 960, 600, "ECS Anywhere vs EKS Anywhere: containers on your own infrastructure")
+    d.group("ea", 20, 46, 450, 410, "ECS Anywhere", "aws-compute", aws=True, icon="ecs-anywhere", size=12)
+    d.group("reg", 36, 78, 418, 96, "AWS Region", "white", aws=True, icon="region", size=10)
+    d.box("cp", 56, 108, 380, 50, "Fully managed ECS control plane", "aws-compute", size=10, bold_first=False, icon="ecs", icon_size=30)
+    d.group("dc", 36, 214, 418, 104, "Your data center / VMs", "white", aws=True, icon="corp-dc", size=10)
+    d.box("srv", 56, 246, 380, 56, "Server: ECS container agent + SSM agent\ntasks run with launch type EXTERNAL", "card", size=10, icon="server", icon_size=30)
+    d.edge("srv", "cp", "stable connection\nto the Region", both=True)
+    d.text("eat", 34, 326, 430, 126, "• Run native ECS tasks on customer-managed infrastructure\n• MUST have a stable connection to the AWS Region\n• Use case: compliance, regulatory, latency requirements\n• Docs: no service load balancing, no service discovery, no\n  awsvpc, no capacity providers, no EFS; Linux only now\n  (Windows deprecated); SSM rotates credentials every 30 min", size=10, align="left", valign="top")
+    d.group("ka", 490, 46, 450, 410, "EKS Anywhere", "aws-compute", aws=True, icon="eks-anywhere", size=12)
+    d.group("dc2", 506, 78, 418, 120, "Your data center (vSphere, bare metal, Nutanix, CloudStack, Snow)", "white", aws=True, size=10)
+    d.box("kc", 526, 110, 380, 72, "Kubernetes cluster: control plane AND\nworkers on YOUR infrastructure\nbuilt on Amazon EKS Distro", "card", size=10, icon="eks-distro", icon_size=30)
+    node(d, "con", 690, 236, "eks", "EKS console\n(via EKS Connector, optional)", size=40, w=200)
+    d.edge("kc", "con", "optional", dashed=True)
+    d.text("kat", 504, 312, 430, 140, "• Create / operate Kubernetes clusters OUTSIDE AWS\n• EKS Distro = AWS's bundled Kubernetes release\n• Install with the EKS Anywhere installer (eksctl anywhere)\n• Fully connected / partially disconnected: connect via\n  EKS Connector, use the EKS console\n• Fully disconnected: EKS Distro + open-source tools\n• User-managed; free, optional paid Enterprise Subscription", size=10, align="left", valign="top")
+    d.box("ex", 20, 470, 920, 116, "The difference that gets tested\n• ECS Anywhere: control plane stays IN AWS; your servers only run tasks → needs a stable link to the Region.\n"
+          "• EKS Anywhere: the whole cluster (control plane too) runs on YOUR hardware → can run air-gapped / fully disconnected.\n"
+          "• EKS Hybrid Nodes (docs): control plane in AWS (EKS), worker nodes on-prem — the Kubernetes version of the ECS Anywhere idea.\n"
+          "• Keyword \"on-premises containers + compliance / data residency / low latency, managed from AWS\" → ECS Anywhere (or EKS Hybrid Nodes).", "exam", size=10, align="left")
+    return d
+
+
+CONTAINERS = [ctr_docker, ctr_services, ctr_iam, ctr_lb_volumes, ctr_scaling, ctr_patterns, ctr_ecr, ctr_eks, ctr_anywhere]
+
+
 ALL = [iam_big_picture, policy_anatomy, policy_evaluation, access_methods, role_assume, mfa_password,
        security_tools, shared_responsibility,
        global_infra,
@@ -2018,7 +2290,7 @@ ALL = [iam_big_picture, policy_anatomy, policy_evaluation, access_methods, role_
        ec2_ips, placement_groups, eni_hibernate,
        storage_compare, ebs_snapshots_ami, ebs_volume_types, efs_classes,
        elb_types, alb_flow, asg,
-       rds_replicas_multiaz, aurora, rds_backup_proxy, elasticache] + ROUTE53 + S3 + CLOUDFRONT + STORAGE_EXTRAS + MESSAGING + EKS
+       rds_replicas_multiaz, aurora, rds_backup_proxy, elasticache] + ROUTE53 + S3 + CLOUDFRONT + STORAGE_EXTRAS + MESSAGING + EKS + CONTAINERS
 
 if __name__ == "__main__":
     force = "--force" in sys.argv

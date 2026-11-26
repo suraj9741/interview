@@ -186,6 +186,19 @@ DRAWIO_AWS.update({
     "cloudformation": ("service", "cloudformation", MGMT),
 })
 
+# Containers section (13-containers.md), stencil names checked against the aws4 set 26 Nov 2026
+DRAWIO_AWS.update({
+    "ecs": ("service", "ecs", COMPUTE), "fargate": ("service", "fargate", COMPUTE),
+    "ecs-service": ("resource", "ecs_service", COMPUTE), "ecs-task": ("resource", "ecs_task", COMPUTE),
+    "ecs-anywhere": ("resource", "ecs_anywhere", COMPUTE), "eks-anywhere": ("resource", "eks_anywhere", COMPUTE),
+    "eks-distro": ("resource", "eks_distro", COMPUTE), "eks-cloud": ("resource", "eks_cloud", COMPUTE),
+    "bottlerocket": ("service", "bottlerocket", COMPUTE), "ssm": ("service", "systems_manager", MGMT),
+    "parameter-store": ("resource", "parameter_store", MGMT), "app-autoscaling": ("service", "application_auto_scaling", MGMT),
+    "eventbridge-scheduler": ("resource", "eventbridge_scheduler", APPINT), "eventbridge-rule": ("resource", "rule", APPINT),
+    "event-bus": ("resource", "default_event_bus_resource", APPINT), "inspector": ("service", "inspector", SECURITY),
+    "privatelink": ("service", "privatelink", NETWORK),
+})
+
 # draw.io's Kubernetes icons (shape=mxgraph.kubernetes.icon;prIcon=<name>): blue heptagon, white glyph.
 K8S_BLUE = "#326CE5"
 DRAWIO_K8S = {f"k8s-{n}": n for n in (
