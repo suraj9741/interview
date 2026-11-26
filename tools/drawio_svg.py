@@ -29,6 +29,14 @@ PALETTE = {  # name: (fill, stroke), the draw.io default colour set
     "white": ("#ffffff", "#666666"),
     "outline": ("none", "#666666"),
     "none": ("none", "none"),
+    "aws-public": ("#F2F6E8", "#7AA116"),   # draw.io AWS public subnet fill
+    "aws-private": ("#E6F6F7", "#00A4A6"),  # draw.io AWS private subnet fill
+    "az": ("none", "#147EBA"),              # draw.io AWS availability zone (dashed, no fill)
+    # AWS-style section colours (light fill + AWS category colour), for aws=True groups and cards
+    "aws-appint": ("#FDF0F6", "#E7157B"), "aws-analytics": ("#F4EFFF", "#8C4FFF"),
+    "aws-compute": ("#FEF3E8", "#ED7100"), "aws-storage": ("#F2F6E8", "#7AA116"),
+    "aws-security": ("#FDEEF0", "#DD344C"), "aws-gen": ("#F5F6F7", "#7D8998"),
+    "card": ("#FFFFFF", "#879196"), "exam": ("#FFF8E8", "#F2A93B"),
 }
 INK = "#1a1a1a"
 LINE = "#555555"
@@ -121,6 +129,9 @@ DRAWIO_AWS = {  # icon file name: (kind, mxgraph.aws4 name, fill colour); kind "
     "flink": ("service", "managed_service_for_apache_flink", ANALYTICS),
     "msk": ("service", "managed_streaming_for_kafka", ANALYTICS), "dynamodb": ("service", "dynamodb", DATABASE),
     "generic-app": ("resource", "generic_application", GENERAL), "sensor": ("resource", "sensor", GENERAL),
+    # EKS (stencil names checked against the aws4 set 26 Nov 2026)
+    "eks": ("service", "eks", COMPUTE), "container": ("resource", "container_1", COMPUTE),
+    "nat-gateway": ("resource", "nat_gateway", NETWORK),
 }
 
 
@@ -128,7 +139,7 @@ DRAWIO_AWS = {  # icon file name: (kind, mxgraph.aws4 name, fill colour); kind "
 # A group() whose icon is listed here becomes that container shape in the draw.io model (icon in its corner);
 # a lone icon() of one of these becomes a borderless group shape, so only its corner icon shows.
 DRAWIO_AWS_GROUP = {  # icon name: (draw.io group icon stencil, AWS colour from draw.io's sidebar)
-    "region": ("group_region", "#00A4A6"), "vpc": ("group_vpc2", "#8C4FFF"),
+    "aws-cloud": ("group_aws_cloud_alt", "#232F3E"), "region": ("group_region", "#00A4A6"), "vpc": ("group_vpc2", "#8C4FFF"),
     "asg-group": ("group_auto_scaling_group", "#D86613"), "spot-fleet": ("group_spot_fleet", "#D86613"),
     "private-subnet": ("group_security_group", "#00A4A6"), "public-subnet": ("group_security_group", "#7AA116"),
 }
@@ -247,8 +258,20 @@ class Diagram:
         return id
 
     def group(self, id, x, y, w, h, label, color="gray", *, dashed=False, size=13,
-              valign="top", align="center", icon=None, icon_size=24):
-        """A labelled region. Add it BEFORE the boxes inside it, so it is drawn behind them."""
+              valign="top", align="center", icon=None, icon_size=24, aws=False):
+        """A labelled region. Add it BEFORE the boxes inside it, so it is drawn behind them.
+
+        aws=True draws it like a draw.io AWS group: square corners, label top-left, and the icon (if any) as a
+        25 px tile in the top-left corner (like the Region / VPC groups)."""
+        if aws and icon not in DRAWIO_AWS_GROUP:
+            gid = self.box(id, x, y, w, h, label, color, size=size, bold=True, dashed=dashed,
+                           valign="top", align="left", icon=icon, icon_size=GROUP_ICON)
+            v = self._by_id[gid]
+            v["square"] = True
+            v["pad_left"] = GROUP_ICON + 4 if icon else 2
+            if icon:
+                self._by_id[f"{gid}-icon"].update(x=x, y=y)
+            return gid
         gid = self.box(id, x, y, w, h, label, color, size=size, bold=True, dashed=dashed,
                        valign=valign, align=align, icon=icon, icon_size=icon_size)
         if icon in DRAWIO_AWS_GROUP:  # draw.io: its AWS container shape draws the icon itself, top-left, 25 px
@@ -271,9 +294,9 @@ class Diagram:
         v["shape"], v["icon"], v["drawio_style"] = "image", name, style
         return id
 
-    def text(self, id, x, y, w, h, label, *, size=12, bold=False, italic=False, align="center"):
+    def text(self, id, x, y, w, h, label, *, size=12, bold=False, italic=False, align="center", valign="middle"):
         return self.box(id, x, y, w, h, label, "none", shape="text", size=size, bold=bold,
-                        italic=italic, align=align, bold_first=False)
+                        italic=italic, align=align, bold_first=False, valign=valign)
 
     def edge(self, src, tgt, label=None, *, dashed=False, both=False, points=None, size=10):
         for end in (src, tgt):
@@ -312,8 +335,8 @@ class Diagram:
         out, inset = [], 0.0
         if v["shape"] == "image":
             return icon_svg(v["icon"], x, y, w, h, defs)
-        if v.get("drawio_group"):  # AWS container: square corners, AWS colour border (as draw.io draws it)
-            stroke = v["aws_stroke"]
+        if v.get("drawio_group") or v.get("square"):  # AWS container: square corners, AWS colour border
+            stroke = v.get("aws_stroke", stroke)
             paint = f'fill="{fill}" stroke="{stroke}" stroke-width="1.5"{dash}'
             out.append(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" {paint}/>')
         elif v["shape"] == "rect":
@@ -377,7 +400,7 @@ class Diagram:
         if v["shape"] == "text":
             style = "text;strokeColor=none;fillColor=none;" + common
         else:
-            shape = {"rect": "rounded=1;absoluteArcSize=1;arcSize=16;",
+            shape = {"rect": "rounded=0;" if v.get("square") else "rounded=1;absoluteArcSize=1;arcSize=16;",
                      "ellipse": "ellipse;",
                      "cylinder": "shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=8;"}[v["shape"]]
             style = shape + f"fillColor={fill};strokeColor={stroke};strokeWidth=1.5;" + common
