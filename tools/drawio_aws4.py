@@ -27,29 +27,41 @@ TARBALL = "https://registry.npmjs.org/@markdown-viewer/drawio2svg/-/drawio2svg-1
 TARBALL_SHA256 = "852288d9b3cd7b7566275eaf3602da418ac1e4d06de923cbad1b138a7db9ff21"
 CACHE = Path(os.environ.get("DRAWIO_AWS4_STENCILS", Path.home() / ".cache" / "drawio-aws4" / "aws4.json"))
 
-_stencils: dict | None = None
+def _decode(bundle: dict) -> dict:
+    raw = zlib.decompress(base64.b64decode(bundle["data"])).decode("utf-8")  # zlib-wrapped deflate
+    if raw.startswith("%"):
+        raw = urllib.parse.unquote(raw)
+    return json.loads(raw)
 
 
-def _download() -> dict:
+def _download(sets=("aws4", "kubernetes")) -> None:
+    """Fetch the pinned package once and cache the stencil sets this repo uses (aws4, kubernetes)."""
     data = urllib.request.urlopen(TARBALL, timeout=60).read()
     if hashlib.sha256(data).hexdigest() != TARBALL_SHA256:
         raise RuntimeError("drawio_aws4: stencil package checksum mismatch, refusing to use it")
     with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as tar:
-        bundle = json.load(tar.extractfile("package/resources/stencils/aws4.json"))
-    raw = zlib.decompress(base64.b64decode(bundle["data"])).decode("utf-8")  # zlib-wrapped deflate
-    if raw.startswith("%"):
-        raw = urllib.parse.unquote(raw)
-    stencils = json.loads(raw)
-    CACHE.parent.mkdir(parents=True, exist_ok=True)
-    CACHE.write_text(json.dumps(stencils), encoding="utf-8")
-    return stencils
+        for name in sets:
+            bundle = json.load(tar.extractfile(f"package/resources/stencils/{name}.json"))
+            out = CACHE if name == "aws4" else CACHE.parent / f"{name}.json"
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text(json.dumps(_decode(bundle)), encoding="utf-8")
+
+
+_sets: dict[str, dict] = {}
+
+
+def stencil_set(name: str = "aws4") -> dict:
+    """One draw.io stencil set by name: aws4 (AWS library) or kubernetes (Kubernetes icons)."""
+    if name not in _sets:
+        path = CACHE if name == "aws4" else CACHE.parent / f"{name}.json"
+        if not path.exists():
+            _download()
+        _sets[name] = json.loads(path.read_text(encoding="utf-8"))
+    return _sets[name]
 
 
 def stencils() -> dict:
-    global _stencils
-    if _stencils is None:
-        _stencils = json.loads(CACHE.read_text(encoding="utf-8")) if CACHE.exists() else _download()
-    return _stencils
+    return stencil_set("aws4")
 
 
 def has(name: str) -> bool:
@@ -70,13 +82,13 @@ def _cmd(cmd: list) -> str:
     return out
 
 
-def stencil_symbol(name: str, fill: str) -> tuple[str, str]:
+def stencil_symbol(name: str, fill: str, family: str = "aws4") -> tuple[str, str]:
     """(id, <symbol>) for stencil mxgraph.aws4.<name> painted in `fill`, in the stencil's own units.
 
     Use it as <use href="#id" x= y= width= height=/>: the viewBox keeps the aspect and centres the shape,
     like draw.io does. One symbol per shape and colour, so repeated icons cost a few bytes each."""
-    st = stencils()[f"aws4.{name}"]
-    sid = f"aws4-{name}-{fill.lstrip('#').lower()}"
+    st = stencil_set(family)[f"{family}.{name}"]
+    sid = f"{family}-{name}-{fill.lstrip('#').lower()}"
     out, d, color, alpha = [], [], fill, None
     for item in st.get("background", []) + st.get("foreground", []):
         if isinstance(item, dict) and "path" in item:

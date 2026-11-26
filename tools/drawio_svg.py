@@ -13,12 +13,30 @@ from __future__ import annotations
 
 import html
 import math
+import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import drawio_aws4
 
-PALETTE = {  # name: (fill, stroke), the draw.io default colour set
+# STYLE RULES (Suraj, 26 Nov 2026): every diagram uses the "AWS architecture" look of eks-01-worker-nodes:
+# square AWS-style containers with the label top-left (and a 25 px corner icon when one fits), native draw.io
+# library icons (AWS aws4 shapes, Kubernetes icons) instead of plain boxes, and AWS category colours.
+# THEME = "aws" applies it to every diagram built with this module (the colour names below keep their meaning:
+# green = good/right, red = bad/wrong, yellow = exam tip...). THEME = "classic" is the old pastel look, kept only
+# so tools/restyle_drawio.py can check that it reads an old diagram back exactly. See tools/README.md.
+THEME = "aws"
+PALETTE_CLASSIC = {  # name: (fill, stroke), the draw.io default colour set (old look)
+    "blue": ("#dae8fc", "#6c8ebf"), "green": ("#d5e8d4", "#82b366"), "yellow": ("#fff2cc", "#d6b656"),
+    "orange": ("#ffe6cc", "#d79b00"), "red": ("#f8cecc", "#b85450"), "purple": ("#e1d5e7", "#9673a6"),
+    "gray": ("#f5f5f5", "#666666"), "white": ("#ffffff", "#666666"), "outline": ("none", "#666666"),
+}
+PALETTE_AWS = {  # the same names in the AWS look: light fill + AWS category colour border
+    "blue": ("#EAF3FB", "#147EBA"), "green": ("#F2F6E8", "#7AA116"), "yellow": ("#FFF8E8", "#F2A93B"),
+    "orange": ("#FEF3E8", "#ED7100"), "red": ("#FDEEF0", "#DD344C"), "purple": ("#F4EFFF", "#8C4FFF"),
+    "gray": ("#F5F6F7", "#7D8998"), "white": ("#FFFFFF", "#879196"), "outline": ("none", "#7D8998"),
+}
+PALETTE = {  # name: (fill, stroke)
     "blue": ("#dae8fc", "#6c8ebf"),
     "green": ("#d5e8d4", "#82b366"),
     "yellow": ("#fff2cc", "#d6b656"),
@@ -29,7 +47,24 @@ PALETTE = {  # name: (fill, stroke), the draw.io default colour set
     "white": ("#ffffff", "#666666"),
     "outline": ("none", "#666666"),
     "none": ("none", "none"),
+    "aws-public": ("#F2F6E8", "#7AA116"),   # draw.io AWS public subnet fill
+    "aws-private": ("#E6F6F7", "#00A4A6"),  # draw.io AWS private subnet fill
+    "az": ("none", "#147EBA"),              # draw.io AWS availability zone (dashed, no fill)
+    # AWS-style section colours (light fill + AWS category colour), for aws=True groups and cards
+    "aws-appint": ("#FDF0F6", "#E7157B"), "aws-analytics": ("#F4EFFF", "#8C4FFF"),
+    "aws-compute": ("#FEF3E8", "#ED7100"), "aws-storage": ("#F2F6E8", "#7AA116"),
+    "aws-security": ("#FDEEF0", "#DD344C"), "aws-gen": ("#F5F6F7", "#7D8998"),
+    "card": ("#FFFFFF", "#879196"), "exam": ("#FFF8E8", "#F2A93B"),
 }
+
+
+def pal(name: str) -> tuple[str, str]:
+    """(fill, stroke) of a colour name in the current THEME."""
+    if THEME == "aws" and name in PALETTE_AWS:
+        return PALETTE_AWS[name]
+    return PALETTE[name]
+
+
 INK = "#1a1a1a"
 LINE = "#555555"
 FONT = "Helvetica, Arial, sans-serif"
@@ -121,6 +156,9 @@ DRAWIO_AWS = {  # icon file name: (kind, mxgraph.aws4 name, fill colour); kind "
     "flink": ("service", "managed_service_for_apache_flink", ANALYTICS),
     "msk": ("service", "managed_streaming_for_kafka", ANALYTICS), "dynamodb": ("service", "dynamodb", DATABASE),
     "generic-app": ("resource", "generic_application", GENERAL), "sensor": ("resource", "sensor", GENERAL),
+    # EKS (stencil names checked against the aws4 set 26 Nov 2026)
+    "eks": ("service", "eks", COMPUTE), "container": ("resource", "container_1", COMPUTE),
+    "nat-gateway": ("resource", "nat_gateway", NETWORK),
 }
 
 
@@ -128,15 +166,39 @@ DRAWIO_AWS = {  # icon file name: (kind, mxgraph.aws4 name, fill colour); kind "
 # A group() whose icon is listed here becomes that container shape in the draw.io model (icon in its corner);
 # a lone icon() of one of these becomes a borderless group shape, so only its corner icon shows.
 DRAWIO_AWS_GROUP = {  # icon name: (draw.io group icon stencil, AWS colour from draw.io's sidebar)
-    "region": ("group_region", "#00A4A6"), "vpc": ("group_vpc2", "#8C4FFF"),
+    "aws-cloud": ("group_aws_cloud_alt", "#232F3E"), "region": ("group_region", "#00A4A6"), "vpc": ("group_vpc2", "#8C4FFF"),
     "asg-group": ("group_auto_scaling_group", "#D86613"), "spot-fleet": ("group_spot_fleet", "#D86613"),
     "private-subnet": ("group_security_group", "#00A4A6"), "public-subnet": ("group_security_group", "#7AA116"),
 }
 GROUP_ICON = 25  # draw.io draws a group's icon 25 x 25 at its top-left corner
 
+# More AWS library names used by the restyle (general icons for networking / tooling diagrams), checked 26 Nov 2026
+DRAWIO_AWS.update({
+    "router": ("resource", "router", NETWORK), "firewall": ("resource", "generic_firewall", SECURITY),
+    "database": ("resource", "generic_database", DATABASE), "transit-gateway": ("service", "transit_gateway", NETWORK),
+    "ecr": ("service", "ecr", COMPUTE), "secrets-manager": ("service", "secrets_manager", SECURITY),
+    "prometheus": ("service", "managed_service_for_prometheus", MGMT),
+    "grafana": ("service", "managed_service_for_grafana", MGMT), "git-repo": ("resource", "git_repository", "#C925D1"),
+    "cli": ("resource", "command_line_interface", GENERAL), "logs": ("resource", "logs", MGMT),
+    "route-table": ("resource", "route_table", NETWORK), "vpn": ("service", "site_to_site_vpn", NETWORK),
+    "cert-manager": ("service", "certificate_manager", SECURITY), "sagemaker": ("service", "sagemaker", "#01A88D"),
+    "otel": ("service", "distro_for_opentelemetry", MGMT), "container-image": ("resource", "container_registry_image", COMPUTE),
+    "cloudformation": ("service", "cloudformation", MGMT),
+})
+
+# draw.io's Kubernetes icons (shape=mxgraph.kubernetes.icon;prIcon=<name>): blue heptagon, white glyph.
+K8S_BLUE = "#326CE5"
+DRAWIO_K8S = {f"k8s-{n}": n for n in (
+    "api", "c_c_m", "c_m", "c_role", "cm", "crb", "crd", "cronjob", "deploy", "ds", "ep", "etcd", "hpa", "ing", "job",
+    "k_proxy", "kubelet", "limits", "master", "netpol", "node", "ns", "pod", "pv", "pvc", "quota", "rb", "role", "rs",
+    "sa", "sc", "sched", "secret", "sts", "svc", "user", "vol")}
+
 
 def drawio_aws_style(name: str) -> str | None:
     """draw.io library style for a vendored icon, or None if it has no library match."""
+    if name in DRAWIO_K8S:
+        return ("html=1;dashed=0;whiteSpace=wrap;fillColor=#326CE5;strokeColor=#ffffff;aspect=fixed;"
+                f"verticalLabelPosition=bottom;verticalAlign=top;shape=mxgraph.kubernetes.icon;prIcon={DRAWIO_K8S[name]};")
     if name not in DRAWIO_AWS:
         return None
     kind, shape, fill = DRAWIO_AWS[name]
@@ -157,6 +219,15 @@ def icon_svg(name: str, x: float, y: float, w: float, h: float, defs: dict) -> s
     if name in DRAWIO_AWS_GROUP:
         shape, color = DRAWIO_AWS_GROUP[name]
         return use(shape, color, x, y, w, h)
+    if name in DRAWIO_K8S:  # heptagon (flat bottom edge, point up) + white glyph, like draw.io's icon shape
+        cx, cy, r = x + w / 2, y + h / 2, min(w, h) / 2
+        pts = " ".join(f"{cx + r * math.sin(2 * math.pi * k / 7):.1f},{cy - r * math.cos(2 * math.pi * k / 7) + r * 0.05:.1f}"
+                       for k in range(7))
+        sid, symbol = drawio_aws4.stencil_symbol(DRAWIO_K8S[name], "#ffffff", "kubernetes")
+        defs[sid] = symbol
+        g = 0.56 * min(w, h)
+        return (f'<polygon points="{pts}" fill="{K8S_BLUE}" stroke="#ffffff" stroke-width="1" stroke-linejoin="round"/>'
+                f'<use xlink:href="#{sid}" x="{cx - g / 2:g}" y="{cy - g / 2:g}" width="{g:g}" height="{g:g}"/>')
     kind, shape, fill = DRAWIO_AWS[name]
     if kind == "service":  # mxgraph.aws4.resourceIcon: coloured tile, white stencil inset by 10%
         return (f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="{fill}"/>'
@@ -217,6 +288,71 @@ def _svg_text(lines, x, y, w, h, size, valign, align, bold, bold_first, italic, 
     return "".join(out)
 
 
+# THEME "aws": a box whose FIRST label line matches one of these gets that draw.io icon at its left (only if the
+# text still fits); a container (group) whose label matches GROUP_ICON_RULES gets it as its corner icon.
+# First match wins, so put specific patterns before general ones. Patterns are regexes on the lower-cased line.
+ICON_RULES = [
+    (r"cloud-controller-manager", "k8s-c_c_m"), (r"kube-controller-manager|controller manager", "k8s-c_m"),
+    (r"kube-apiserver|\bapi server\b|\bapi-server\b", "k8s-api"), (r"\betcd\b", "k8s-etcd"),
+    (r"kube-scheduler|^scheduler\b", "k8s-sched"), (r"\bkubelet\b", "k8s-kubelet"), (r"kube-proxy", "k8s-k_proxy"),
+    (r"horizontalpodautoscaler|^hpa\b", "k8s-hpa"), (r"\bdaemonset\b", "k8s-ds"), (r"\bstatefulset\b", "k8s-sts"),
+    (r"\breplicaset\b", "k8s-rs"), (r"\bdeployment\b", "k8s-deploy"), (r"\bcronjob\b", "k8s-cronjob"),
+    (r"\bconfigmap\b", "k8s-cm"), (r"persistentvolumeclaim|\bpvc\b", "k8s-pvc"),
+    (r"persistentvolume\b|^pv\b", "k8s-pv"), (r"storageclass", "k8s-sc"), (r"networkpolicy", "k8s-netpol"),
+    (r"serviceaccount", "k8s-sa"), (r"clusterrolebinding|\brolebinding\b", "k8s-rb"), (r"\bclusterrole\b", "k8s-c_role"),
+    (r"endpointslice|^endpoints?\b", "k8s-ep"), (r"\bingress\b", "k8s-ing"),
+    (r"^(k8s |kubernetes )?secret\b", "k8s-secret"), (r"^(k8s |kubernetes )?service\b|clusterip|nodeport", "k8s-svc"),
+    (r"^crd\b|customresourcedefinition", "k8s-crd"), (r"^(client |new |v\d+ |app |a |the )?pods?\b", "k8s-pod"),
+    (r"worker node|^node[- ]?\d*\b|control plane node", "k8s-node"), (r"control plane", "k8s-master"),
+    (r"nat gateway", "nat-gateway"), (r"internet gateway|\bigw\b", "igw"), (r"transit gateway|\btgw\b", "transit-gateway"),
+    (r"\balb\b|application load balancer", "alb"), (r"\bnlb\b|network load balancer", "nlb"),
+    (r"load balancer|\belb\b", "elb"), (r"cloudfront", "cloudfront"), (r"route 53|route53", "route53"),
+    (r"global accelerator", "global-accelerator"), (r"\baurora\b", "aurora"), (r"\brds\b", "rds"),
+    (r"dynamodb", "dynamodb"), (r"elasticache|\bredis\b", "elasticache"), (r"\bs3\b", "s3-bucket"),
+    (r"\bebs\b", "ebs-volume"), (r"\befs\b", "efs"), (r"\bfsx\b", "fsx"), (r"\bsqs\b", "sqs-queue"),
+    (r"\bsns\b", "sns-topic"), (r"\blambda\b", "lambda-fn"), (r"auto scaling|\basg\b", "ec2-autoscaling"),
+    (r"\bec2\b", "ec2-instance"), (r"\beks\b", "eks"), (r"\becr\b|registry", "ecr"), (r"iam role", "iam-role"),
+    (r"\biam\b", "iam"), (r"secrets manager", "secrets-manager"), (r"\bkms\b", "kms"), (r"cloudwatch", "cloudwatch"),
+    (r"cloudtrail", "cloudtrail"), (r"kinesis", "kinesis-data-streams"), (r"firehose", "firehose"),
+    (r"api gateway", "api-gateway"), (r"\bvpn\b", "vpn"), (r"direct connect", "direct-connect"),
+    (r"route table", "route-table"), (r"\bwaf\b", "waf"), (r"certificate|\bacm\b", "cert-manager"),
+    (r"prometheus", "prometheus"), (r"grafana", "grafana"), (r"opentelemetry|otel", "otel"),
+    (r"\bloki\b|fluent ?bit|\blogs?\b", "logs"), (r"alertmanager|\balert", "cw-alarm"),
+    (r"firewall|iptables|security group", "firewall"), (r"\brouter\b|^r\d\b", "router"),
+    (r"data ?center|on-prem", "corp-dc"), (r"internet", "internet"), (r"\busers?\b", "users"),
+    (r"client|browser|laptop|\bcurl\b|^pc\d*\b", "client"), (r"kubectl|terminal|\bcli\b", "cli"),
+    (r"\bgit(hub|lab|ops)?\b|repo\b", "git-repo"), (r"docker image|container image", "container-image"),
+    (r"container|containerd|docker", "container"), (r"cloudformation", "cloudformation"),
+    (r"database|\bdb\b|postgres|mysql", "database"), (r"web server|\bserver\b|backend|\bhost\b", "server"),
+]
+GROUP_ICON_RULES = [
+    (r"^aws cloud|^aws account", "aws-cloud"), (r"^region", "region"), (r"\bvpc\b", "vpc"),
+    (r"public subnet", "public-subnet"), (r"private .*subnet|private subnet", "private-subnet"),
+    (r"auto scaling group|^asg\b", "asg-group"), (r"worker node|^node\b|control plane node", "k8s-node"),
+    (r"control plane", "k8s-master"), (r"^pod\b", "k8s-pod"),
+    (r"kubernetes cluster|k8s cluster|eks cluster|^eks\b", "eks"),
+]
+
+
+# Labels that mention a keyword but are not that thing (a sentence, a subnet, a file...): no auto icon.
+ICON_EXCLUDE = re.compile(
+    r"host part|host routing|server[- ]side|remote backend|\+ backend|didn't|metrics-server|exporter|bind mount|"
+    r"dedicated host|\bfacts\b|subnet|preservation|affinity|rate limit|\.crt|\.csr|/hosts|dhclient|"
+    r"security group:|directly|smallest unit|^inside|user vs|root user|slow responses|page works|^\(|s3:|^not ")
+ICON_LEAD = 12  # the keyword must start within the first 12 characters (after a step number): names lead labels
+
+
+def match_icon(label: str, rules) -> str | None:
+    first = (label.split("\n")[0] if label else "").strip().lower()
+    first = re.sub(r"^([0-9]+|[\u2460-\u2473])\s*[·.:)]?\s*", "", first)  # "2 · ", "3. ", "①"
+    if ICON_EXCLUDE.search(first):
+        return None
+    for pattern, name in rules:
+        m = re.search(pattern, first)
+        if m and m.start() <= ICON_LEAD:
+            return name
+    return None
+
 class Diagram:
     def __init__(self, name: str, width: int, height: int, title: str | None = None):
         self.name, self.width, self.height = name, width, height
@@ -230,10 +366,24 @@ class Diagram:
     # ---- building ---------------------------------------------------------------
     def box(self, id, x, y, w, h, label, color="blue", *, shape="rect", size=12, bold=False,
             italic=False, dashed=False, valign="middle", align="center", bold_first=True,
-            icon=None, icon_size=32):
-        """icon = a DRAWIO_AWS / DRAWIO_AWS_GROUP name (draw.io aws4 library shape), drawn at the left of the box."""
+            icon=None, icon_size=32, auto_icon=True):
+        """icon = a DRAWIO_AWS / DRAWIO_AWS_GROUP / DRAWIO_K8S name (draw.io library shape), drawn at the left.
+
+        THEME "aws": a box with no icon gets one from ICON_RULES when its first line names a service or tool
+        and the text still fits next to it (auto_icon=False turns this off for one box)."""
         if id in self._by_id:
             raise ValueError(f"{self.name}: duplicate id {id!r}")
+        if (THEME == "aws" and auto_icon and icon is None and shape == "rect" and color != "none"
+                and h >= 34 and w >= 100 and label):
+            first = label.split("\n")[0]
+            cand = match_icon(label, ICON_RULES) if len(first) <= 30 else None  # names, not sentences
+            isz = max(20, min(28, h - 12))
+            room = w - 12 - (isz + 10)
+            lines = label.split("\n")
+            fits = all(len(t) * size * CHAR_W * (1.08 if (bold or (bold_first and i == 0 and len(lines) > 1)) else 1.0)
+                       <= room for i, t in enumerate(lines))
+            if cand and fits:
+                icon, icon_size = cand, isz
         pad = icon_size + 10 if icon else 0
         v = dict(id=id, x=x, y=y, w=w, h=h, lines=label.split("\n") if label else [], color=color,
                  shape=shape, size=size, bold=bold, italic=italic, dashed=dashed, valign=valign,
@@ -247,10 +397,29 @@ class Diagram:
         return id
 
     def group(self, id, x, y, w, h, label, color="gray", *, dashed=False, size=13,
-              valign="top", align="center", icon=None, icon_size=24):
-        """A labelled region. Add it BEFORE the boxes inside it, so it is drawn behind them."""
+              valign="top", align="center", icon=None, icon_size=24, aws=False):
+        """A labelled region. Add it BEFORE the boxes inside it, so it is drawn behind them.
+
+        aws=True draws it like a draw.io AWS group: square corners, label top-left, and the icon (if any) as a
+        25 px tile in the top-left corner (like the Region / VPC groups)."""
+        if THEME == "aws":  # every container in the AWS look: label top-left, corner icon when one matches
+            align = "left"
+            if icon is None:
+                icon = match_icon(label, GROUP_ICON_RULES)
+                if icon and len((label or "").split("\n")[0]) * size * CHAR_W * 1.08 > w - 50:
+                    icon = None  # no room for the corner icon beside the label
+            aws = True
+        if aws and icon not in DRAWIO_AWS_GROUP:
+            gid = self.box(id, x, y, w, h, label, color, size=size, bold=True, dashed=dashed,
+                           valign="top", align="left", icon=icon, icon_size=GROUP_ICON, auto_icon=False)
+            v = self._by_id[gid]
+            v["square"] = True
+            v["pad_left"] = GROUP_ICON + 4 if icon else 2
+            if icon:
+                self._by_id[f"{gid}-icon"].update(x=x, y=y)
+            return gid
         gid = self.box(id, x, y, w, h, label, color, size=size, bold=True, dashed=dashed,
-                       valign=valign, align=align, icon=icon, icon_size=icon_size)
+                       valign=valign, align=align, icon=icon, icon_size=icon_size, auto_icon=False)
         if icon in DRAWIO_AWS_GROUP:  # draw.io: its AWS container shape draws the icon itself, top-left, 25 px
             v, ic = self._by_id[gid], self._by_id[f"{gid}-icon"]
             v["drawio_group"], v["aws_stroke"] = DRAWIO_AWS_GROUP[icon]
@@ -260,7 +429,7 @@ class Diagram:
 
     def icon(self, id, x, y, name, size=40):
         """An AWS icon on its own: a native draw.io AWS library shape (vector paths in the SVG preview)."""
-        if name not in DRAWIO_AWS and name not in DRAWIO_AWS_GROUP:
+        if name not in DRAWIO_AWS and name not in DRAWIO_AWS_GROUP and name not in DRAWIO_K8S:
             raise KeyError(f"{self.name}: {name!r} is not in DRAWIO_AWS / DRAWIO_AWS_GROUP (draw.io aws4 library)")
         v = self._by_id.get(self.box(id, x, y, size, size, "", "none"))
         style = drawio_aws_style(name)
@@ -271,9 +440,9 @@ class Diagram:
         v["shape"], v["icon"], v["drawio_style"] = "image", name, style
         return id
 
-    def text(self, id, x, y, w, h, label, *, size=12, bold=False, italic=False, align="center"):
+    def text(self, id, x, y, w, h, label, *, size=12, bold=False, italic=False, align="center", valign="middle"):
         return self.box(id, x, y, w, h, label, "none", shape="text", size=size, bold=bold,
-                        italic=italic, align=align, bold_first=False)
+                        italic=italic, align=align, bold_first=False, valign=valign)
 
     def edge(self, src, tgt, label=None, *, dashed=False, both=False, points=None, size=10):
         for end in (src, tgt):
@@ -305,15 +474,15 @@ class Diagram:
 
     @staticmethod
     def _svg_vertex(v, defs: dict) -> str:
-        fill, stroke = PALETTE[v["color"]]
+        fill, stroke = pal(v["color"])
         x, y, w, h = v["x"], v["y"], v["w"], v["h"]
         dash = ' stroke-dasharray="6 4"' if v["dashed"] else ""
         paint = f'fill="{fill}" stroke="{stroke}" stroke-width="1.5"{dash}'
         out, inset = [], 0.0
         if v["shape"] == "image":
             return icon_svg(v["icon"], x, y, w, h, defs)
-        if v.get("drawio_group"):  # AWS container: square corners, AWS colour border (as draw.io draws it)
-            stroke = v["aws_stroke"]
+        if v.get("drawio_group") or v.get("square"):  # AWS container: square corners, AWS colour border
+            stroke = v.get("aws_stroke", stroke)
             paint = f'fill="{fill}" stroke="{stroke}" stroke-width="1.5"{dash}'
             out.append(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" {paint}/>')
         elif v["shape"] == "rect":
@@ -362,9 +531,9 @@ class Diagram:
 
     @staticmethod
     def _mx_vertex_style(v) -> str:
-        fill, stroke = PALETTE[v["color"]]
+        fill, stroke = pal(v["color"])
         if v.get("drawio_group"):  # draw.io AWS container: icon top-left, label beside it
-            fill, stroke = PALETTE[v["color"]]
+            fill, stroke = pal(v["color"])
             style = (f"sketch=0;outlineConnect=0;html=1;whiteSpace=wrap;shape=mxgraph.aws4.group;"
                      f"grIcon=mxgraph.aws4.{v['drawio_group']};grStroke=1;fillColor={fill};strokeColor={v['aws_stroke']};"
                      f"strokeWidth=1.5;fontSize={v['size']};fontColor={INK};fontStyle=1;fontFamily=Helvetica;"
@@ -377,7 +546,7 @@ class Diagram:
         if v["shape"] == "text":
             style = "text;strokeColor=none;fillColor=none;" + common
         else:
-            shape = {"rect": "rounded=1;absoluteArcSize=1;arcSize=16;",
+            shape = {"rect": "rounded=0;" if v.get("square") else "rounded=1;absoluteArcSize=1;arcSize=16;",
                      "ellipse": "ellipse;",
                      "cylinder": "shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=8;"}[v["shape"]]
             style = shape + f"fillColor={fill};strokeColor={stroke};strokeWidth=1.5;" + common
